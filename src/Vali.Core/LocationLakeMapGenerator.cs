@@ -80,14 +80,25 @@ public static class LocationLakeMapGenerator
         var filename = definitionFilename + "-locations.json";
         var locationsPath = Path.Combine(outFolder, filename);
 
+        var output = mapDefinition.Output;
+
+        double HeadingSelector(Location l) => output switch
+        {
+            _ when output.CountryHeadingExpressions.TryGetValue(l.Nominatim.CountryCode, out var headingExpression) => LocationLakeFilterer.CompileIntLocationExpression(headingExpression)(l),
+            _ when !string.IsNullOrEmpty(output.GlobalHeadingExpression) => LocationLakeFilterer.CompileIntLocationExpression(output.GlobalHeadingExpression)(l),
+            _ => l.Google.Heading
+        };
+
         var geoMapLocations = locations
             .Select(l => new GeoMapLocation
             {
                 lat = l.Lat,
                 lng = l.Lng,
-                heading = l.Google.Heading,
+                heading = HeadingSelector(l) % 360,
+                zoom = output.GlobalZoom,
+                pitch = output.GlobalPitch,
                 extra = TagsGenerator.Tags(mapDefinition, l),
-                panoId = mapDefinition.PanoIdCountryCodes.Contains(l.Nominatim.CountryCode) || mapDefinition.PanoIdCountryCodes.Contains("*") ? l.Google.PanoId : null
+                panoId = output.PanoIdCountryCodes.Contains(l.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") ? l.Google.PanoId : null
             }).ToArray();
         await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
         ConsoleLogger.Info($"{locations.Length, 6:N0} locations saved to {new FileInfo(locationsPath).FullName}");
@@ -123,6 +134,8 @@ public static class LocationLakeMapGenerator
         public double lat { get; set; }
         public double lng { get; set; }
         public double heading { get; set; }
+        public double? zoom { get; set; }
+        public double? pitch { get; set; }
         public GeoMapLocationExtra? extra { get; set; }
         public string? panoId { get; set; }
     }

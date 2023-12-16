@@ -6,11 +6,11 @@ namespace Vali.Core;
 
 public static class TagsGenerator
 {
-    public static LocationLakeMapGenerator.GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l) =>
-        mapDefinition.LocationTags.Any()
+    public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l) =>
+        mapDefinition.Output.LocationTags.Any()
             ? new GeoMapLocationExtra
             {
-                tags = mapDefinition.LocationTags.Select(e => e switch
+                tags = mapDefinition.Output.LocationTags.Select(e => e switch
                 {
                     "SubdivisionCode" => Surface(l),
                     "County" => Surface(l),

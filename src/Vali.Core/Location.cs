@@ -38,7 +38,8 @@ public record GoogleData
     [ProtoMember(3)]
     public double Lng { get; set; }
     [ProtoMember(4)]
-    public double Heading { get; set; }
+    public double DefaultHeading { get; set; }
+    public int Heading => DefaultHeading.RoundToInt();
     [ProtoMember(5)]
     public required string CountryCode { get; set; }
     [ProtoMember(6)]
@@ -47,6 +48,10 @@ public record GoogleData
     public int Year { get; set; }
     [ProtoMember(8)]
     public int Month { get; set; }
+    [ProtoMember(9)]
+    public int DrivingDirectionAngle { get; set; }
+    [ProtoMember(10)]
+    public int ArrowCount { get; set; }
 }
 
 [ProtoContract]

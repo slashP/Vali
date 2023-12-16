@@ -35,13 +35,20 @@ public static class FilterValidation
             }
         }
 
-        return definition.GlobalLocationFilters
-            .Concat(definition.CountryLocationFilters.SelectMany(x => x.Value))
-            .Concat(definition.SubdivisionLocationFilters.SelectMany(x => x.Value.SelectMany(y => y.Value)))
+        static void DryRun(string filter)
+        {
+            var expression = LocationLakeFilterer.CompileLocationExpression(filter, true);
+            var locations = EmptyLocationArray().Where(expression).ToArray();
+        }
+
+        return new[] { definition.GlobalLocationFilter }
+            .Concat(definition.CountryLocationFilters.Select(x => x.Value))
+            .Concat(definition.SubdivisionLocationFilters.SelectMany(x => x.Value.Select(y => y.Value)))
             .Concat(definition.GlobalLocationPreferenceFilters.Select(x => x.Expression))
             .Concat(definition.CountryLocationPreferenceFilters.SelectMany(x => x.Value.Select(y => y.Expression)))
             .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.Value.Select(z => z.Expression))))
-            .Select(definition.ValidateFilter)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Select(f => definition.ValidateExpression(f!, DryRun, $"Invalid filter {f}"))
             .Any(validated => validated == null)
             ? null
             : definition;
@@ -97,11 +104,11 @@ public static class FilterValidation
         return definition;
     }
 
-    private static MapDefinition? ValidateFilter(this MapDefinition definition, string filter)
+    public static MapDefinition? ValidateExpression(this MapDefinition definition, string filter, Action<string> dryRun, string dryRunExceptionMessage)
     {
         if (filter == "")
         {
-            ConsoleLogger.Error("Filters cannot be empty.");
+            ConsoleLogger.Error("Expressions/filters cannot be empty.");
             return null;
         }
 
@@ -120,7 +127,7 @@ public static class FilterValidation
         }
 
         var removeStringsInSingleQuotes = filter.ReplaceValuesInSingleQuotesWithPlaceHolders().expressionWithPlaceholders;
-        foreach (var expressionValue in removeStringsInSingleQuotes.ReplaceMultipleSpaces().Replace("(", "").Replace(")", "").Split(' '))
+        foreach (var expressionValue in removeStringsInSingleQuotes.RemoveMultipleSpaces().RemoveParentheses().Split(' '))
         {
             var operators = LocationLakeFilterer.ValidOperators().Select(x => x.Trim()).ToArray();
             var properties = LocationLakeFilterer.ValidProperties().Select(x => x.Trim()).ToArray();
@@ -148,23 +155,16 @@ public static class FilterValidation
 
         try
         {
-            var expression = LocationLakeFilterer.CompileLocationExpression(filter);
-            var locations = EmptyLocationArray().Where(expression).ToArray();
+            dryRun(filter);
         }
         catch (Exception)
         {
-            ConsoleLogger.Error($"""
-                                 Invalid filter {filter}
-                                 """);
+            ConsoleLogger.Error(dryRunExceptionMessage);
             return null;
         }
 
         return definition;
     }
-
-    private static string ReplaceMultipleSpaces(this string input) =>
-        Regex.Replace(input, @"\s+", " ");
-
 
     private static bool IsSingleQuoteWord(string expression)
     {
@@ -180,7 +180,7 @@ public static class FilterValidation
         return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue);
     }
 
-    private static IEnumerable<Location> EmptyLocationArray() =>
+    public static IEnumerable<Location> EmptyLocationArray() =>
         new[]
         {
             new Location

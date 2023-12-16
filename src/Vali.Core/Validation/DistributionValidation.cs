@@ -65,7 +65,8 @@ public static class DistributionValidation
         foreach (var countryCode in countryCodes)
         {
             var subdivisions = SubdivisionWeights.CountryToSubdivision[countryCode];
-            var files = Directory.GetFiles(DataDownloadService.CountryFolder(countryCode), "*.bin");
+            var countryFolder = DataDownloadService.CountryFolder(countryCode);
+            var files = Directory.Exists(countryFolder) ? Directory.GetFiles(countryFolder, "*.bin") : [];
             var missingFiles = subdivisions.Where(s => !files.Any(f => f.EndsWith($"{s.Key}.bin"))).ToArray();
             if (missingFiles.Any())
             {

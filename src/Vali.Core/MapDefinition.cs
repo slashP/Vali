@@ -8,14 +8,13 @@ public record MapDefinition
     public Dictionary<string, int> CountryDistribution { get; init; } = [];
     public Dictionary<string, Dictionary<string, int>> SubdivisionDistribution { get; init; } = [];
     public DistributionStrategy DistributionStrategy { get; init; } = new();
-    public string[] GlobalLocationFilters { get; init; } = [];
-    public Dictionary<string, string[]> CountryLocationFilters { get; init; } = [];
-    public Dictionary<string, Dictionary<string, string[]>> SubdivisionLocationFilters { get; init; } = [];
-    public string[] LocationTags { get; init; } = [];
-    public string[] PanoIdCountryCodes { get; init; } = [];
+    public string? GlobalLocationFilter { get; init; }
+    public Dictionary<string, string> CountryLocationFilters { get; init; } = [];
+    public Dictionary<string, Dictionary<string, string>> SubdivisionLocationFilters { get; init; } = [];
     public LocationPreferenceFilter[] GlobalLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, LocationPreferenceFilter[]> CountryLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
+    public LocationOutput Output { get; set; } = new();
 }
 
 public record DistributionStrategy
@@ -35,4 +34,14 @@ public record LocationPreferenceFilter
     public bool Fill { get; init; }
     public string? LocationTag { get; init; }
     public int? MinMinDistance { get; init; }
+}
+
+public record LocationOutput
+{
+    public string[] LocationTags { get; init; } = [];
+    public string[] PanoIdCountryCodes { get; init; } = [];
+    public string? GlobalHeadingExpression { get; init; }
+    public Dictionary<string, string> CountryHeadingExpressions { get; init; } = [];
+    public double? GlobalZoom { get; set; }
+    public double? GlobalPitch { get; set; }
 }

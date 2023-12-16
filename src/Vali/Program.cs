@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using Spectre.Console;
 using Vali.Core;
+using Vali.Core.Data;
 using Vali.Core.Validation;
 
 AnsiConsole.MarkupLine(
@@ -17,10 +18,11 @@ AnsiConsole.MarkupLine(
   [/]
   """);
 
-//args = new[] { "generate",  "--file" , @"C:\dev\priv\location-lake\maps\map-testing\aefr.json" };
+// args = new[] { "generate",  "--file" , @"C:\dev\priv\location-lake\maps\map-testing\aefr.json" };
 
 var rootCommand = new RootCommand("Vali - create locations.");
 var countryOption = new Option<string>("--country") { IsRequired = false };
+var distributionOption = new Option<string>("--distribution") { IsRequired = false };
 var requiredCountryOption = new Option<string>("--country") { IsRequired = true };
 var propertyOption = new Option<string>("--prop") { IsRequired = true };
 var downloadCommand = new Command("download", "Download data.");
@@ -43,12 +45,18 @@ Option<bool?> lightWeightOption = new(name: "--lightWeight", description: "Light
     IsHidden = true
 };
 
-var subdivisionsCommand = new Command("subdivisions", "Export country or subdivision distribution.");
+var subdivisionsCommand = new Command("subdivisions", "Export subdivision distribution.");
 subdivisionsCommand.AddOption(countryOption);
 subdivisionsCommand.AddOption(asTextOption);
 subdivisionsCommand.AddOption(asCodeOption);
 subdivisionsCommand.AddOption(lightWeightOption);
 rootCommand.Add(subdivisionsCommand);
+
+var countriesCommand = new Command("countries", "Export country distribution.");
+countriesCommand.AddOption(countryOption);
+countriesCommand.AddOption(distributionOption);
+countriesCommand.AddOption(asTextOption);
+rootCommand.Add(countriesCommand);
 
 var reportCommand = new Command("report", "Export which counties exist in a country.");
 reportCommand.AddOption(requiredCountryOption);
@@ -66,7 +74,7 @@ downloadCommand.SetHandler(async context =>
     {
         countryOptionValue =
             AnsiConsole.Ask(
-                "What do you want to download? Leave empty for all, use two letter country code for single country (f.ex. US) or specify continent (europe, africa, asia, oceania, southamerica, northamerica).", "");
+                "What do you want to download? * for all, use two letter country code for single country (f.ex. US) or specify continent (europe, africa, asia, oceania, southamerica, northamerica).", "");
     }
 
     await DataDownloadService.DownloadFiles(countryOptionValue);
@@ -76,7 +84,20 @@ downloadCommand.SetHandler(async context =>
 generateMapCommand.SetHandler(async context =>
 {
     var fileOptionValue = context.ParseResult.GetValueForOption(fileOption)!;
-    var mapDefinition = await GenerateFileValidator.TryDeserialize(fileOptionValue);
+    var mapJson = await GenerateFileValidator.ReadFile(fileOptionValue);
+    if (mapJson == null)
+    {
+        return;
+    }
+
+    var validationMessage = GenerateFileValidator.HumanReadableError(mapJson);
+    if (validationMessage != null)
+    {
+        ConsoleLogger.Error(validationMessage);
+        return;
+    }
+
+    var mapDefinition = GenerateFileValidator.TryDeserialize(mapJson);
     if (mapDefinition == null)
     {
         context.ExitCode = -1;
@@ -104,7 +125,19 @@ subdivisionsCommand.SetHandler(context =>
             : DistributionExport.DataFormat.Json;
     var lightWeight = context.ParseResult.GetValueForOption(lightWeightOption) == true;
 
-    DistributionExport.Export(countryOptionValue, dataFormat, lightWeight);
+    DistributionExport.SubdivisionExport(countryOptionValue, dataFormat, lightWeight);
+    context.ExitCode = 100;
+});
+
+countriesCommand.SetHandler(context =>
+{
+    var countryOptionValue = context.ParseResult.GetValueForOption(countryOption);
+    var distributionOptionValue = context.ParseResult.GetValueForOption(distributionOption);
+    var dataFormat = context.ParseResult.GetValueForOption(asTextOption) == true
+        ? DistributionExport.DataFormat.Text
+        : DistributionExport.DataFormat.Json;
+
+    DistributionExport.CountryExport(countryOptionValue, dataFormat, distributionOptionValue);
     context.ExitCode = 100;
 });
 

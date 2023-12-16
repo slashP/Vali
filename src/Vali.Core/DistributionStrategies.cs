@@ -17,7 +17,7 @@ public static class DistributionStrategies
         MapDefinition mapDefinition)
     {
         var deserializeFromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
-        var subdivision = deserializeFromFile.First().Nominatim.SubdivisionCode;
+        var subdivision = deserializeFromFile.FirstOrDefault()?.Nominatim.SubdivisionCode ?? "";
         if (!availableSubdivisions.Contains(subdivision))
         {
             return (Array.Empty<Loc>(), 0, 0);
@@ -25,7 +25,7 @@ public static class DistributionStrategies
 
         var filteredLocations = FilteredLocations(countryCode, mapDefinition, subdivision, deserializeFromFile);
         var regionGoalCount = mapDefinition.SubdivisionDistribution.TryGetValue(countryCode, out var subdivisionWeights) ?
-            ((decimal)(subdivisionWeights.TryGetValue(subdivision, out var w) ? w : 0) / subdivisionWeights.Sum(x => x.Value) * goalCount).RoundToInt() :
+            ((decimal)(subdivisionWeights.GetValueOrDefault(subdivision, 0)) / subdivisionWeights.Sum(x => x.Value) * goalCount).RoundToInt() :
             SubdivisionWeights.GoalForSubdivision(countryCode, subdivision, goalCount, availableSubdivisions);
         if (regionGoalCount == 0)
         {
@@ -53,12 +53,13 @@ public static class DistributionStrategies
 
         if (!filteredLocations.Any())
         {
+            AnsiConsole.MarkupLine($"[lightseagreen]Generated {0,6:N0} locations in {subdivision}. Min distance: -.[/][olive]{regionGoalCount,4} locations short.[/]");
             return (Array.Empty<Loc>(), 0, 0);
         }
 
         var tuple = ByMaxMinDistance(filteredLocations, regionGoalCount, minDistance, mapDefinition, countryCode, subdivision);
         var diff = regionGoalCount - tuple.locations.Count;
-        var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,3} locations short.[/]" : "";
+        var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,4} locations short.[/]" : "";
         AnsiConsole.MarkupLine($"[lightseagreen]Generated {tuple.locations.Count,6:N0} locations in {subdivision}. Min distance: {tuple.minDistance,5}m.[/]{notEnoughLocationsMessage}");
         return (tuple.locations, regionGoalCount, tuple.minDistance);
     }
@@ -69,14 +70,7 @@ public static class DistributionStrategies
         string subdivision,
         IEnumerable<Location> deserializeFromFile)
     {
-        var locationFilters = mapDefinition switch
-        {
-            _ when
-                mapDefinition.SubdivisionLocationFilters.TryGetValue(countryCode, out var countrySubdivisionFilters) &&
-                countrySubdivisionFilters.TryGetValue(subdivision, out var subdivisionFilters) => subdivisionFilters,
-            _ when mapDefinition.CountryLocationFilters.TryGetValue(countryCode, out var countryFilters) => countryFilters,
-            _ => mapDefinition.GlobalLocationFilters
-        };
+        var locationFilters = LocationFilter(countryCode, mapDefinition, subdivision);
         var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, locationFilters);
         return filteredLocations;
     }
@@ -96,7 +90,7 @@ public static class DistributionStrategies
 
         if (locations.Count == 0 || goalCount == 0)
         {
-            return new (IList<Location> locations, int regionGoalCount, int minDistance)[]{(Array.Empty<Loc>(), 0, 0)};
+            return [(Array.Empty<Loc>(), 0, 0)];
         }
 
         var minDistance = mapDefinition.DistributionStrategy.MinMinDistance;
@@ -108,7 +102,7 @@ public static class DistributionStrategies
             .ToArray();
         var tuple = ByMaxMinDistance(filteredLocations, goalCount, minDistance, mapDefinition, countryCode, "");
         var diff = goalCount - tuple.locations.Count;
-        var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,3} locations short.[/]" : "";
+        var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,4} locations short.[/]" : "";
         AnsiConsole.MarkupLine($"[lightseagreen]Generated {tuple.locations.Count,6:N0} locations in {countryCode}. Min distance: {tuple.minDistance,4}m.[/]{notEnoughLocationsMessage}");
         return new[] { (tuple.locations, goalCount, tuple.minDistance) };
     }
@@ -129,8 +123,10 @@ public static class DistributionStrategies
                 continue;
             }
 
+            var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
+
             allAvailableLocations[subdivision] = availableSubdivisions.Contains(subdivision)
-                    ? LocationLakeFilterer.Filter(deserializeFromFile, mapDefinition.GlobalLocationFilters)
+                    ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter)
                     : Array.Empty<Loc>();
         }
 
@@ -143,7 +139,7 @@ public static class DistributionStrategies
         {
             var subdivisionGoalCounts = locations.ToDictionary(x => x.Key, x =>
                 mapDefinition.SubdivisionDistribution.TryGetValue(countryCode, out var subdivisionWeights) ?
-                    ((decimal)(subdivisionWeights.TryGetValue(x.Key, out var w) ? w : 0) / subdivisionWeights.Sum(y => y.Value) * totalGoalCount).RoundToInt() :
+                    ((decimal)(subdivisionWeights.GetValueOrDefault(x.Key, 0)) / subdivisionWeights.Sum(y => y.Value) * totalGoalCount).RoundToInt() :
                 SubdivisionWeights.GoalForSubdivision(countryCode, x.Key, totalGoalCount, availableSubdivisions));
             foreach (var (subdivision, _) in locations)
             {
@@ -194,7 +190,7 @@ public static class DistributionStrategies
         var subdivisionGoalCountsSatisfyingFixedMinDistance = locations.ToDictionary(
             x => x.Key,
             x => mapDefinition.SubdivisionDistribution.TryGetValue(countryCode, out var subdivisionWeights)
-                ? ((decimal)(subdivisionWeights.TryGetValue(x.Key, out var w) ? w : 0) /
+                ? ((decimal)(subdivisionWeights.GetValueOrDefault(x.Key, 0)) /
                     subdivisionWeights.Sum(y => y.Value) * totalGoalCount).RoundToInt()
                 : SubdivisionWeights.GoalForSubdivision(countryCode, x.Key, maxLocationCountSatisfyingFixedMinDistance,
                     availableSubdivisions));
@@ -232,7 +228,7 @@ public static class DistributionStrategies
             {
                 var filtered = locationPreferenceFilter.Expression == "*" ?
                     filteredLocations :
-                    LocationLakeFilterer.Filter(filteredLocations, new[] { locationPreferenceFilter.Expression });
+                    LocationLakeFilterer.Filter(filteredLocations, locationPreferenceFilter.Expression);
                 var goalCount = locationPreferenceFilter.Fill || locationPreferenceFilter.Percentage is null
                     ? regionGoalCount - locations.Count
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();
@@ -254,6 +250,19 @@ public static class DistributionStrategies
         }
 
         return LocationDistributor.WithMaxMinDistance(filteredLocations, regionGoalCount, minMinDistance: minDistance);
+    }
+
+    private static string? LocationFilter(string countryCode, MapDefinition mapDefinition, string subdivision)
+    {
+        var locationFilter = mapDefinition switch
+        {
+            _ when
+                mapDefinition.SubdivisionLocationFilters.TryGetValue(countryCode, out var countrySubdivisionFilters) &&
+                countrySubdivisionFilters.TryGetValue(subdivision, out var subdivisionFilter) => subdivisionFilter,
+            _ when mapDefinition.CountryLocationFilters.TryGetValue(countryCode, out var countryFilter) => countryFilter,
+            _ => mapDefinition.GlobalLocationFilter
+        };
+        return locationFilter;
     }
 
     private enum Status

@@ -1,4 +1,6 @@
-﻿namespace Vali.Core;
+﻿using Vali.Core.Data;
+
+namespace Vali.Core;
 
 public static class MapDefinitionDefaults
 {
@@ -7,20 +9,34 @@ public static class MapDefinitionDefaults
     public static MapDefinition ApplyDefaults(this MapDefinition definition)
     {
         var countryCodes = MapCountryCodes(definition.CountryCodes, definition.DistributionStrategy);
-        var countryDistribution = CountryDistribution(definition, countryCodes);
-        return definition with
+        var j = countryCodes.Merge(",");
+        var countryDistribution = CountryDistribution(definition);
+        var definitionWithDefaults = definition with
         {
             CountryCodes = countryCodes,
-            PanoIdCountryCodes = MapCountryCodes(definition.PanoIdCountryCodes, definition.DistributionStrategy).Concat(HardcodedPanoIdCountries).Distinct().ToArray(),
+            Output = definition.Output with
+            {
+                PanoIdCountryCodes = MapCountryCodes(definition.Output.PanoIdCountryCodes, definition.DistributionStrategy).Concat(HardcodedPanoIdCountries).Distinct().ToArray(),
+                CountryHeadingExpressions = ExpandCountryDictionary(definition.Output.CountryHeadingExpressions)
+            },
             SubdivisionInclusions = Inclusions(definition),
             SubdivisionExclusions = Exclusions(definition),
             CountryDistribution = countryDistribution,
             DistributionStrategy = definition.DistributionStrategy with
             {
                 TreatCountriesAsSingleSubdivision = MapCountryCodes(definition.DistributionStrategy.TreatCountriesAsSingleSubdivision, definition.DistributionStrategy)
-            }
+            },
+            CountryLocationFilters = ExpandCountryDictionary(definition.CountryLocationFilters).ApplyContinentBorderFilters(definition),
+            CountryLocationPreferenceFilters = ExpandCountryDictionary(definition.CountryLocationPreferenceFilters),
         };
+        return definitionWithDefaults;
     }
+
+    private static Dictionary<string, T> ExpandCountryDictionary<T>(Dictionary<string, T> countryDictionary) =>
+        countryDictionary
+            .SelectMany(x => MapCountryCodes([x.Key], new DistributionStrategy()).Select(y => (y, x.Value)))
+            .GroupBy(x => x.y)
+            .ToDictionary(x => x.Key, x => x.First().Value);
 
     private static Dictionary<string, string[]> Inclusions(MapDefinition definition) =>
         definition.CountryCodes switch
@@ -70,6 +86,19 @@ public static class MapDefinitionDefaults
             _ => definition.SubdivisionExclusions
         };
 
+    private static Dictionary<string, string> ApplyContinentBorderFilters(this Dictionary<string, string> countryFilters, MapDefinition definition) =>
+        definition.CountryCodes switch
+        {
+            ["europe"] => countryFilters
+                .Concat(new[]
+                {
+                    new KeyValuePair<string, string>("RU", "Lng lt 61"),
+                    new KeyValuePair<string, string>("TR", "Lng lt 41")
+                })
+                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
+            _ => countryFilters
+        };
+
     private static KeyValuePair<string, string[]> EuropeanTurkiye() =>
         new("TR", [ "TR-22", "TR-39", "TR-59", "TR-34" ]);
 
@@ -79,7 +108,7 @@ public static class MapDefinitionDefaults
     private static KeyValuePair<string, string[]> AfricanSpain() =>
         new("ES", [ "ES-CN", "ES-CE", "ES-ML" ]);
 
-    private static string[] MapCountryCodes(string[] countryCodes, DistributionStrategy distributionStrategy) =>
+    public static string[] MapCountryCodes(string[] countryCodes, DistributionStrategy distributionStrategy) =>
         countryCodes
             .SelectMany(c => c.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()))
             .SelectMany(s => ExpandCountryCode(s, distributionStrategy))
@@ -97,6 +126,8 @@ public static class MapDefinitionDefaults
             "southamerica" => CodesFromWeights(Weights.SouthAmerica),
             "northamerica" => CodesFromWeights(Weights.NorthAmerica),
             "oceania" => CodesFromWeights(Weights.Oceania),
+            "lefthandtraffic" => CountryCodes.LeftHandTrafficCountries.Intersect(CodesFromWeights(defaultDistribution)).ToArray(),
+            "righthandtraffic" => CountryCodes.Countries.Select(x => x.Key).Except(CountryCodes.LeftHandTrafficCountries).Intersect(CodesFromWeights(defaultDistribution)).ToArray(),
             _ => [countryCode]
         };
     }
@@ -104,31 +135,41 @@ public static class MapDefinitionDefaults
     private static string[] CodesFromWeights((string, int)[] weights) =>
         weights.Where(x => x.Item2 > 0).Select(x => x.Item1).ToArray();
 
-    private static Dictionary<string, int> CountryDistribution(MapDefinition definition, string[] countryCodes)
+    public static Dictionary<string, int> CountryDistribution(MapDefinition definition)
     {
+        var countryCodes = MapCountryCodes(definition.CountryCodes, definition.DistributionStrategy);
         var defaultDistribution = DefaultDistribution(definition.DistributionStrategy);
         return definition.CountryCodes switch
         {
-            ["*"] => Distribution(defaultDistribution),
-            ["europe"] => Distribution(Weights.Europe),
-            ["asia"] => Distribution(Weights.Asia),
-            ["africa"] => Distribution(Weights.Africa),
-            ["southamerica"] => Distribution(Weights.SouthAmerica),
-            ["northamerica"] => Distribution(Weights.NorthAmerica),
-            ["oceania"] => Distribution(Weights.Oceania),
+            ["*"] => Distribution(defaultDistribution, definition),
+            ["europe"] => Distribution(Weights.Europe, definition),
+            ["asia"] => Distribution(Weights.Asia, definition),
+            ["africa"] => Distribution(Weights.Africa, definition),
+            ["southamerica"] => Distribution(Weights.SouthAmerica, definition),
+            ["northamerica"] => Distribution(Weights.NorthAmerica, definition),
+            ["oceania"] => Distribution(Weights.Oceania, definition),
             _ when definition.CountryDistribution.Count == 0 => defaultDistribution.Where(x => countryCodes.Contains(x.Item1))
                 .ToDictionary(x => x.Item1, x => x.Item2),
             _ => definition.CountryDistribution
         };
     }
 
-    private static (string, int)[] DefaultDistribution(DistributionStrategy distributionStrategy) =>
-        distributionStrategy.DefaultDistribution switch
+    public static (string, int)[] DefaultDistribution(DistributionStrategy distributionStrategy) =>
+        distributionStrategy.DefaultDistribution?.ToLowerInvariant() switch
         {
             "aarw" => Weights.ArbitraryRuralWorld,
             "aaw" => Weights.World,
+            "acw" => Weights.CommunityWorld,
+            "abw" => Weights.BalancedWorld,
+            "aiw" => Weights.ImprovedWorld,
+            { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };
 
-    private static Dictionary<string, int> Distribution((string, int)[] weights) => weights.Where(x => x.Item2 > 0).ToDictionary(x => x.Item1, x => x.Item2);
+    private static Dictionary<string, int> Distribution((string, int)[] weights, MapDefinition mapDefinition) =>
+        mapDefinition switch
+        {
+            { CountryDistribution.Count: > 0 } => mapDefinition.CountryDistribution,
+            _ => weights.Where(x => x.Item2 > 0).ToDictionary(x => x.Item1, x => x.Item2)
+        };
 }

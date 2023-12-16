@@ -6,7 +6,7 @@ namespace Vali.Core;
 
 public class DistributionExport
 {
-    public static void Export(
+    public static void SubdivisionExport(
         string? countryCode,
         DataFormat dataFormat,
         bool lightWeight)
@@ -104,7 +104,7 @@ public class DistributionExport
         Func<NominatimData, string> nameSelector = byCountry ? x => CountryCodes.Name(x.CountryCode) : x => SubdivisionWeights.SubdivisionName(x.CountryCode, x.SubdivisionCode);
         var keyHeading = byCountry ? "Country code" : "Subdivision code";
 
-        foreach (var countryCode in code.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var countryCode in MapDefinitionDefaults.MapCountryCodes([code], new DistributionStrategy()))
         {
             var folder = DataDownloadService.CountryFolder(countryCode);
             if (!Directory.Exists(folder))
@@ -153,6 +153,61 @@ public class DistributionExport
             table.AddRow($"[blue]{group.Key.GroupKey}[/]", $"[blue]{group.Key.GroupName}[/]", $"[green]{group.Key.Value}[/]", $"[grey]{group.Sum(c => c.LocationCount):N0}[/]");
         }
         AnsiConsole.Write(table);
+    }
+
+    public static void CountryExport(string? countryCode, DataFormat dataFormat, string? distributionName)
+    {
+        if (countryCode == null)
+        {
+            return;
+        }
+
+        var mapDefinition = new MapDefinition
+        {
+            CountryCodes = [countryCode],
+            DistributionStrategy = new DistributionStrategy
+            {
+                DefaultDistribution = !string.IsNullOrEmpty(distributionName) ? distributionName : null,
+            }
+        };
+        var defaultDistribution = MapDefinitionDefaults.DefaultDistribution(mapDefinition.DistributionStrategy);
+        if (!defaultDistribution.Any())
+        {
+            ConsoleLogger.Error($"Unknown distribution {distributionName}.");
+            return;
+        }
+
+        var distribution = MapDefinitionDefaults.CountryDistribution(mapDefinition).OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
+        Action a = dataFormat switch
+        {
+            DataFormat.Text => () =>
+            {
+                // Create a table
+                var table = new Table();
+
+                // Add some columns
+                table.AddColumn("Country code");
+                table.AddColumn("Name");
+                table.AddColumn("Weight");
+                foreach (var subdivisionPrintRow in distribution.Select(x => new SubdivisionPrintRow
+                         {
+                             Code = x.Key,
+                             Name = CountryCodes.Name(x.Key),
+                             Weight = x.Value
+                         }))
+                {
+                    table.AddRow($"[blue]{subdivisionPrintRow.Code}[/]", $"[blue]{subdivisionPrintRow.Name}[/]", $"[green]{subdivisionPrintRow.Weight}[/]");
+                }
+                AnsiConsole.Write(table);
+            }
+            ,
+            DataFormat.Json => () => AnsiConsole.Write(new JsonText(Serializer.Serialize(new Dictionary<string, Dictionary<string, int>>
+            {
+                { nameof(MapDefinition.CountryDistribution).FirstCharToLowerCase(), distribution }
+            }))),
+            _ => throw new ArgumentOutOfRangeException(nameof(dataFormat), dataFormat, null)
+        };
+        a();
     }
 }
 

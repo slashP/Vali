@@ -56,6 +56,7 @@ public static class Extensions
     public static string Format(this double d) => d.ToString(CultureInfo.InvariantCulture);
     public static decimal Round(this decimal d, int precision) => decimal.Round(d, precision);
     public static int RoundToInt(this decimal d) => (int)Math.Round(d, 0);
+    public static int RoundToInt(this double d) => (int)Math.Round(d, 0);
     public static decimal ParseAsDecimal(this string s) => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture);
     public static double ParseAsDouble(this string s) => double.Parse(s, CultureInfo.InvariantCulture);
     public static int ParseAsInt(this string s) => int.Parse(s, CultureInfo.InvariantCulture);
@@ -85,6 +86,8 @@ public static class Extensions
         var randIndex = Random.Shared.Next(source.Count);
         return source[randIndex];
     }
+
+    public static IEnumerable<string> NonEmptyStrings(this IEnumerable<string?> values) => values.Where(x => !string.IsNullOrEmpty(x)).Select(x => x!);
 
     public static async Task<IReadOnlyCollection<(T1 Result, T2 Data)>> ChunkAsync<T1, T2>(this ICollection<T2> source, Func<T2, Task<T1>> task, int chunkSize, string progressMessage, bool silent = false)
     {
@@ -179,4 +182,11 @@ public static class Extensions
         list.Add(("\\'", "$01"));
         return (input, list);
     }
+
+    public static string RemoveMultipleSpaces(this string input) => Regex.Replace(input, @"\s+", " ");
+    public static string RemoveParentheses(this string input) => input.Replace("(", "").Replace(")", "");
+    public static string SpacePad(this string input) => $" {input} ";
+
+    public static string SpacePadParentheses(this string input) =>
+        input.Replace("(", "(".SpacePad()).Replace(")", ")".SpacePad());
 }

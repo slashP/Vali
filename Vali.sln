@@ -5,7 +5,11 @@ VisualStudioVersion = 17.8.34302.71
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vali", "src\Vali\Vali.csproj", "{DEA5032E-2138-43E8-899C-E1B6A48742A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vali.Core", "src\Vali.Core\Vali.Core.csproj", "{C7E03A33-14B3-49DF-9B5B-E09C030C7F04}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vali.Core", "src\Vali.Core\Vali.Core.csproj", "{C7E03A33-14B3-49DF-9B5B-E09C030C7F04}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{CF4BF860-64B7-44F7-8037-6579322A70EF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vali.Core.Tests", "tests\Vali.Core.Tests\Vali.Core.Tests.csproj", "{09544AFC-A904-4070-9063-BD8A22FD0E64}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,9 +25,16 @@ Global
 		{C7E03A33-14B3-49DF-9B5B-E09C030C7F04}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C7E03A33-14B3-49DF-9B5B-E09C030C7F04}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C7E03A33-14B3-49DF-9B5B-E09C030C7F04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09544AFC-A904-4070-9063-BD8A22FD0E64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09544AFC-A904-4070-9063-BD8A22FD0E64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09544AFC-A904-4070-9063-BD8A22FD0E64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09544AFC-A904-4070-9063-BD8A22FD0E64}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{09544AFC-A904-4070-9063-BD8A22FD0E64} = {CF4BF860-64B7-44F7-8037-6579322A70EF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1C8E434C-F4B8-425F-A914-F57E2925F152}
