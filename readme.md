@@ -1,29 +1,40 @@
 # Vali - create GeoGuessr locations like a pro
+The creator of *An Arbitrary World*,  *An Arbitrary Rural World*, *Dirty World*, *IntersectionGuessr* ++ brings you Vali - the next evolution in computer generating GeoGuessr maps. With this tool **you** can create "An Arbitrary Rural Southern Europe", "Coastal Sri Lanka", "Skewed Africa" or something brand new. More than 100 million possible locations are awaiting - be creative.
 
+# First time setup
 * Install [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
 * Install [Windows Terminal](https://learn.microsoft.com/en-us/windows/terminal/install#install) (or use another terminal).
 * Install [Visual Studio Code](https://code.visualstudio.com/download) or use another text editor suitable for editing JSON files.
 * Open Windows Terminal and run `dotnet tool install -g vali`
 
+# Getting started
+* `vali download` - Download data for one or more countries.
+* `vali create-file` - Create a JSON file to start off.
+* Edit JSON file.
+* `vali generate --file "NO.json"` - Generate locations based on the JSON file specified.
+
 # Commands
-* `vali download --country "FR"` - Download data for France.
-* `vali download` - Download data for all countries.
+* `vali download` - Download data. You will get asked which countries you want to download data for.
 * `vali generate --file norway.json` - Generate locations based on specification in `norway.json`.
 * `vali subdivisions --country "ES"` - Export default subdivision distribution data for Spain as JSON.
 * `vali subdivisions --country "ES" --text` - Export default subdivision distribution data for Spain as text.
 * `vali countries --country "ES,FR,IT"` - Export default country distribution data for Spain as JSON.
 * `vali countries --country "ES,FR,IT" --distribution "abw"` - Export country distribution data for Spain, France and Italy as specified by "A Balanced World" as JSON.
-* `vali countries --country "*" --distribution "aiw" --text` - Export country distribution data for all countries as specified by "A Improved World" as text.
-* `vali report --country "NO" --property "County"` - Export counties/municipalities data for Norway.
+* `vali countries --country "*" --distribution "aiw" --text` - Export country distribution data for all countries as specified by "An Improved World" as text.
+* `vali report --country "NO" --prop "County"` - Export counties/municipalities data for Norway.
+* `vali report --country "BE" --prop "Year"` - Export coverage year data for Belgium.
 
-# Selecting countries
+# Buliding blocks
+Go directly to [full examples](#full-examples) or [properties](#properties) if you prefer not to read.
+
+## Selecting countries
 You need to specify which countries you want to include in the `countryCodes` array. Example:
 ```json
 {
   "countryCodes": ["EC", "CO", "PE", "BO"]
 }
 ```
-# Distribution strategy
+## Distribution strategy
 You can select between different strategies for distributing locations. Option 1 is `FixedCountByMaxMinDistance` where you specify how many locations you want in total and each subdivision will get their locations spread as far away from each other as possible. You can set a minimum minimum distance to set a lower limit on how close each location can be to each other. This is the recommended approach for most. Example:
 ```json
 {
@@ -44,7 +55,7 @@ Option 2 is `MaxCountByFixedMinDistance` where you specify how far you want each
   }
 }
 ```
-# Specific country distribution
+## Specific country distribution
 You can specify a country distribution of your choice. All numbers are relative (not representing location counts) and must be integers. Example:
 ```json
 {
@@ -58,7 +69,7 @@ You can specify a country distribution of your choice. All numbers are relative 
 ```
 Use `vali countries --country "NO,SE,FI,DK"` to output the default distribution, so you can copy it and make adjustments suitable to your map.
 
-# Specific subdivision distribution(s)
+## Specific subdivision distribution(s)
 You can specify one or more subdivision distribution to override the default one(s). All numbers are relative (not representing location counts) and must be integers. You can output the default subdivision distribution as JSON with the command `vali subdivisions --country "NO"` (or `vali subdivisions --country "NO" --text` to get a textual representation) Example:
 ```json
 {
@@ -77,7 +88,7 @@ You can specify one or more subdivision distribution to override the default one
 ```
 Use `vali subdivisions --country "NO"` to output the default distribution, so you can copy it and make adjustments suitable to your map.
 
-# Include or exclude subdivisions
+## Include or exclude subdivisions
 Sometimes it can be handy to include or excludle a few subdivisions. F.ex. include only African Spain or exclude European Türkiye. Examples:
 ```json
 {
@@ -102,7 +113,7 @@ Sometimes it can be handy to include or excludle a few subdivisions. F.ex. inclu
   }
 }
 ```
-# Location filtering
+## Location filtering
 Locations can be filtered globally, per country or per subdivision.
 
 ## Properties
@@ -189,7 +200,7 @@ With these building blocks we can write queries/expressions to filter out certai
 }
 ```
 
-# Location preference filtering
+## Location preference filtering
 Sometimes you want a certain percentage of your map to contain one type of locations. Vali can help you try and achieve that. It's called preference filters and can be applied globally/per country or per subdivision. The filtering is applied *after* any location filtering as described above. Example showing how to achieve 25 % locations on unpaved roads and filling in the rest with any location:
 ```json
 {
@@ -246,7 +257,7 @@ Sometimes you want a certain percentage of your map to contain one type of locat
   }
 }
 ```
-# Location output adjustments
+## Location output adjustments
 You can adjust the zoom on locations with `globalZoom` (range 0-3.6) and set the pitch with `globalPitch` (range -90 to 90). Heading can be set with `globalHeadingExpression` or `countryHeadingExpressions`. Examples:
 ```json
 {
@@ -271,7 +282,7 @@ You can adjust the zoom on locations with `globalZoom` (range 0-3.6) and set the
 }
 ```
 
-# Country code expansions
+## Country code expansions
 Most places that accept country code, can also accept special keywords that will expand into multiple country codes. Possible values:
 * \* -> All countries.
 * europe -> Countries in Europe. If you only specify europe, inclusions and exclusions will also be filled when generating maps.
@@ -318,7 +329,7 @@ With all the building blocks described above we can start creating real, serious
     "minMinDistance": 200,
     "defaultDistribution": "acw"
   },
-  "globalLocationFilter": "ClosestCoast < 100"
+  "globalLocationFilter": "ClosestCoast lt 100"
 }
 ```
 ### An Arbitrary Rural World
@@ -425,4 +436,50 @@ With all the building blocks described above we can start creating real, serious
   },
   "globalLocationFilter": "(DrivingDirectionAngle gt 10 and Heading gt 10 and DrivingDirectionAngle lt 80 and Heading lt 80) or (DrivingDirectionAngle gt 100 and Heading gt 100 and DrivingDirectionAngle lt 170 and Heading lt 170) or (DrivingDirectionAngle gt 190 and Heading gt 190 and DrivingDirectionAngle lt 260 and Heading lt 260) or (DrivingDirectionAngle gt 280 and Heading gt 280 and DrivingDirectionAngle lt 350 and Heading lt 350)"
 }
+```
+
+# Please remember
+* Location count is not everything. The same goes for location spread and lack of clustering.
+* Not all roads with coverage are included. It's ok. More will be added. And there are more than 100 million possible locations.
+* Data quality can vary wildly, especially when it comes to OpenStreetMap. While that can be frustrating, it's just the way it is. Go contribute to make things better.
+* Computer generating maps can be great, but it will not fully replace handpicked maps.
+* This is a complex piece of software. Do not expect zero bugs.
+
+# Potentially asked questions
+> Can you turn it into a webpage?
+
+I don't think so. Currently it's a very resource intensive program. Downloading and processing 15 GB of data is not something the web is suitable for.
+
+> Why is Vali a command line application?
+
+Because I have very little interest in creating a user interface for it, especially before it gains any kind of popularity.
+
+> Can you include more locations/roads in country X?
+
+Maybe. The best chance for that is if you generate a JSON or csv with "Filter by minimum distance from locations" set to 1 km with as many locations as possible in country X and send it to me on discord. Only one country per json.
+
+> Why are there (relatively) few locations on straight stretches of road?
+
+Each location in the location pool corresponds to an OSM "node". Nodes exist to describe roads and other features, so naturally there will be more locations in places with curves, buildings, other roads etc.
+
+# Run in Docker
+Create a `Dockerfile` with the following content:
+
+```Dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+ENV PATH="${PATH}:/root/.dotnet/tools"
+```
+then bulid the image.
+```
+docker build . -t vali-image
+```
+run it
+```
+docker run -it vali-image
+```
+and start using Vali as normal
+```
+dotnet tool install --global vali
+vali download
+...
 ```

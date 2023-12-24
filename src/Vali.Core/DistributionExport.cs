@@ -7,28 +7,34 @@ namespace Vali.Core;
 public class DistributionExport
 {
     public static void SubdivisionExport(
-        string? countryCode,
+        string? code,
         DataFormat dataFormat,
         bool lightWeight)
     {
         if (dataFormat == DataFormat.Code)
         {
-            SubdivisionSuggester.GenerateSubdivisionFromFiles(countryCode, lightWeight);
+            SubdivisionSuggester.GenerateSubdivisionFromFiles(code, lightWeight);
             return;
         }
-        if (countryCode != null)
+        if (code != null)
         {
-            if (SubdivisionWeights.CountryToSubdivision.TryGetValue(countryCode, out var subDivisionWeights))
+            var response = new Dictionary<string, Dictionary<string, int>>();
+            var countryCodes = MapDefinitionDefaults.MapCountryCodes([code], new());
+            if (countryCodes.Any())
             {
-                var response = new Dictionary<string, Dictionary<string, int>>
+                foreach (var countryCode in countryCodes)
                 {
-                    { countryCode, subDivisionWeights.ToDictionary(s => s.Key, s => s.Value) }
-                };
+                    if (SubdivisionWeights.CountryToSubdivision.TryGetValue(countryCode, out var subDivisionWeights))
+                    {
+                        response.Add(countryCode, subDivisionWeights.ToDictionary(s => s.Key, s => s.Value));
+                    }
+                }
+
                 WriteOutput(response, dataFormat);
             }
             else
             {
-                ConsoleLogger.Warn($"No subdivision distribution yet for {CountryCodes.Name(countryCode)} / {countryCode}.");
+                ConsoleLogger.Warn($"No subdivision distribution yet for {CountryCodes.Name(code)} / {code}.");
             }
 
             return;

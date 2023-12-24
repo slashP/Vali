@@ -18,7 +18,7 @@ AnsiConsole.MarkupLine(
   [/]
   """);
 
-// args = new[] { "generate",  "--file" , @"C:\dev\priv\location-lake\maps\map-testing\aefr.json" };
+//args = new[] { "generate", "--file", @"C:\dev\priv\vali-maps\NO.json" };
 
 var rootCommand = new RootCommand("Vali - create locations.");
 var countryOption = new Option<string>("--country") { IsRequired = false };

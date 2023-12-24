@@ -52,6 +52,10 @@ public static class GenerateFileValidator
             var node = JsonNode.Parse(json, new JsonNodeOptions
             {
                 PropertyNameCaseInsensitive = true
+            }, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip
             });
             if (node == null)
             {
