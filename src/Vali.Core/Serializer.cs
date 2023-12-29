@@ -15,7 +15,7 @@ public static class Serializer
 
     private static readonly JsonSerializerOptions PrettyPrintJsonSerializerOptions = new()
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
         PropertyNameCaseInsensitive = true,
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

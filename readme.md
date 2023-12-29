@@ -1,16 +1,20 @@
 # Vali - create GeoGuessr locations like a pro
 The creator of *An Arbitrary World*,  *An Arbitrary Rural World*, *Dirty World*, *IntersectionGuessr* ++ brings you Vali - the next evolution in computer generating GeoGuessr maps. With this tool **you** can create "An Arbitrary Rural Southern Europe", "Coastal Sri Lanka", "Skewed Africa" or something brand new. More than 100 million possible locations are awaiting - be creative.
 
+# What is Vali?
+Vali uses a massive pool of pre-generated Google street view locations combined with specific data from OpenStreetMap and Nominatim to provide a tool that can generate locations based on your preferences. The creation and update of the locations happens outside of Vali and is not part of this repository. You provide a specification of what type of locations you want in the form of a JSON file, and Vali will give you locations you can upload to [map-making.app](https://map-making.app/) or GeoGuessr.
+
 # First time setup
 * Install [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
 * Install [Windows Terminal](https://learn.microsoft.com/en-us/windows/terminal/install#install) (or use another terminal).
 * Install [Visual Studio Code](https://code.visualstudio.com/download) or use another text editor suitable for editing JSON files.
 * Open Windows Terminal and run `dotnet tool install -g vali`
+* To update to the latest version, if you already have it installed - run `dotnet tool update -g vali`
 
 # Getting started
-* `vali download` - Download data for one or more countries.
+* `vali download` - Download data for one or more countries. You also use this for updates where only updated files are downloaded.
 * `vali create-file` - Create a JSON file to start off.
-* Edit JSON file.
+* Open the JSON file that was just created in Visual Studio Code. Edit it if you want.
 * `vali generate --file "NO.json"` - Generate locations based on the JSON file specified.
 
 # Commands
@@ -307,7 +311,7 @@ With all the building blocks described above we can start creating real, serious
     "key": "FixedCountByMaxMinDistance",
     "locationCountGoal": 25000,
     "minMinDistance": 200,
-    "defaultDistribution": "acw"
+    "countryDistributionFromMap": "acw"
   },
   "output": {
     "countryHeadingExpressions": {
@@ -327,7 +331,7 @@ With all the building blocks described above we can start creating real, serious
     "key": "FixedCountByMaxMinDistance",
     "locationCountGoal": 25000,
     "minMinDistance": 200,
-    "defaultDistribution": "acw"
+    "countryDistributionFromMap": "acw"
   },
   "globalLocationFilter": "ClosestCoast lt 100"
 }
@@ -342,7 +346,7 @@ With all the building blocks described above we can start creating real, serious
     "key": "FixedCountByMaxMinDistance",
     "locationCountGoal": 111000,
     "minMinDistance": 50,
-    "defaultDistribution": "aarw",
+    "countryDistributionFromMap": "aarw",
     "treatCountriesAsSingleSubdivision": ["IL,UG,AE,QA,TN,AD,CW,DO,GH,GL,JO,KG,LA,MK,MT,SN,SG,TW"]
   },
   "globalLocationFilter": "Buildings200 eq 0 and Roads200 eq 1",

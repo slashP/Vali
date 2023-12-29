@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Vali.Core;
@@ -189,4 +190,7 @@ public static class Extensions
 
     public static string SpacePadParentheses(this string input) =>
         input.Replace("(", "(".SpacePad()).Replace(")", ")".SpacePad());
+
+    public static string? Truncate(this string? value, int length)
+        => (value != null && value.Length > length) ? value[..length] : value;
 }

@@ -173,7 +173,7 @@ public class DistributionExport
             CountryCodes = [countryCode],
             DistributionStrategy = new DistributionStrategy
             {
-                DefaultDistribution = !string.IsNullOrEmpty(distributionName) ? distributionName : null,
+                CountryDistributionFromMap = !string.IsNullOrEmpty(distributionName) ? distributionName : null,
             }
         };
         var defaultDistribution = MapDefinitionDefaults.DefaultDistribution(mapDefinition.DistributionStrategy);

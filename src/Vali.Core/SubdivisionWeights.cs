@@ -2412,27 +2412,27 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> TW = new()
     {
-        { "TW-CHA", 396 }, // Changhua
-        { "TW-CYI", 85 }, // Chiayi
-        { "TW-CYQ", 287 }, // Chiayi
-        { "TW-HSQ", 297 }, // Hsinchu
-        { "TW-HSZ", 90 }, // Hsinchu
-        { "TW-HUA", 586 }, // Hualien
-        { "TW-ILA", 309 }, // Yilan
-        { "TW-KEE", 72 }, // Keelung
-        { "TW-KHH", 516 }, // Kaohsiung
-        { "TW-KIN", 10 }, // Kinmen
-        { "TW-MIA", 450 }, // Miaoli
-        { "TW-NAN", 319 }, // Nantou
-        { "TW-NWT", 816 }, // New Taipei
-        { "TW-PEN", 16 }, // Penghu
-        { "TW-PIF", 449 }, // Pingtung
-        { "TW-TAO", 491 }, // Taoyuan
-        { "TW-TNN", 593 }, // Tainan
-        { "TW-TPE", 293 }, // Taipei
-        { "TW-TTT", 554 }, // Taitung
-        { "TW-TXG", 493 }, // Taichung
-        { "TW-YUN", 463 }, // Yunlin
+        { "TW-CHA", 1789 }, // Changhua
+        { "TW-CYI", 111 }, //
+        { "TW-CYQ", 2039 }, // Chiayi
+        { "TW-HSQ", 1120 }, // Hsinchu
+        { "TW-HSZ", 188 }, //
+        { "TW-HUA", 1494 }, // Hualien
+        { "TW-ILA", 966 }, // Yilan
+        { "TW-KEE", 180 }, // Keelung
+        { "TW-KHH", 2110 }, // Kaohsiung
+        { "TW-KIN", 156 }, // Kinmen
+        { "TW-MIA", 1650 }, // Miaoli
+        { "TW-NAN", 2213 }, // Nantou
+        { "TW-NWT", 1957 }, // New Taipei
+        { "TW-PEN", 186 }, // Penghu
+        { "TW-PIF", 2166 }, // Pingtung
+        { "TW-TAO", 1450 }, // Taoyuan
+        { "TW-TNN", 3052 }, // Tainan
+        { "TW-TPE", 414 }, // Taipei
+        { "TW-TTT", 1496 }, // Taitung
+        { "TW-TXG", 1966 }, // Taichung
+        { "TW-YUN", 1977 }, // Yunlin
     };
 
     private static readonly Dictionary<string, int> BM = new()

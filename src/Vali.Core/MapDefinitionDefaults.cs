@@ -9,7 +9,6 @@ public static class MapDefinitionDefaults
     public static MapDefinition ApplyDefaults(this MapDefinition definition)
     {
         var countryCodes = MapCountryCodes(definition.CountryCodes, definition.DistributionStrategy);
-        var j = countryCodes.Merge(",");
         var countryDistribution = CountryDistribution(definition);
         var definitionWithDefaults = definition with
         {
@@ -33,10 +32,12 @@ public static class MapDefinitionDefaults
     }
 
     private static Dictionary<string, T> ExpandCountryDictionary<T>(Dictionary<string, T> countryDictionary) =>
-        countryDictionary
-            .SelectMany(x => MapCountryCodes([x.Key], new DistributionStrategy()).Select(y => (y, x.Value)))
-            .GroupBy(x => x.y)
-            .ToDictionary(x => x.Key, x => x.First().Value);
+        countryDictionary == null
+            ? new()
+            : countryDictionary
+                .SelectMany(x => MapCountryCodes([x.Key], new DistributionStrategy()).Select(y => (y, x.Value)))
+                .GroupBy(x => x.y)
+                .ToDictionary(x => x.Key, x => x.First().Value);
 
     private static Dictionary<string, string[]> Inclusions(MapDefinition definition) =>
         definition.CountryCodes switch
@@ -128,7 +129,7 @@ public static class MapDefinitionDefaults
             "oceania" => CodesFromWeights(Weights.Oceania),
             "lefthandtraffic" => CountryCodes.LeftHandTrafficCountries.Intersect(CodesFromWeights(defaultDistribution)).ToArray(),
             "righthandtraffic" => CountryCodes.Countries.Select(x => x.Key).Except(CountryCodes.LeftHandTrafficCountries).Intersect(CodesFromWeights(defaultDistribution)).ToArray(),
-            _ => [countryCode]
+            _ => [countryCode.ToUpper()]
         };
     }
 
@@ -155,7 +156,7 @@ public static class MapDefinitionDefaults
     }
 
     public static (string, int)[] DefaultDistribution(DistributionStrategy distributionStrategy) =>
-        distributionStrategy.DefaultDistribution?.ToLowerInvariant() switch
+        distributionStrategy.CountryDistributionFromMap?.ToLowerInvariant() switch
         {
             "aarw" => Weights.ArbitraryRuralWorld,
             "aaw" => Weights.World,

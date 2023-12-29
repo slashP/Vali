@@ -156,11 +156,34 @@ createFileCommand.SetHandler(async context =>
     var countryCodes = AnsiConsole.Ask<string>("Which country or area do you want? Specify two letter country code, or continent name (europe, africa, asia, oceania, southamerica, northamerica). Split multiple values with commas (,).");
     var filename = AnsiConsole.Ask("What do you want the file name to be?", $"{countryCodes.Split(',').First()}.json");
     var filePath = new FileInfo(Path.GetFileNameWithoutExtension(filename) + ".json").FullName;
-    var distributionStrategy = new DistributionStrategy
+    var distributionStrategy = new
     {
         Key = DistributionStrategies.FixedCountByMaxMinDistance,
         MinMinDistance = 200,
-        LocationCountGoal = 10_000
+        LocationCountGoal = 10_000,
+        CountryDistributionFromMap = (string?)null
+    };
+    var output = new
+    {
+        locationTags = Array.Empty<string>(),
+        panoIdCountryCodes = Array.Empty<string>(),
+        globalHeadingExpression = (string?)null,
+        countryHeadingExpressions = (string?)null,
+        globalZoom = (double?)null,
+        globalPitch = (double?)null,
+    };
+    var codes = countryCodes switch
+    {
+        "*" or
+            "europe" or
+            "asia" or
+            "africa" or
+            "southamerica" or
+            "northamerica" or
+            "oceania" or
+            "lefthandtraffic" or
+            "righthandtraffic" => countryCodes,
+        _ => countryCodes.ToUpper()
     };
     if (File.Exists(filePath))
     {
@@ -168,10 +191,12 @@ createFileCommand.SetHandler(async context =>
         return;
     }
 
-    await File.WriteAllTextAsync(filePath, Serializer.PrettySerialize(new Dictionary<string, object>
+    await File.WriteAllTextAsync(filePath, Serializer.PrettySerialize(new Dictionary<string, object?>
     {
-        { nameof(MapDefinition.CountryCodes).FirstCharToLowerCase(), new[] { countryCodes } },
+        { nameof(MapDefinition.CountryCodes).FirstCharToLowerCase(), new[] { codes } },
         { nameof(MapDefinition.DistributionStrategy).FirstCharToLowerCase(), distributionStrategy },
+        { nameof(MapDefinition.Output).FirstCharToLowerCase(), output },
+        { nameof(MapDefinition.GlobalLocationFilter).FirstCharToLowerCase(), "" }
     }));
     ConsoleLogger.Success($"Created file {filePath}");
     context.ExitCode = 100;

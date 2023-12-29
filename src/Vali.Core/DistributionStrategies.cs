@@ -53,14 +53,14 @@ public static class DistributionStrategies
 
         if (!filteredLocations.Any())
         {
-            AnsiConsole.MarkupLine($"[lightseagreen]Generated {0,6:N0} locations in {subdivision}. Min distance: -.[/][olive]{regionGoalCount,4} locations short.[/]");
+            AnsiConsole.MarkupLine($"[lightseagreen]{0,6:N0} locations in {subdivision,7}. [/][olive]{regionGoalCount,4} locations short.[/]");
             return (Array.Empty<Loc>(), 0, 0);
         }
 
         var tuple = ByMaxMinDistance(filteredLocations, regionGoalCount, minDistance, mapDefinition, countryCode, subdivision);
         var diff = regionGoalCount - tuple.locations.Count;
         var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,4} locations short.[/]" : "";
-        AnsiConsole.MarkupLine($"[lightseagreen]Generated {tuple.locations.Count,6:N0} locations in {subdivision}. Min distance: {tuple.minDistance,5}m.[/]{notEnoughLocationsMessage}");
+        AnsiConsole.MarkupLine($"[lightseagreen]{tuple.locations.Count,6:N0} locations in {subdivision,7}. At least {tuple.minDistance,7:N0}m. between each location.[/]{notEnoughLocationsMessage}");
         return (tuple.locations, regionGoalCount, tuple.minDistance);
     }
 
@@ -103,7 +103,7 @@ public static class DistributionStrategies
         var tuple = ByMaxMinDistance(filteredLocations, goalCount, minDistance, mapDefinition, countryCode, "");
         var diff = goalCount - tuple.locations.Count;
         var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,4} locations short.[/]" : "";
-        AnsiConsole.MarkupLine($"[lightseagreen]Generated {tuple.locations.Count,6:N0} locations in {countryCode}. Min distance: {tuple.minDistance,4}m.[/]{notEnoughLocationsMessage}");
+        AnsiConsole.MarkupLine($"[lightseagreen]Generated {tuple.locations.Count,6:N0} locations in {countryCode}. At least {tuple.minDistance,7:N0}m. between each location.[/]{notEnoughLocationsMessage}");
         return new[] { (tuple.locations, goalCount, tuple.minDistance) };
     }
 

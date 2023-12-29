@@ -24,7 +24,7 @@ public record DistributionStrategy
     public int MinMinDistance { get; init; }
     public int FixedMinDistance { get; init; }
     public string[] TreatCountriesAsSingleSubdivision { get; init; } = [];
-    public string? DefaultDistribution { get; init; }
+    public string? CountryDistributionFromMap { get; init; }
 }
 
 public record LocationPreferenceFilter
