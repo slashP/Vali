@@ -1,7 +1,6 @@
 ﻿using System.CommandLine;
 using Spectre.Console;
 using Vali.Core;
-using Vali.Core.Data;
 using Vali.Core.Validation;
 
 AnsiConsole.MarkupLine(
@@ -21,11 +20,21 @@ AnsiConsole.MarkupLine(
 //args = new[] { "generate", "--file", @"C:\dev\priv\vali-maps\NO.json" };
 
 var rootCommand = new RootCommand("Vali - create locations.");
+var countriesArgument = new Argument<string>("countries");
+var directoryArgument = new Argument<string>("directory");
 var countryOption = new Option<string>("--country") { IsRequired = false };
 var distributionOption = new Option<string>("--distribution") { IsRequired = false };
 var requiredCountryOption = new Option<string>("--country") { IsRequired = true };
 var propertyOption = new Option<string>("--prop") { IsRequired = true };
 var downloadCommand = new Command("download", "Download data.");
+var setDownloadFolderCommand = new Command("set-download-folder", @"Set folder/directory to download data to. Default is c:\ProgramData\Vali");
+setDownloadFolderCommand.AddArgument(directoryArgument);
+rootCommand.Add(setDownloadFolderCommand);
+var unsetDownloadFolderCommand = new Command("unset-download-folder", @"Reset download folder to default.");
+rootCommand.AddCommand(unsetDownloadFolderCommand);
+var applicationSettingsCommand = new Command("application-settings");
+rootCommand.AddCommand(applicationSettingsCommand);
+
 downloadCommand.AddOption(countryOption);
 rootCommand.Add(downloadCommand);
 
@@ -53,7 +62,7 @@ subdivisionsCommand.AddOption(lightWeightOption);
 rootCommand.Add(subdivisionsCommand);
 
 var countriesCommand = new Command("countries", "Export country distribution.");
-countriesCommand.AddOption(countryOption);
+countriesCommand.AddArgument(countriesArgument);
 countriesCommand.AddOption(distributionOption);
 countriesCommand.AddOption(asTextOption);
 rootCommand.Add(countriesCommand);
@@ -131,13 +140,13 @@ subdivisionsCommand.SetHandler(context =>
 
 countriesCommand.SetHandler(context =>
 {
-    var countryOptionValue = context.ParseResult.GetValueForOption(countryOption);
+    var countries = context.ParseResult.GetValueForArgument(countriesArgument);
     var distributionOptionValue = context.ParseResult.GetValueForOption(distributionOption);
     var dataFormat = context.ParseResult.GetValueForOption(asTextOption) == true
         ? DistributionExport.DataFormat.Text
         : DistributionExport.DataFormat.Json;
 
-    DistributionExport.CountryExport(countryOptionValue, dataFormat, distributionOptionValue);
+    DistributionExport.CountryExport(countries, dataFormat, distributionOptionValue);
     context.ExitCode = 100;
 });
 
@@ -202,4 +211,23 @@ createFileCommand.SetHandler(async context =>
     context.ExitCode = 100;
 });
 
+setDownloadFolderCommand.SetHandler(context =>
+{
+    var directory = context.ParseResult.GetValueForArgument(directoryArgument);
+    ApplicationSettingsService.SetDownloadFolder(directory);
+    context.ExitCode = 100;
+});
+
+unsetDownloadFolderCommand.SetHandler(context =>
+{
+    ApplicationSettingsService.UnsetDownloadFolder();
+    context.ExitCode = 100;
+});
+
+applicationSettingsCommand.SetHandler(context =>
+{
+    var settings = ApplicationSettingsService.ReadApplicationSettings();
+    ConsoleLogger.Info(Serializer.PrettySerialize(settings));
+    context.ExitCode = 100;
+});
 await rootCommand.InvokeAsync(args);

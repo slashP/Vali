@@ -75,7 +75,12 @@ public class DataDownloadService
         return Directory.GetFiles(folder, $"*{FileExtension}").Select(x => new FileInfo(x)).ToArray();
     }
 
-    public static string CountryFolder(string countryCode) => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Vali", countryCode);
+    public static string CountryFolder(string countryCode)
+    {
+        var defaultDownloadFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        var downloadFolder = ApplicationSettingsService.ReadApplicationSettings().DownloadDirectory ?? defaultDownloadFolder;
+        return Path.Combine(downloadFolder, "Vali", countryCode);
+    }
 
     private static async Task<IReadOnlyCollection<BlobFile>> GetFilesFrom(string countryCode, BlobContainerClient blobContainerClient)
     {

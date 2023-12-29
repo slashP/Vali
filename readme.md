@@ -22,11 +22,14 @@ Vali uses a massive pool of pre-generated Google street view locations combined 
 * `vali generate --file norway.json` - Generate locations based on specification in `norway.json`.
 * `vali subdivisions --country "ES"` - Export default subdivision distribution data for Spain as JSON.
 * `vali subdivisions --country "ES" --text` - Export default subdivision distribution data for Spain as text.
-* `vali countries --country "ES,FR,IT"` - Export default country distribution data for Spain as JSON.
-* `vali countries --country "ES,FR,IT" --distribution "abw"` - Export country distribution data for Spain, France and Italy as specified by "A Balanced World" as JSON.
-* `vali countries --country "*" --distribution "aiw" --text` - Export country distribution data for all countries as specified by "An Improved World" as text.
+* `vali countries "ES,FR,IT"` - Export default country distribution data for Spain as JSON.
+* `vali countries "ES,FR,IT" --distribution "abw"` - Export country distribution data for Spain, France and Italy as specified by "A Balanced World" as JSON.
+* `vali countries "*" --distribution "aiw" --text` - Export country distribution data for all countries as specified by "An Improved World" as text.
 * `vali report --country "NO" --prop "County"` - Export counties/municipalities data for Norway.
 * `vali report --country "BE" --prop "Year"` - Export coverage year data for Belgium.
+* `vali set-download-folder "D:\vali-data"` - Change folder where data is downloaded to. Default location is C:\ProgramData
+* `vali unset-download-folder` - Reset download folder to default.
+* `vali application-settings` - Read application settings.
 
 # Buliding blocks
 Go directly to [full examples](#full-examples) or [properties](#properties) if you prefer not to read.
