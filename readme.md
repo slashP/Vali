@@ -18,7 +18,7 @@ Vali uses a massive pool of pre-generated Google street view locations combined 
 * `vali generate --file "NO.json"` - Generate locations based on the JSON file specified.
 
 # Commands
-* `vali download` - Download data. You will get asked which countries you want to download data for.
+* `vali download` - Download data. You will be asked which countries you want to download data for.
 * `vali generate --file norway.json` - Generate locations based on specification in `norway.json`.
 * `vali subdivisions --country "ES"` - Export default subdivision distribution data for Spain as JSON.
 * `vali subdivisions --country "ES" --text` - Export default subdivision distribution data for Spain as text.
@@ -268,14 +268,18 @@ Sometimes you want a certain percentage of your map to contain one type of locat
 You can adjust the zoom on locations with `globalZoom` (range 0-3.6) and set the pitch with `globalPitch` (range -90 to 90). Heading can be set with `globalHeadingExpression` or `countryHeadingExpressions`. Examples:
 ```json
 {
-  "globalHeadingExpression": "DrivingDirectionAngle + 90"
+  "output": {
+    "globalHeadingExpression": "DrivingDirectionAngle + 90"
+  }
 }
 ```
 ```json
 {
-  "countryHeadingExpressions": {
-    "FR": "DrivingDirectionAngle + 90",
-    "GB": "DrivingDirectionAngle + 270"
+  "output": {
+    "countryHeadingExpressions": {
+      "FR": "DrivingDirectionAngle + 90",
+      "GB": "DrivingDirectionAngle + 270"
+    }
   }
 }
 ```

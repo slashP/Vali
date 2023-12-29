@@ -134,6 +134,7 @@ public static class FilterValidation
             if (!operators.Contains(expressionValue.Trim(), StringComparer.InvariantCultureIgnoreCase) &&
                 !properties.Contains(expressionValue.Trim()) &&
                 !double.TryParse(expressionValue, NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
+                !bool.TryParse(expressionValue, out _) &&
                 !IsSingleQuoteWord(expressionValue))
             {
                 if (expressionValue.Contains("'"))

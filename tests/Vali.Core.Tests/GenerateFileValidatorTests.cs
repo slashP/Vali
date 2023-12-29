@@ -26,17 +26,17 @@ public class GenerateFileValidatorTests
                    {"subdivisionInclusions": ""}
                    """;
         var json2 = """
-                   {"subdivisionInclusions": {}}
-                   """;
-        var json3 = """
                     {"subdivisionInclusions": [{
                       "FR-11": ""
                     }]}
                     """;
-        var valid = """
+        var valid1 = """
                     {"subdivisionInclusions": {
                       "FR": ["FR-11"]
                     }}
+                    """;
+        var valid2 = """
+                    {"subdivisionInclusions": {}}
                     """;
 
         var errorMessage = """
@@ -47,8 +47,8 @@ public class GenerateFileValidatorTests
                            """;
         GenerateFileValidator.HumanReadableError(json1).ShouldBe(errorMessage);
         GenerateFileValidator.HumanReadableError(json2).ShouldBe(errorMessage);
-        GenerateFileValidator.HumanReadableError(json3).ShouldBe(errorMessage);
-        GenerateFileValidator.HumanReadableError(valid).ShouldBeNull();
+        GenerateFileValidator.HumanReadableError(valid1).ShouldBeNull();
+        GenerateFileValidator.HumanReadableError(valid2).ShouldBeNull();
     }
 
     [Fact]
@@ -58,19 +58,18 @@ public class GenerateFileValidatorTests
                     {"subdivisionExclusions": ""}
                     """;
         var json2 = """
-                    {"subdivisionExclusions": {}}
-                    """;
-        var json3 = """
                     {"subdivisionExclusions": [{
                       "FR-11": ""
                     }]}
                     """;
-        var valid = """
+        var valid1 = """
                     {"subdivisionExclusions": {
                       "FR": ["FR-11"]
                     }}
                     """;
-
+        var valid2 = """
+                    {"subdivisionExclusions": {}}
+                    """;
         var errorMessage = """
                            subdivisionExclusions does not have the correct format. Correct example:
                            {
@@ -79,8 +78,8 @@ public class GenerateFileValidatorTests
                            """;
         GenerateFileValidator.HumanReadableError(json1).ShouldBe(errorMessage);
         GenerateFileValidator.HumanReadableError(json2).ShouldBe(errorMessage);
-        GenerateFileValidator.HumanReadableError(json3).ShouldBe(errorMessage);
-        GenerateFileValidator.HumanReadableError(valid).ShouldBeNull();
+        GenerateFileValidator.HumanReadableError(valid1).ShouldBeNull();
+        GenerateFileValidator.HumanReadableError(valid2).ShouldBeNull();
     }
 
     [Fact]
@@ -90,21 +89,22 @@ public class GenerateFileValidatorTests
                     {"countryDistribution": ""}
                     """;
         var json2 = """
-                    {"countryDistribution": {}}
-                    """;
-        var json3 = """
                     {"countryDistribution": []}
                     """;
-        var json4 = """
+        var json3 = """
                     {"countryDistribution": {
                       "FR": 12.2
                     }}
                     """;
-        var valid = """
+        var valid1 = """
                     {"countryDistribution": {
                       "FR": 12
                     }}
                     """;
+        var valid2 = """
+                    {"countryDistribution": {}}
+                    """;
+
 
         var errorMessage = """
                            countryDistribution does not have the correct format. NB: Only integers. Correct example:
@@ -116,8 +116,8 @@ public class GenerateFileValidatorTests
         GenerateFileValidator.HumanReadableError(json1).ShouldBe(errorMessage);
         GenerateFileValidator.HumanReadableError(json2).ShouldBe(errorMessage);
         GenerateFileValidator.HumanReadableError(json3).ShouldBe(errorMessage);
-        GenerateFileValidator.HumanReadableError(json4).ShouldBe(errorMessage);
-        GenerateFileValidator.HumanReadableError(valid).ShouldBeNull();
+        GenerateFileValidator.HumanReadableError(valid1).ShouldBeNull();
+        GenerateFileValidator.HumanReadableError(valid2).ShouldBeNull();
     }
 
     [Fact]
@@ -368,41 +368,41 @@ public class GenerateFileValidatorTests
     {
         var json1 = """
                     {"distributionStrategy": {
-                      "defaultDistribution": 12
+                      "countryDistributionFromMap": 12
                     }}
                     """;
         var json2 = """
                     {"distributionStrategy": {
-                      "defaultDistribution": {}
+                      "countryDistributionFromMap": {}
                     }}
                     """;
         var json3 = """
                     {"distributionStrategy": {
-                      "defaultDistribution": []
+                      "countryDistributionFromMap": []
                     }}
                     """;
         var json4 = """
                     {"distributionStrategy": {
-                      "defaultDistribution": 23.2
+                      "countryDistributionFromMap": 23.2
                     }}
                     """;
         var valid1 = """
                     {"distributionStrategy": {
-                      "defaultDistribution": "acw"
+                      "countryDistributionFromMap": "acw"
                     }}
                     """;
         var valid2 = """
                      {"distributionStrategy": {
-                       "defaultDistribution": null
+                       "countryDistributionFromMap": null
                      }}
                      """;
         var errorMessage = """
-                           distributionStrategy.defaultDistribution must be a string. Correct example:
+                           distributionStrategy.countryDistributionFromMap must be a string. Correct example:
                            {
                              "key": "FixedCountByMaxMinDistance",
                              "locationCountGoal": 10000,
                              "minMinDistance": 25,
-                             "defaultDistribution": "acw"
+                             "countryDistributionFromMap": "acw"
                            }
                            """;
         GenerateFileValidator.HumanReadableError(json1).ShouldBe(errorMessage);

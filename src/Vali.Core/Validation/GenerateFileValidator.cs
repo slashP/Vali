@@ -10,6 +10,7 @@ public static class GenerateFileValidator
     public static Map? Validate(this Map mapDefinition) =>
         mapDefinition
             .ValidateCountryCodes()
+            ?.ValidateFilesExist()
             ?.ValidateDistribution()
             ?.ValidateFilters()
             ?.ValidatePreferenceFilters()
@@ -232,7 +233,7 @@ public static class GenerateFileValidator
                        "key": "FixedCountByMaxMinDistance",
                        "locationCountGoal": 10000,
                        "minMinDistance": 25,
-                       "defaultDistribution": "acw"
+                       "countryDistributionFromMap": "acw"
                      }
                      """;
         }

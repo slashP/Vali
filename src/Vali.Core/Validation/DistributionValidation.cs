@@ -74,7 +74,7 @@ public static class DistributionValidation
                                      Data for subdivisions missing.
                                      {missingFiles.Select(x => $"{SubdivisionWeights.SubdivisionName(countryCode, x.Key)} / {x.Key}").Merge(Environment.NewLine)}
 
-                                     Download data for {CountryCodes.Name(countryCode)}? vali download --country "{countryCode}"
+                                     Download missing data for {CountryCodes.Name(countryCode)} with 'vali download'"
                                      """);
                 return null;
             }
