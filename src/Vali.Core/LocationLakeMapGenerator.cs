@@ -119,7 +119,7 @@ public static class LocationLakeMapGenerator
     {
         var countryWeights = CountryWeights(mapDefinition);
         var countryDistributionTotalWeight = countryWeights.Sum(x => x.Value);
-        var locationCountGoal = mapDefinition.DistributionStrategy.LocationCountGoal * countryWeights[countryCode] /
+        var locationCountGoal = (decimal)mapDefinition.DistributionStrategy.LocationCountGoal * countryWeights[countryCode] /
                                 (decimal)countryDistributionTotalWeight;
         return locationCountGoal.RoundToInt();
     }

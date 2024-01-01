@@ -11,7 +11,7 @@ public static class DistributionValidation
         var inCountryCodesButNotInWeights = countryCodes.Except(countryWeights.Select(x => x.Key)).ToArray();
         if (inCountryCodesButNotInWeights.Any())
         {
-            ConsoleLogger.Error($"Countries in '{nameof(MapDefinition.CountryCodes)}' do not have country distribution weight:");
+            ConsoleLogger.Error($"Countries in '{nameof(MapDefinition.CountryCodes)}' do not have country distribution weight. When specifying your own 'countryDistribution' all countries must be there. Add the following:");
             ConsoleLogger.Info($"{inCountryCodesButNotInWeights.Merge(", ")}");
             return null;
         }
