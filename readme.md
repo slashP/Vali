@@ -1,5 +1,5 @@
 # Vali - create GeoGuessr locations like a pro
-The creator of *An Arbitrary World*,  *An Arbitrary Rural World*, *Dirty World*, *IntersectionGuessr* ++ brings you Vali - the next evolution in computer generating GeoGuessr maps. With this tool **you** can create "An Arbitrary Rural Southern Europe", "Coastal Sri Lanka", "Skewed Africa" or something brand new. More than 100 million possible locations are awaiting - be creative.
+The creator of *An Arbitrary World*,  *An Arbitrary Rural World*, *Dirty World*, *IntersectionGuessr* ++ brings you Vali - the next evolution in computer generating GeoGuessr maps. With this tool **you** can create "An Arbitrary Rural Southern Europe", "Coastal Sri Lanka", "Skewed Africa" or something brand new. More than 100 million possible locations are available - be creative.
 
 # What is Vali?
 Vali uses a massive pool of pre-generated Google street view locations combined with specific data from OpenStreetMap and Nominatim to provide a tool that can generate locations based on your preferences. The creation and update of the locations happens outside of Vali and is not part of this repository. You provide a specification of what type of locations you want in the form of a JSON file, and Vali will give you locations you can upload to [map-making.app](https://map-making.app/) or GeoGuessr.
@@ -12,13 +12,12 @@ Vali uses a massive pool of pre-generated Google street view locations combined 
 * To update to the latest version, if you already have it installed - run `dotnet tool update -g vali`
 
 # Getting started
-* `vali download` - Download data for one or more countries. You also use this for updates where only updated files are downloaded.
 * `vali create-file` - Create a JSON file to start off.
 * Open the JSON file that was just created in Visual Studio Code. Edit it if you want.
 * `vali generate --file "NO.json"` - Generate locations based on the JSON file specified.
+* You can also watch a video showing Vali in use: https://youtu.be/pG10DSVLVKY
 
 # Commands
-* `vali download` - Download data. You will be asked which countries you want to download data for.
 * `vali generate --file norway.json` - Generate locations based on specification in `norway.json`.
 * `vali subdivisions --country "ES"` - Export default subdivision distribution data for Spain as JSON.
 * `vali subdivisions --country "ES" --text` - Export default subdivision distribution data for Spain as text.
@@ -27,6 +26,7 @@ Vali uses a massive pool of pre-generated Google street view locations combined 
 * `vali countries "*" --distribution "aiw" --text` - Export country distribution data for all countries as specified by "An Improved World" as text.
 * `vali report --country "NO" --prop "County"` - Export counties/municipalities data for Norway.
 * `vali report --country "BE" --prop "Year"` - Export coverage year data for Belgium.
+* `vali download` - Download/update data. You will be asked which countries you want to download data for.
 * `vali set-download-folder "D:\vali-data"` - Change folder where data is downloaded to. Default location is C:\ProgramData
 * `vali unset-download-folder` - Reset download folder to default.
 * `vali application-settings` - Read application settings.
@@ -459,7 +459,7 @@ With all the building blocks described above we can start creating real, serious
 # Potentially asked questions
 > Can you turn it into a webpage?
 
-I don't think so. Currently it's a very resource intensive program. Downloading and processing 15 GB of data is not something the web is suitable for.
+I don't think so. Currently it's a very resource intensive program. Downloading/processing 15 GB of data is not something a web site is suitable for.
 
 > Why is Vali a command line application?
 
@@ -467,7 +467,7 @@ Because I have very little interest in creating a user interface for it, especia
 
 > Can you include more locations/roads in country X?
 
-Maybe. The best chance for that is if you generate a JSON or csv with "Filter by minimum distance from locations" set to 1 km with as many locations as possible in country X and send it to me on discord. Only one country per json.
+Maybe. The best chance for that is if you generate a JSON or csv with "Filter by minimum distance from locations" set to 1 km with as many locations as possible in country X and send it to me on discord. Only one country per file.
 
 > Why are there (relatively) few locations on straight stretches of road?
 
@@ -491,6 +491,5 @@ docker run -it vali-image
 and start using Vali as normal
 ```
 dotnet tool install --global vali
-vali download
 ...
 ```

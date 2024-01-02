@@ -1,6 +1,4 @@
-﻿using Vali.Core.Data;
-
-namespace Vali.Core;
+﻿namespace Vali.Core;
 
 public static class LocationLakeMapGenerator
 {
@@ -9,32 +7,24 @@ public static class LocationLakeMapGenerator
         var subdivisionGroups = new List<(IList<Location> locations, int regionGoalCount, int minDistance)>();
         foreach (var countryCode in mapDefinition.CountryCodes)
         {
-            var folder = DataDownloadService.CountryFolder(countryCode);
-            if (!Directory.Exists(folder))
-            {
-                ConsoleLogger.Warn($"Skipping {CountryCodes.Name(countryCode)} ({countryCode}). Folder does not exist.");
-                continue;
-            }
-
-            var files = Directory.GetFiles(folder, $"{countryCode}+*.bin");
-            var availableSubdivisions = files
-                .Select(Path.GetFileNameWithoutExtension)
-                .Select(x => x!.Replace($"{countryCode}+", ""))
+            var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode);
+            var availableSubdivisions = allSubdivisions
+                .Select(x => x.subdivisionCode)
                 .ToArray();
-
             var subDivisions = mapDefinition switch
             {
                  _ when mapDefinition.SubdivisionInclusions.TryGetValue(countryCode, out var inclusions) => inclusions,
                  _ when mapDefinition.SubdivisionExclusions.TryGetValue(countryCode, out var exclusions) => availableSubdivisions.Except(exclusions).ToArray(),
                  _ => availableSubdivisions
             };
-            var subdivisionFiles = subDivisions.Select(s => files.First(f => f.Contains($"{countryCode}+{s}"))).ToArray();
+            var subdivisionFiles = subDivisions.Select(s => allSubdivisions.First(f => f.subdivisionCode == s).file).ToArray();
+            await DataDownloadService.EnsureFilesDownloaded(countryCode, subdivisionFiles);
             var locationCountGoal = CountryLocationCountGoal(mapDefinition, countryCode);
             var locationChunks = mapDefinition.DistributionStrategy.Key switch
             {
                 DistributionStrategies.FixedCountByMaxMinDistance when mapDefinition.DistributionStrategy.TreatCountriesAsSingleSubdivision.Contains(countryCode) => DistributionStrategies.CountryByMaxMinDistance(
                     countryCode,
-                    files,
+                    subdivisionFiles,
                     locationCountGoal,
                     mapDefinition),
                 DistributionStrategies.FixedCountByMaxMinDistance => subdivisionFiles.AsParallel().Select(f =>

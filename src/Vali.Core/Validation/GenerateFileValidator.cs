@@ -10,7 +10,6 @@ public static class GenerateFileValidator
     public static Map? Validate(this Map mapDefinition) =>
         mapDefinition
             .ValidateCountryCodes()
-            ?.ValidateFilesExist()
             ?.ValidateDistribution()
             ?.ValidateFilters()
             ?.ValidatePreferenceFilters()

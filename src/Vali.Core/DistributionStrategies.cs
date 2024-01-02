@@ -1,5 +1,6 @@
 ﻿using Geohash;
 using Spectre.Console;
+using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
@@ -96,7 +97,7 @@ public static class DistributionStrategies
         var minDistance = mapDefinition.DistributionStrategy.MinMinDistance;
         var geoHasher = new Geohasher();
         var filteredLocations = locations
-            .GroupBy(x => geoHasher.Encode(x.Lat, x.Lng))
+            .GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_1x1))
             .AsParallel()
             .SelectMany(x => LocationDistributor.GetSome(x.ToArray(), (120_000m/files.Length).RoundToInt(), minDistance / 2))
             .ToArray();

@@ -2704,6 +2704,13 @@ public class SubdivisionWeights
     public static string SubdivisionName(string countryCode, string code) =>
         GetSubdivisions()[countryCode].FirstOrDefault(x => x.SubdivisionCode == code)?.Name ?? "N/A";
 
+    public static (string subdivisionCode, string file)[] AllSubdivisionFiles(string countryCode)
+    {
+        var subdivisionKeys = CountryToSubdivision[countryCode].Keys;
+        var folder = DataDownloadService.CountryFolder(countryCode);
+        return subdivisionKeys.Select(x => (x, Path.Combine(folder, $"{countryCode}+{x}.bin"))).ToArray();
+    }
+
     public static Dictionary<string, SubdivisionInfo[]> GetSubdivisions()
     {
         if (_subdivisions != null)

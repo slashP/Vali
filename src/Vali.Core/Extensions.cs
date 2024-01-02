@@ -90,7 +90,7 @@ public static class Extensions
 
     public static IEnumerable<string> NonEmptyStrings(this IEnumerable<string?> values) => values.Where(x => !string.IsNullOrEmpty(x)).Select(x => x!);
 
-    public static async Task<IReadOnlyCollection<(T1 Result, T2 Data)>> ChunkAsync<T1, T2>(this ICollection<T2> source, Func<T2, Task<T1>> task, int chunkSize, string progressMessage, bool silent = false)
+    public static async Task<IReadOnlyCollection<(T1 Result, T2 Data)>> ChunkAsync<T1, T2>(this ICollection<T2> source, Func<T2, Task<T1>> task, int chunkSize)
     {
         var results = new List<(T1 Result, T2 Data)>();
         var counter = 0;
