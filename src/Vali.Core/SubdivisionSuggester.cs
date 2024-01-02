@@ -1,11 +1,12 @@
 ﻿using Geohash;
 using Spectre.Console;
+using Vali.Core.Hash;
 
 namespace Vali.Core;
 
 public class SubdivisionSuggester
 {
-    public static void GenerateSubdivisionFromFiles(string? countryCode, bool lightWeight)
+    public static async Task GenerateSubdivisionFromFiles(string? countryCode, bool lightWeight)
     {
         if (countryCode == null)
         {
@@ -13,7 +14,9 @@ public class SubdivisionSuggester
             return;
         }
 
-        var files = Directory.GetFiles(DataDownloadService.CountryFolder(countryCode), "*.bin");
+        var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode);
+        var files = allSubdivisions.Select(x => x.file).ToArray();
+        await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
         var subdivisions = SubdivisionWeights.GetSubdivisions()[countryCode];
         var availableSubdivisions = files
             .Select(f =>
@@ -50,7 +53,7 @@ public class SubdivisionSuggester
                     {
                         var locations = Extensions.ProtoDeserializeFromFile<Location[]>(file);
                         var subDivision = locations.First().Nominatim.SubdivisionCode;
-                        var some = locations.GroupBy(x => geoHasher.Encode(x.Lat, x.Lng, 4));
+                        var some = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_39x20));
                         var minDistanceBetweenLocations = 500;
                         var someOfThem = some.SelectMany(x => LocationDistributor.GetSome(x.ToArray(), 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations + 100)).ToArray();
                         var distribution = LocationDistributor.GetSome(someOfThem, 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations);

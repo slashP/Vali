@@ -6,14 +6,14 @@ namespace Vali.Core;
 
 public class DistributionExport
 {
-    public static void SubdivisionExport(
+    public static async Task SubdivisionExport(
         string? code,
         DataFormat dataFormat,
         bool lightWeight)
     {
         if (dataFormat == DataFormat.Code)
         {
-            SubdivisionSuggester.GenerateSubdivisionFromFiles(code, lightWeight);
+            await SubdivisionSuggester.GenerateSubdivisionFromFiles(code, lightWeight);
             return;
         }
         if (code != null)
@@ -87,7 +87,7 @@ public class DistributionExport
         Code
     }
 
-    public static void Report(string? code, string? property, bool byCountry)
+    public static async Task Report(string? code, string? property, bool byCountry)
     {
         if (code == null || property == null)
         {
@@ -112,19 +112,13 @@ public class DistributionExport
 
         foreach (var countryCode in MapDefinitionDefaults.MapCountryCodes([code], new DistributionStrategy()))
         {
-            var folder = DataDownloadService.CountryFolder(countryCode);
-            if (!Directory.Exists(folder))
-            {
-                ConsoleLogger.Warn($"Data for {CountryCodes.Name(countryCode)} ({countryCode}) does not exist.");
-                return;
-            }
-
-            var files = Directory.GetFiles(folder, $"{countryCode}+*.bin");
-
+            var subdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode);
+            var files = subdivisions.Select(x => x.file).ToArray();
+            await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
             AnsiConsole.Progress()
                 .Start(ctx =>
                 {
-                    var task = ctx.AddTask($"[green]Analyzing files for {CountryCodes.Name(countryCode)}[/]", maxValue: files.Length);
+                    var task = ctx.AddTask($"[green]Analyzing files for {CountryCodes.Name(countryCode)}[/]", maxValue: subdivisions.Length);
                     foreach (var file in files)
                     {
                         var locations = Extensions.ProtoDeserializeFromFile<Location[]>(file);

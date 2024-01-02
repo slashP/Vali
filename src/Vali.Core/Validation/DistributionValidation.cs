@@ -67,17 +67,6 @@ public static class DistributionValidation
             var subdivisions = SubdivisionWeights.CountryToSubdivision[countryCode];
             var countryFolder = DataDownloadService.CountryFolder(countryCode);
             var files = Directory.Exists(countryFolder) ? Directory.GetFiles(countryFolder, "*.bin") : [];
-            var missingFiles = subdivisions.Where(s => !files.Any(f => f.EndsWith($"{s.Key}.bin"))).ToArray();
-            if (missingFiles.Any())
-            {
-                ConsoleLogger.Error($"""
-                                     Data for subdivisions missing.
-                                     {missingFiles.Select(x => $"{SubdivisionWeights.SubdivisionName(countryCode, x.Key)} / {x.Key}").Merge(Environment.NewLine)}
-
-                                     Download missing data for {CountryCodes.Name(countryCode)} with 'vali download'"
-                                     """);
-                return null;
-            }
 
             var missingDefinitions = files.Where(f => !subdivisions.Any(s => f.EndsWith($"{s.Key}.bin"))).ToArray();
             if (missingDefinitions.Any())

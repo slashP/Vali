@@ -94,7 +94,7 @@ public static class MapDefinitionDefaults
                 .Concat(new[]
                 {
                     new KeyValuePair<string, string>("RU", "Lng lt 61"),
-                    new KeyValuePair<string, string>("TR", "Lng lt 41")
+                    new KeyValuePair<string, string>("TR", "Lng lt 29")
                 })
                 .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             _ => countryFilters

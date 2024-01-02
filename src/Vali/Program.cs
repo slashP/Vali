@@ -124,7 +124,7 @@ generateMapCommand.SetHandler(async context =>
     context.ExitCode = 100;
 });
 
-subdivisionsCommand.SetHandler(context =>
+subdivisionsCommand.SetHandler(async context =>
 {
     var countryOptionValue = context.ParseResult.GetValueForOption(countryOption);
     var dataFormat = context.ParseResult.GetValueForOption(asTextOption) == true
@@ -134,7 +134,7 @@ subdivisionsCommand.SetHandler(context =>
             : DistributionExport.DataFormat.Json;
     var lightWeight = context.ParseResult.GetValueForOption(lightWeightOption) == true;
 
-    DistributionExport.SubdivisionExport(countryOptionValue, dataFormat, lightWeight);
+    await DistributionExport.SubdivisionExport(countryOptionValue, dataFormat, lightWeight);
     context.ExitCode = 100;
 });
 
@@ -150,13 +150,13 @@ countriesCommand.SetHandler(context =>
     context.ExitCode = 100;
 });
 
-reportCommand.SetHandler(context =>
+reportCommand.SetHandler(async context =>
 {
     var countryOptionValue = context.ParseResult.GetValueForOption(requiredCountryOption);
     var propertyOptionValue = context.ParseResult.GetValueForOption(propertyOption);
     var byCountry = context.ParseResult.GetValueForOption(byCountryOption) == true;
     Console.WriteLine($"By country {byCountry}");
-    DistributionExport.Report(countryOptionValue, propertyOptionValue, byCountry);
+    await DistributionExport.Report(countryOptionValue, propertyOptionValue, byCountry);
     context.ExitCode = 100;
 });
 

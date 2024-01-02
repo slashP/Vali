@@ -11,7 +11,7 @@ public class DataDownloadService
 
     public static async Task DownloadFiles(string? countryCode)
     {
-        var blobContainerClient = new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient("countries");
+        var blobContainerClient = CreateBlobServiceClient();
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
             CountryCodes.Countries.Keys :
             CountryCodes.Countries.Keys.Intersect(MapDefinitionDefaults.ExpandCountryCode(countryCode, new DistributionStrategy()));
@@ -48,13 +48,7 @@ public class DataDownloadService
                     await Task.Delay(5);
                     foreach (var blobFile in filesToDownload)
                     {
-                        var blobClient = blobContainerClient.GetBlobClient(blobFile.BlobName);
-                        var countryFolder = CountryFolder(code);
-                        Directory.CreateDirectory(countryFolder);
-                        var filePath = Path.Combine(countryFolder, blobFile.FileName);
-                        var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
-                        await using var fs = new FileStream(filePath, fileMode);
-                        await blobClient.DownloadToAsync(fs);
+                        await DownloadFile(blobContainerClient, code, blobFile.BlobName, blobFile.FileName);
                         task.Increment(blobFile.ContentLength ?? 0);
                     }
 
@@ -63,6 +57,20 @@ public class DataDownloadService
             });
         AnsiConsole.MarkupLine("[yellow]Downloads finished.[/]");
     }
+
+    private static async Task DownloadFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, string fileName)
+    {
+        var blobClient = blobContainerClient.GetBlobClient(blobName);
+        var countryFolder = CountryFolder(countryCode);
+        Directory.CreateDirectory(countryFolder);
+        var filePath = Path.Combine(countryFolder, fileName);
+        var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
+        await using var fs = new FileStream(filePath, fileMode);
+        await blobClient.DownloadToAsync(fs);
+    }
+
+    private static BlobContainerClient CreateBlobServiceClient() =>
+        new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient("countries");
 
     private static FileInfo[] ExistingFilesForCountry(string countryCode)
     {
@@ -102,6 +110,23 @@ public class DataDownloadService
         }
 
         return files;
+    }
+
+    public static async Task EnsureFilesDownloaded(string countryCode, string[] subdivisionFiles)
+    {
+        BlobContainerClient? blobContainerClient = null;
+
+        foreach (var subdivisionFile in subdivisionFiles)
+        {
+            if (!File.Exists(subdivisionFile))
+            {
+                blobContainerClient ??= CreateBlobServiceClient();
+                var fileName = Path.GetFileName(subdivisionFile);
+                var blobName = $"{countryCode}/{fileName}";
+                ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
+                await DownloadFile(blobContainerClient, countryCode, blobName, fileName);
+            }
+        }
     }
 }
 
