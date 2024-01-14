@@ -4,13 +4,13 @@ namespace Vali.Core;
 
 public class FileDistributor
 {
-    public static async Task DistributeFromFile(string path, int fixedMinDistance)
+    public static async Task DistributeFromFile(string path, int fixedMinDistance, bool overwrite)
     {
         var locationsFilename = Path.GetFileNameWithoutExtension(path);
         var filename = locationsFilename + "-locations.json";
         var outFolder = Path.GetDirectoryName(path)!;
         var locationsOutPath = Path.Combine(outFolder, filename);
-        if (File.Exists(locationsOutPath))
+        if (File.Exists(locationsOutPath) && !overwrite)
         {
             ConsoleLogger.Error($"File {filename} already exists in {outFolder}.");
             return;
