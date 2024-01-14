@@ -54,6 +54,7 @@ Option<bool?> lightWeightOption = new(name: "--lightWeight", description: "Light
     IsHidden = true
 };
 Option<bool?> overwriteOption = new(name: "--overwrite", description: "Overwrite output file even if it exists.");
+var outputPathOption = new Option<string>("--outputPath") { IsRequired = false };
 
 var subdivisionsCommand = new Command("subdivisions", "Export subdivision distribution.");
 subdivisionsCommand.AddOption(countryOption);
@@ -82,6 +83,7 @@ var fixedMinDistanceOption = new Option<string>("--distance") { IsRequired = tru
 distributeFromFileCommand.AddOption(fileOption);
 distributeFromFileCommand.AddOption(fixedMinDistanceOption);
 distributeFromFileCommand.AddOption(overwriteOption);
+distributeFromFileCommand.AddOption(outputPathOption);
 rootCommand.Add(distributeFromFileCommand);
 
 downloadCommand.SetHandler(async context =>
@@ -250,7 +252,12 @@ distributeFromFileCommand.SetHandler(async context =>
     var fileOptionValue = context.ParseResult.GetValueForOption(fileOption)!;
     var overwriteOptionValue = context.ParseResult.GetValueForOption(overwriteOption);
     var overwrite = overwriteOptionValue == true;
-    await FileDistributor.DistributeFromFile(fileOptionValue, minDistance, overwrite);
+    var outputPathOptionValue = context.ParseResult.GetValueForOption(outputPathOption);
+    await FileDistributor.DistributeFromFile(
+        path: fileOptionValue,
+        fixedMinDistance: minDistance,
+        overwrite: overwrite,
+        outputPath: outputPathOptionValue);
     context.ExitCode = 100;
 });
 
