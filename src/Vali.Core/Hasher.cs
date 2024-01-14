@@ -9,4 +9,6 @@ public class Hasher
 
     public static string Encode(double latitude, double longitude, HashPrecision precision) =>
         GeoHasher.Encode(latitude, longitude, (int)precision);
+
+    public static Dictionary<Direction, string> Neighbors(string hash) => GeoHasher.GetNeighbors(hash);
 }

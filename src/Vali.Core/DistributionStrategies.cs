@@ -1,5 +1,6 @@
 ﻿using Geohash;
 using Spectre.Console;
+using System;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
@@ -9,6 +10,14 @@ public static class DistributionStrategies
 {
     public const string FixedCountByMaxMinDistance = "FixedCountByMaxMinDistance";
     public const string MaxCountByFixedMinDistance = "MaxCountByFixedMinDistance";
+    public const string EvenlyByDistanceWithinCountry = "EvenlyByDistanceWithinCountry";
+
+    public static readonly string[] ValidStrategyKeys =
+    [
+        FixedCountByMaxMinDistance,
+        MaxCountByFixedMinDistance,
+        EvenlyByDistanceWithinCountry
+    ];
 
     public static (IList<Loc> locations, int regionGoalCount, int minDistance) SubdivisionByMaxMinDistance(
         string countryCode,
@@ -203,6 +212,34 @@ public static class DistributionStrategies
         {
             return triedGoalCounts.Where(x => x.status == Status.Success).MaxBy(x => x.count).count;
         }
+    }
+
+    public static (IList<Loc> locations, int regionGoalCount, int minDistance)[] EvenlyByDistanceInCountry(
+        string countryCode,
+        string[] files,
+        string[] availableSubdivisions,
+        MapDefinition mapDefinition)
+    {
+        var allAvailableLocations = new List<Loc>();
+        foreach (var file in files)
+        {
+            var deserializeFromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
+            var subdivision = deserializeFromFile.First().Nominatim.SubdivisionCode;
+            if (string.IsNullOrEmpty(subdivision))
+            {
+                continue;
+            }
+
+            var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
+
+            allAvailableLocations.AddRange(availableSubdivisions.Contains(subdivision)
+                ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter)
+                : Array.Empty<Loc>());
+        }
+
+        var minDistanceBetweenLocations = mapDefinition.DistributionStrategy.FixedMinDistance;
+        var locations = LocationDistributor.DistributeEvenly(allAvailableLocations, minDistanceBetweenLocations);
+        return new[] { (locations, -1, minDistanceBetweenLocations) };
     }
 
     private static (IList<Loc> locations, int minDistance) ByMaxMinDistance(

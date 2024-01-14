@@ -1,4 +1,10 @@
-﻿namespace Vali.Core;
+﻿using System.Collections.Concurrent;
+using System.Security.Cryptography.X509Certificates;
+using Spectre.Console;
+using Vali.Core.Data;
+using Vali.Core.Hash;
+
+namespace Vali.Core;
 
 public static class LocationDistributor
 {
@@ -77,6 +83,31 @@ public static class LocationDistributor
 
         var max = visited.MaxBy(x => x.Value?.Count);
         return (max.Value ?? [], max.Key);
+    }
+
+    public static IList<T> DistributeEvenly<T>(
+        ICollection<T> locations,
+        int minDistanceBetweenLocations,
+        bool avoidShuffle = false) where T : IDistributionLocation
+    {
+        var list = new List<(T loc, string hash)>();
+        var precision = HashPrecision.Size_km_39x20;
+        AnsiConsole.Progress()
+            .Start(ctx =>
+            {
+                var groups = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, precision));
+                var task = ctx.AddTask($"[green]Distributing locations[/]", maxValue: groups.Count());
+                foreach (var group in groups)
+                {
+                    var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToHashSet();
+                    var alreadyInMap = list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).ToArray();
+                    var selection = TakeSubSelection(group.ToArray(), 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
+                    list.AddRange(selection.Select(x => (x, Hasher.Encode(x.Lat, x.Lng, precision))));
+                    task.Increment(1);
+                }
+            });
+
+        return list.Select(x => x.loc).ToArray();
     }
 
     public static IList<T> GetSome<T>(
@@ -191,6 +222,100 @@ public static class LocationDistributor
                     pointOnMap.Value.LocationStatus = LocationStatus.TemporarilyRemoved;
                     dict[LocationStatus.TemporarilyRemoved][pointOnMap.Value.MapLocation.LocationId] = pointOnMap.Value;
                 }
+            }
+
+            if (!dict[LocationStatus.NotProcessed].Any())
+            {
+                dict = Reset(dict);
+            }
+        }
+
+        return resultLocations;
+    }
+
+    public static IList<T> TakeSubSelection<T>(
+        ICollection<T> locations,
+        int goalCount,
+        int minDistanceBetweenLocations,
+        IReadOnlyCollection<T>? locationsAlreadyInMap = null,
+        bool avoidShuffle = false) where T : IDistributionLocation
+    {
+        if (goalCount == 0 || locations.Count == 0)
+        {
+            return Array.Empty<T>();
+        }
+
+        Dictionary<LocationStatus, Dictionary<long, PointOnMap>> Reset(Dictionary<LocationStatus, Dictionary<long, PointOnMap>> dictionary)
+        {
+            var points = dictionary.SelectMany(x => x.Value.Values);
+            return Enum.GetValues<LocationStatus>().ToDictionary(x => x,
+                x =>
+                {
+                    var pointOnMaps = points.Where(p => p.LocationStatus == x).ToArray();
+                    if (x == LocationStatus.NotProcessed && !avoidShuffle)
+                    {
+                        Random.Shared.Shuffle(pointOnMaps);
+                    }
+
+                    return pointOnMaps.ToDictionary(p => p.MapLocation.LocationId);
+                });
+        }
+
+        var resultLocations = new List<T>(goalCount);
+        var locationsLookup = locations.ToDictionary(x => x.LocationId);
+        var points = locations.Select(x => new PointOnMap
+        {
+            MapLocation = new MapLoc
+            {
+                Lat = x.Lat,
+                Lng = x.Lng,
+                LocationId = x.LocationId
+            },
+            LocationStatus = LocationStatus.NotProcessed
+        }).ToArray();
+        if (!avoidShuffle)
+        {
+            Random.Shared.Shuffle(points);
+        }
+
+        if (locationsAlreadyInMap != null && locationsAlreadyInMap.Any())
+        {
+            foreach (var point in points)
+            {
+                if (locationsAlreadyInMap.Any(p =>
+                        Extensions.PointsAreCloserThan(
+                            p.Lat,
+                            p.Lng,
+                            point.MapLocation.Lat,
+                            point.MapLocation.Lng,
+                            minDistanceBetweenLocations)))
+                {
+                    point.LocationStatus = LocationStatus.Removed;
+                }
+            }
+        }
+
+        var dict = Reset(Enum.GetValues<LocationStatus>()
+            .ToDictionary(x => x, x => points.Where(p => p.LocationStatus == x).ToDictionary(p => p.MapLocation.LocationId)));
+
+        while (resultLocations.Count < goalCount &&
+               dict[LocationStatus.NotProcessed].Any())
+        {
+            var randomPoint = dict[LocationStatus.NotProcessed].First().Value;
+            randomPoint.LocationStatus = LocationStatus.Taken;
+            dict[LocationStatus.NotProcessed].Remove(randomPoint.MapLocation.LocationId);
+            resultLocations.Add(locationsLookup[randomPoint.MapLocation.LocationId]);
+
+            foreach (var pointOnMap in dict[LocationStatus.NotProcessed].Values.Where(p =>
+                         Extensions.PointsAreCloserThan(
+                             p.MapLocation.Lat,
+                             p.MapLocation.Lng,
+                             randomPoint.MapLocation.Lat,
+                             randomPoint.MapLocation.Lng,
+                             minDistanceBetweenLocations)))
+            {
+                pointOnMap.LocationStatus = LocationStatus.Removed;
+                dict[LocationStatus.NotProcessed].Remove(pointOnMap.MapLocation.LocationId);
             }
 
             if (!dict[LocationStatus.NotProcessed].Any())

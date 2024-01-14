@@ -1,4 +1,6 @@
-﻿namespace Vali.Core;
+﻿using System.Text.Json.Serialization;
+
+namespace Vali.Core;
 
 public static class LocationLakeMapGenerator
 {
@@ -35,6 +37,11 @@ public static class LocationLakeMapGenerator
                         subDivisions,
                         mapDefinition)).ToArray(),
                 DistributionStrategies.MaxCountByFixedMinDistance => DistributionStrategies.MaxLocationsInSubdivisionsByFixedMinDistance(
+                    countryCode,
+                    subdivisionFiles,
+                    subDivisions,
+                    mapDefinition),
+                DistributionStrategies.EvenlyByDistanceWithinCountry => DistributionStrategies.EvenlyByDistanceInCountry(
                     countryCode,
                     subdivisionFiles,
                     subDivisions,
@@ -119,7 +126,7 @@ public static class LocationLakeMapGenerator
         return mapDefinition.CountryDistribution;
     }
 
-    record GeoMapLocation
+    public record GeoMapLocation
     {
         public double lat { get; set; }
         public double lng { get; set; }

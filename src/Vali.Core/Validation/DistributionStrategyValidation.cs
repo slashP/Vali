@@ -4,14 +4,15 @@ public static class DistributionStrategyValidation
 {
     public static MapDefinition? ValidateDistributionStrategy(this MapDefinition definition)
     {
-        var validStrategyKeys = new[]{ DistributionStrategies.FixedCountByMaxMinDistance, DistributionStrategies.MaxCountByFixedMinDistance };
-        if (!validStrategyKeys.Contains(definition.DistributionStrategy.Key))
+        var validStrategyKeys = DistributionStrategies.ValidStrategyKeys;
+        var distributionStrategyKey = definition.DistributionStrategy.Key;
+        if (!validStrategyKeys.Contains(distributionStrategyKey))
         {
             ConsoleLogger.Error($"{nameof(MapDefinition.DistributionStrategy)}.{nameof(MapDefinition.DistributionStrategy.Key)} must be one of {validStrategyKeys.Merge(", ")}.");
             return null;
         }
 
-        if (definition.DistributionStrategy.LocationCountGoal <= 0)
+        if (definition.DistributionStrategy.LocationCountGoal <= 0 && distributionStrategyKey == DistributionStrategies.FixedCountByMaxMinDistance)
         {
             ConsoleLogger.Error($"{nameof(MapDefinition.DistributionStrategy.LocationCountGoal)} must be greater than zero.");
             return null;
@@ -25,7 +26,7 @@ public static class DistributionStrategyValidation
         }
 
         var validMinDistances = LocationDistributor.Distances;
-        if (definition.DistributionStrategy.Key == DistributionStrategies.FixedCountByMaxMinDistance)
+        if (distributionStrategyKey == DistributionStrategies.FixedCountByMaxMinDistance)
         {
             if (!validMinDistances.Contains(definition.DistributionStrategy.MinMinDistance))
             {
@@ -34,7 +35,7 @@ public static class DistributionStrategyValidation
             }
         }
 
-        if (definition.DistributionStrategy.Key == DistributionStrategies.MaxCountByFixedMinDistance)
+        if (distributionStrategyKey == DistributionStrategies.MaxCountByFixedMinDistance || distributionStrategyKey == DistributionStrategies.EvenlyByDistanceWithinCountry)
         {
             if (!validMinDistances.Contains(definition.DistributionStrategy.FixedMinDistance))
             {

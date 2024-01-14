@@ -1,8 +1,11 @@
-﻿using System.Globalization;
+﻿using NetTopologySuite.Geometries;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using static Vali.Core.LocationLakeMapGenerator;
 
 namespace Vali.Core;
 
@@ -193,4 +196,21 @@ public static class Extensions
 
     public static string? Truncate(this string? value, int length)
         => (value != null && value.Length > length) ? value[..length] : value;
+
+    public static char[] ReadChars(string filename, int count)
+    {
+        using var stream = File.OpenRead(filename);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var buffer = new char[count];
+        var n = reader.ReadBlock(buffer, 0, count);
+        var result = new char[n];
+        Array.Copy(buffer, result, n);
+        return result;
+    }
+
+    public static async ValueTask<T?> DeserializeJsonFromFile<T>(string path)
+    {
+        await using var fileStream = File.OpenRead(path);
+        return await JsonSerializer.DeserializeAsync<T>(fileStream);
+    }
 }

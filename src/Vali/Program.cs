@@ -76,6 +76,12 @@ rootCommand.Add(reportCommand);
 var createFileCommand = new Command("create-file", "Create a JSON file to get started.");
 rootCommand.Add(createFileCommand);
 
+var distributeFromFileCommand = new Command("distribute-from-file", "Distributes locations from a specified JSON file.");
+var fixedMinDistanceOption = new Option<string>("--distance") { IsRequired = true, Description = "Fixed minimum distance between locations."};
+distributeFromFileCommand.AddOption(fileOption);
+distributeFromFileCommand.AddOption(fixedMinDistanceOption);
+rootCommand.Add(distributeFromFileCommand);
+
 downloadCommand.SetHandler(async context =>
 {
     var countryOptionValue = context.ParseResult.GetValueForOption(countryOption);
@@ -230,4 +236,18 @@ applicationSettingsCommand.SetHandler(context =>
     ConsoleLogger.Info(Serializer.PrettySerialize(settings));
     context.ExitCode = 100;
 });
+
+distributeFromFileCommand.SetHandler(async context =>
+{
+    var fixedMinDistance = context.ParseResult.GetValueForOption(fixedMinDistanceOption);
+    if (!int.TryParse(fixedMinDistance, out var minDistance))
+    {
+        ConsoleLogger.Error("--distance must be an integer.");
+    }
+
+    var fileOptionValue = context.ParseResult.GetValueForOption(fileOption)!;
+    await FileDistributor.DistributeFromFile(fileOptionValue, minDistance);
+    context.ExitCode = 100;
+});
+
 await rootCommand.InvokeAsync(args);
