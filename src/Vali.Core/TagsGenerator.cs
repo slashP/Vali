@@ -12,8 +12,8 @@ public static class TagsGenerator
             {
                 tags = mapDefinition.Output.LocationTags.Select(e => e switch
                 {
-                    "SubdivisionCode" => Surface(l),
-                    "County" => Surface(l),
+                    "SubdivisionCode" => SubdivisionCode(l),
+                    "County" => County(l),
                     "Surface" => Surface(l),
                     "Year" => Year(l),
                     "Month" => Month(l),

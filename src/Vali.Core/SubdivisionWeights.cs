@@ -204,7 +204,7 @@ public class SubdivisionWeights
 
     private static Dictionary<string, int> AU = new()
     {
-        { "AU-ACT", 400 }, // Australian Capital Territory
+        { "AU-ACT", 600 }, // Australian Capital Territory
         { "AU-NSW", 8735 }, // New South Wales
         { "AU-NT", 4366 }, // Northern Territory
         { "AU-QLD", 8735 }, // Queensland
@@ -217,7 +217,7 @@ public class SubdivisionWeights
 
     private static Dictionary<string, int> NO = new()
     {
-        { "NO-03", 200 }, // Oslo
+        { "NO-03", 270 }, // Oslo
         { "NO-11", 3300 }, // Rogaland
         { "NO-15", 3500 }, // More og Romsdal
         { "NO-18", 5800 }, // Nordland
@@ -708,11 +708,11 @@ public class SubdivisionWeights
     private static Dictionary<string, int> GR = new()
     {
         { "GR-A", 1263 }, // Anatoliki Makedonia kai Thraki
-        { "GR-B", 1870 }, // Kentriki Makedonia
+        { "GR-B", 1675 }, // Kentriki Makedonia
         { "GR-C", 846 }, // Dytiki Makedonia
         { "GR-D", 852 }, // Ipeiros
         { "GR-E", 1281 }, // Thessalia
-        { "GR-F", 256 }, // Ionia Nisia
+        { "GR-F", 540 }, // Ionia Nisia
         { "GR-G", 1115 }, // Dytiki Ellada
         { "GR-H", 1397 }, // Sterea Ellada
         { "GR-I", 946 }, // Attiki
@@ -1977,7 +1977,7 @@ public class SubdivisionWeights
         { "TH-24", 4129 }, // Chachoengsao
         { "TH-25", 2652 }, // Prachin Buri
         { "TH-26", 1459 }, // Nakhon Nayok
-        { "TH-27", 2827 }, // Sa Kaeo
+        { "TH-27", 3527 }, // Sa Kaeo
         { "TH-30", 12073 }, // Nakhon Ratchasima
         { "TH-31", 6887 }, // Buri Ram
         { "TH-32", 6124 }, // Surin
@@ -1997,7 +1997,7 @@ public class SubdivisionWeights
         { "TH-46", 3909 }, // Kalasin
         { "TH-47", 5704 }, // Sakon Nakhon
         { "TH-48", 3008 }, // Nakhon Phanom
-        { "TH-49", 1554 }, // Mukdahan
+        { "TH-49", 1754 }, // Mukdahan
         { "TH-50", 5924 }, // Chiang Mai
         { "TH-51", 1890 }, // Lamphun
         { "TH-52", 3774 }, // Lampang
@@ -2006,13 +2006,13 @@ public class SubdivisionWeights
         { "TH-55", 2598 }, // Nan
         { "TH-56", 2226 }, // Phayao
         { "TH-57", 4485 }, // Chiang Rai
-        { "TH-58", 1351 }, // Mae Hong Son
+        { "TH-58", 1651 }, // Mae Hong Son
         { "TH-60", 6040 }, // Nakhon Sawan
         { "TH-61", 2388 }, // Uthai Thani
         { "TH-62", 3979 }, // Kamphaeng Phet
         { "TH-63", 2555 }, // Tak
         { "TH-64", 3629 }, // Sukhothai
-        { "TH-65", 4245 }, // Phitsanulok
+        { "TH-65", 4845 }, // Phitsanulok
         { "TH-66", 3078 }, // Phichit
         { "TH-67", 4253 }, // Phetchabun
         { "TH-70", 3867 }, // Ratchaburi
@@ -2027,7 +2027,7 @@ public class SubdivisionWeights
         { "TH-81", 2293 }, // Krabi
         { "TH-82", 1402 }, // Phangnga
         { "TH-83", 601 }, // Phuket
-        { "TH-84", 6012 }, // Surat Thani
+        { "TH-84", 8012 }, // Surat Thani
         { "TH-85", 878 }, // Ranong
         { "TH-86", 4026 }, // Chumphon
         { "TH-90", 4417 }, // Songkhla
@@ -2036,7 +2036,7 @@ public class SubdivisionWeights
         { "TH-93", 2468 }, // Phatthalung
         { "TH-94", 1677 }, // Pattani
         { "TH-95", 1333 }, // Yala
-        { "TH-96", 1230 }, // Narathiwat
+        { "TH-96", 1630 }, // Narathiwat
     };
 
     private static readonly Dictionary<string, int> LA = new()
@@ -2172,11 +2172,11 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> RW = new()
     {
-        { "RW-01", 87 }, // Ville de Kigali
-        { "RW-02", 24 }, // Est
-        { "RW-03", 2 }, // Nord
-        { "RW-04", 18 }, // Ouest
-        { "RW-05", 30 }, // Sud
+        { "RW-01", 749 }, // Ville de Kigali
+        { "RW-02", 232 }, // Est
+        { "RW-03", 102 }, // Nord
+        { "RW-04", 510 }, // Ouest
+        { "RW-05", 334 }, // Sud
     };
 
     private static readonly Dictionary<string, int> EG = new()
@@ -2559,6 +2559,48 @@ public class SubdivisionWeights
         { "UM-1", 5 }, //
     };
 
+    private static readonly Dictionary<string, int> NA = new()
+    {
+        { "NA-ER", 10 }, //	Erongo
+        { "NA-HA", 10 }, //	Hardap
+        { "NA-KA", 10 }, //	Karas
+        { "NA-KE", 10 }, //	Kavango East
+        { "NA-KW", 10 }, //	Kavango West
+        { "NA-KH", 10 }, //	Khomas
+        { "NA-KU", 10 }, //	Kunene
+        { "NA-OW", 10 }, //	Ohangwena
+        { "NA-OH", 10 }, //	Omaheke
+        { "NA-OS", 10 }, //	Omusati
+        { "NA-ON", 10 }, //	Oshana
+        { "NA-OT", 10 }, //	Oshikoto
+        { "NA-OD", 10 }, //	Otjozondjupa
+        { "NA-CA", 10 }, //	Zambezi
+    };
+
+    private static readonly Dictionary<string, int> KZ = new()
+    {
+        { "KZ-10", 561 }, // Abay oblysy
+        { "KZ-75", 517 }, // Almaty
+        { "KZ-19", 677 }, // Almaty oblysy
+        { "KZ-11", 1416 }, // Aqmola oblysy
+        { "KZ-15", 1355 }, // Aqtobe oblysy
+        { "KZ-71", 326 }, // Astana
+        { "KZ-23", 559 }, // Atyrau oblysy
+        { "KZ-27", 534 }, // Batys Qazaqstan oblysy
+        { "KZ-47", 837 }, // Mangghystau oblysy
+        { "KZ-55", 1149 }, // Pavlodar oblysy
+        { "KZ-35", 1316 }, // Qaraghandy oblysy
+        { "KZ-39", 744 }, // Qostanay oblysy
+        { "KZ-43", 551 }, // Qyzylorda oblysy
+        { "KZ-63", 610 }, // Shyghys Qazaqstan oblysy
+        { "KZ-79", 612 }, // Shymkent
+        { "KZ-59", 676 }, // Soltustik Qazaqstan oblysy
+        { "KZ-61", 733 }, // Turkistan oblysy
+        { "KZ-62", 263 }, // Ulytau oblysy
+        { "KZ-31", 697 }, // Zhambyl oblysy
+        { "KZ-33", 795 }, // Zhetisu oblysy
+    };
+
     public static readonly Dictionary<string, Dictionary<string, int>> CountryToSubdivision =
         new()
         {
@@ -2677,6 +2719,13 @@ public class SubdivisionWeights
             { "JE", JE },
             { "IM", IM },
             { "UM", UM },
+            { "KZ", KZ },
+        };
+
+    public static readonly Dictionary<string, Dictionary<string, int>> NotQuiteThereYetCountryToSubdivision =
+        new()
+        {
+            { "NA", NA }
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;

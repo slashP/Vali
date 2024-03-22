@@ -54,7 +54,7 @@ public class FileDistributor
         await File.WriteAllTextAsync(locationsOutPath, Serializer.Serialize(selection.Select(x => locations[(int)x.LocationId]).ToArray()));
     }
 
-    public record DistributionLocation : IDistributionLocation
+    public class DistributionLocation : IDistributionLocation
     {
         public double Lat { get; set; }
         public double Lng { get; set; }

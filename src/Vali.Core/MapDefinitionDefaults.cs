@@ -46,6 +46,7 @@ public static class MapDefinitionDefaults
                 .Concat(new[]
                 {
                     EuropeanTurkiye(),
+                    EuropeanKazakhstan(),
                 }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             ["africa"] => definition.SubdivisionInclusions
                 .Concat(new[]
@@ -77,7 +78,8 @@ public static class MapDefinitionDefaults
             ["asia"] => definition.SubdivisionExclusions
                 .Concat(new[]
                 {
-                    EuropeanTurkiye()
+                    EuropeanTurkiye(),
+                    EuropeanKazakhstan(),
                 }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             ["northamerica"] => definition.SubdivisionExclusions
                 .Concat(new[]
@@ -94,14 +96,24 @@ public static class MapDefinitionDefaults
                 .Concat(new[]
                 {
                     new KeyValuePair<string, string>("RU", "Lng lt 61"),
-                    new KeyValuePair<string, string>("TR", "Lng lt 29")
+                    new KeyValuePair<string, string>("TR", "Lng lt 29"),
+                    new KeyValuePair<string, string>("KZ", "(Lat lt 51.17 and Lat gt 49.92 and Lng lt 51.38) or (Lat lt 47.16 and Lat gt 47.10 and Lng lt 51.92) or (Lat gt 51.22 and Lng lt 51.83)"),
+                })
+                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
+            ["asia"] => countryFilters
+                .Concat(new[]
+                {
+                    new KeyValuePair<string, string>("KZ", "((SubdivisionCode eq 'KZ-27' or SubdivisionCode eq 'KZ-47') and ((Lat lt 51.17 and Lat gt 49.92 and Lng gt 51.38) or (Lat lt 47.16 and Lat gt 47.10 and Lng gt 51.92) or (Lat gt 51.22 and Lng gt 51.83))) or (SubdivisionCode neq 'KZ-27' and SubdivisionCode neq 'KZ-47')"),
                 })
                 .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             _ => countryFilters
         };
 
     private static KeyValuePair<string, string[]> EuropeanTurkiye() =>
-        new("TR", [ "TR-22", "TR-39", "TR-59", "TR-34" ]);
+        new("TR", ["TR-22", "TR-39", "TR-59", "TR-34"]);
+
+    private static KeyValuePair<string, string[]> EuropeanKazakhstan() =>
+        new("KZ", ["KZ-23", "KZ-27"]);
 
     private static KeyValuePair<string, string[]> AsianRussia() =>
         new("RU", [ "RU-AL", "RU-BU", "RU-KK", "RU-SA", "RU-TY", "RU-ALT", "RU-KAM", "RU-KHA", "RU-KYA", "RU-PRI", "RU-ZAB", "RU-AMU", "RU-IRK", "RU-KEM", "RU-KGN", "RU-MAG", "RU-NVS", "RU-OMS", "RU-SAK", "RU-TOM", "RU-TYU", "RU-YEV", "RU-KHM", "RU-YAN" ]);

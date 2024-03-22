@@ -88,7 +88,8 @@ public static class LocationDistributor
     public static IList<T> DistributeEvenly<T>(
         ICollection<T> locations,
         int minDistanceBetweenLocations,
-        bool avoidShuffle = false) where T : IDistributionLocation
+        bool avoidShuffle = false,
+        bool ensureNoNeighborSpill = true) where T : IDistributionLocation
     {
         var list = new List<(T loc, string hash)>();
         var precision = HashPrecision.Size_km_39x20;
@@ -100,9 +101,9 @@ public static class LocationDistributor
                 foreach (var group in groups)
                 {
                     var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToHashSet();
-                    var alreadyInMap = list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).ToArray();
+                    var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).ToArray() : [];
                     var selection = TakeSubSelection(group.ToArray(), 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
-                    list.AddRange(selection.Select(x => (x, Hasher.Encode(x.Lat, x.Lng, precision))));
+                    list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));
                     task.Increment(1);
                 }
             });

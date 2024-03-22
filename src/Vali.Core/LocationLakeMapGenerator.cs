@@ -4,7 +4,7 @@ namespace Vali.Core;
 
 public static class LocationLakeMapGenerator
 {
-    public static async Task Generate(MapDefinition mapDefinition, string definitionPath)
+    public static async Task Generate(MapDefinition mapDefinition, string definitionPath, bool includeAdditionalLocationInfo = false)
     {
         var subdivisionGroups = new List<(IList<Location> locations, int regionGoalCount, int minDistance)>();
         foreach (var countryCode in mapDefinition.CountryCodes)
@@ -53,7 +53,7 @@ public static class LocationLakeMapGenerator
 
         if (subdivisionGroups.Any())
         {
-            await StoreMap(mapDefinition, subdivisionGroups, definitionPath);
+            await StoreMap(mapDefinition, subdivisionGroups, definitionPath, includeAdditionalLocationInfo);
         }
         else
         {
@@ -63,7 +63,8 @@ public static class LocationLakeMapGenerator
 
     private static async Task StoreMap(MapDefinition mapDefinition,
         List<(IList<Location> locations, int regionGoalCount, int minDistance)> subdivisionGroups,
-        string definitionPath)
+        string definitionPath,
+        bool includeAdditionalLocationInfo)
     {
         var outFolder = Path.GetDirectoryName(definitionPath);
         if (outFolder is null)
@@ -95,7 +96,9 @@ public static class LocationLakeMapGenerator
                 zoom = output.GlobalZoom,
                 pitch = output.GlobalPitch,
                 extra = TagsGenerator.Tags(mapDefinition, l),
-                panoId = output.PanoIdCountryCodes.Contains(l.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") ? l.Google.PanoId : null
+                panoId = output.PanoIdCountryCodes.Contains(l.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") ? l.Google.PanoId : null,
+                countryCode = includeAdditionalLocationInfo ? l.Nominatim.CountryCode : null,
+                subdivisionCode = includeAdditionalLocationInfo ? l.Nominatim.SubdivisionCode : null,
             }).ToArray();
         await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
         ConsoleLogger.Info($"{locations.Length, 6:N0} locations saved to {new FileInfo(locationsPath).FullName}");
@@ -135,6 +138,8 @@ public static class LocationLakeMapGenerator
         public double? pitch { get; set; }
         public GeoMapLocationExtra? extra { get; set; }
         public string? panoId { get; set; }
+        public string? countryCode { get; set; }
+        public string? subdivisionCode { get; set; }
     }
 
     public record GeoMapLocationExtra
