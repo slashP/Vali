@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using Spectre.Console;
 using Vali.Core;
+using Vali.Core.Data;
 using Vali.Core.Validation;
 
 AnsiConsole.MarkupLine(
@@ -17,7 +18,7 @@ AnsiConsole.MarkupLine(
   [/]
   """);
 
-//args = new[] { "generate", "--file", @"C:\dev\priv\vali-maps\NO.json" };
+//args = new[] { "live-generate", "--file", @"C:\dev\priv\location-lake\maps\map-testing\2024.json" };
 
 var rootCommand = new RootCommand("Vali - create locations.");
 var countriesArgument = new Argument<string>("countries");
@@ -86,6 +87,10 @@ distributeFromFileCommand.AddOption(overwriteOption);
 distributeFromFileCommand.AddOption(outputPathOption);
 rootCommand.Add(distributeFromFileCommand);
 
+var liveGenerateMapCommand = new Command("live-generate", "Generate a GeoGuessr map by calling Google's API on the fly.");
+liveGenerateMapCommand.AddOption(fileOption);
+//rootCommand.Add(liveGenerateMapCommand);
+
 downloadCommand.SetHandler(async context =>
 {
     var countryOptionValue = context.ParseResult.GetValueForOption(countryOption);
@@ -130,7 +135,7 @@ generateMapCommand.SetHandler(async context =>
         return;
     }
 
-    await LocationLakeMapGenerator.Generate(validatedMapDefinition, fileOptionValue);
+    await LocationLakeMapGenerator.Generate(validatedMapDefinition, fileOptionValue, RunMode.Default);
     context.ExitCode = 100;
 });
 
@@ -259,6 +264,27 @@ distributeFromFileCommand.SetHandler(async context =>
         overwrite: overwrite,
         outputPath: outputPathOptionValue);
     context.ExitCode = 100;
+});
+
+liveGenerateMapCommand.SetHandler(async context =>
+{
+    var fileOptionValue = context.ParseResult.GetValueForOption(fileOption)!;
+    var mapJson = await GenerateFileValidator.ReadFile(fileOptionValue);
+    if (mapJson == null)
+    {
+        return;
+    }
+
+    var mapDefinition = LiveGenerateValidator.TryDeserialize(mapJson);
+    if (mapDefinition == null)
+    {
+        context.ExitCode = -1;
+        return;
+    }
+
+    var validatedMapDefinition = mapDefinition.ApplyDefaults();
+
+    await LiveGenerate.Generate(validatedMapDefinition, fileOptionValue);
 });
 
 await rootCommand.InvokeAsync(args);

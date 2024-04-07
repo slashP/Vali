@@ -30,6 +30,7 @@ Vali uses a massive pool of pre-generated Google street view locations combined 
 * `vali set-download-folder "D:\vali-data"` - Change folder where data is downloaded to. Default location is C:\ProgramData
 * `vali unset-download-folder` - Reset download folder to default.
 * `vali application-settings` - Read application settings.
+* `vali distribute-from-file --file ".\large-ES.json" --distance 250 --outputPath ".\large-ES-locations.json"` - Use vali's distribution algorithm to distribute locations from a file with lots of locations.
 
 # Buliding blocks
 Go directly to [full examples](#full-examples) or [properties](#properties) if you prefer not to read.
@@ -131,6 +132,7 @@ Locations can be filtered globally, per country or per subdivision.
 | Buildings25           | [OSM] Number of buildings within a 25m radius.
 | Buildings100          | [OSM] Number of buildings within a 100m radius.
 | Buildings200          | [OSM] Number of buildings within a 200m radius.
+| Roads0                | [OSM] Number of roads connecting this point. Meant for selecting intersection locations.
 | Roads10               | [OSM] Number of roads within a 10m radius.
 | Roads25               | [OSM] Number of roads within a 25m radius.
 | Roads50               | [OSM] Number of roads within a 50m radius.
@@ -140,6 +142,10 @@ Locations can be filtered globally, per country or per subdivision.
 | Tunnels200            | [OSM] Number of tunnels within a 200m radius.
 | IsResidential         | [OSM] Whether any road is marked with `landuse="residential"` within a 100m radius.
 | ClosestCoast          | [OSM] Distance to closest coastline in meters. Only works up to ~10 000 meters. Can be not set (null)
+| ClosestLake           | [OSM] Distance to closest lake in meters. Only works up to ~10 000 meters. Can be not set (null).
+| ClosestRiver          | [OSM] Distance to closest river in meters. Only works up to ~10 000 meters. Can be not set (null).
+| ClosestRailway        | [OSM] Distance to closest railway in meters. Only works up to ~10 000 meters. Can be not set (null).
+| HighwayType           | [OSM] Text representing the [highway type](https://wiki.openstreetmap.org/wiki/Key:highway#Highway). See road types below for possible values. If Roads0 is larger than 1 (location is at an intersection) HighwayType can have multiple values, aka `HighwayType eq 'Living_street' and HighwayType eq 'Residential'` is valid.
 | Month                 | [Google] The month of the coverage. Integer.
 | Year                  | [Google] The year of the coverage. Integer.
 | Lat                   | [Google] The latitude of the location. Number.
@@ -166,6 +172,24 @@ Locations can be filtered globally, per country or per subdivision.
 | +               | Plus
 | /               | Divide
 | *               | Multiply
+
+## Road types
+* Motorway
+* Trunk
+* Primary
+* Secondary
+* Tertiary
+* Motorway_link
+* Trunk_link
+* Primary_link
+* Secondary_link
+* Tertiary_link
+* Unclassified
+* Residential
+* Living_street
+* Service
+* Track
+* Road
 
 With these building blocks we can write queries/expressions to filter out certain locations. Some examples:
 
@@ -372,11 +396,13 @@ With all the building blocks described above we can start creating real, serious
     }
   ],
   "panoIdCountryCodes": [],
-  "locationTags": [
-    "Year",
-    "Month",
-    "Season"
-  ]
+  "output": {
+    "locationTags": [
+      "Year",
+      "Month",
+      "Season"
+    ]
+  }
 }
 ```
 ### An Antenna Focused Gen3 Bulgaria

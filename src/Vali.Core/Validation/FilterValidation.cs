@@ -178,7 +178,7 @@ public static class FilterValidation
             return false;
         }
 
-        return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue);
+        return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue || c == '_');
     }
 
     public static IEnumerable<Location> EmptyLocationArray() =>

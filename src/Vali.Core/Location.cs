@@ -3,7 +3,7 @@
 namespace Vali.Core;
 
 [ProtoContract]
-public record Location : IDistributionLocation
+public record Location : IDistributionLocation<long>
 {
     [ProtoMember(1)]
     public long NodeId { get; set; }
@@ -21,11 +21,11 @@ public record Location : IDistributionLocation
     public string? Tag { get; init; }
 }
 
-public interface IDistributionLocation
+public interface IDistributionLocation<T>
 {
     public double Lat { get; }
     public double Lng { get; }
-    public long LocationId { get; }
+    public T LocationId { get; }
 }
 
 [ProtoContract]
@@ -87,6 +87,15 @@ public record OsmData
     public int Roads0 { get; set; }
     [ProtoMember(15)]
     public int? ClosestCoast { get; set; }
+    [ProtoMember(16)]
+    public RoadType RoadType { get; set; }
+    public HighwayType HighwayType => new HighwayType(RoadType);
+    [ProtoMember(17)]
+    public int? ClosestLake { get; set; }
+    [ProtoMember(18)]
+    public int? ClosestRiver { get; set; }
+    [ProtoMember(19)]
+    public int? ClosestRailway { get; set; }
 }
 
 [ProtoContract]

@@ -2085,36 +2085,36 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> IN = new()
     {
-        { "IN-AP", 31612 }, // Andhra Pradesh
-        { "IN-AR", 154 }, // Arunachal Pradesh
-        { "IN-AS", 4536 }, // Assam
-        { "IN-BR", 28490 }, // Bihar
-        { "IN-CH", 40 }, // Chandigarh
-        { "IN-CT", 11527 }, // Chhattisgarh
-        { "IN-DL", 1926 }, // Delhi
-        { "IN-GA", 2545 }, // Goa
-        { "IN-GJ", 40668 }, // Gujarat
-        { "IN-HP", 291 }, // Himachal Pradesh
-        { "IN-HR", 11109 }, // Haryana
-        { "IN-JH", 10246 }, // Jharkhand
-        { "IN-KA", 41056 }, // Karnataka
-        { "IN-KL", 28299 }, // Kerala
-        { "IN-MH", 59132 }, // Maharashtra
-        { "IN-ML", 1270 }, // Meghalaya
-        { "IN-MP", 35201 }, // Madhya Pradesh
-        { "IN-MZ", 627 }, // Mizoram
-        { "IN-OR", 14921 }, // Odisha
-        { "IN-PB", 18252 }, // Punjab
-        { "IN-PY", 517 }, // Puducherry
-        { "IN-RJ", 37412 }, // Rajasthan
-        { "IN-SK", 434 }, // Sikkim
-        { "IN-TG", 17281 }, // Telangana
-        { "IN-TN", 50486 }, // Tamil Nadu
-        { "IN-TR", 1107 }, // Tripura
-        { "IN-UP", 46954 }, // Uttar Pradesh
-        { "IN-UT", 3380 }, // Uttarakhand
-        { "IN-WB", 18567 }, // West Bengal
-        { "IN-DH", 100 }, // Dādra and Nagar Haveli and Damān and Diu
+        { "IN-AP", 51331 }, // Andhra Pradesh
+        { "IN-AR", 767 }, // Arunachal Pradesh
+        { "IN-AS", 24769 }, // Assam
+        { "IN-BR", 63864 }, // Bihar
+        { "IN-CH", 179 }, // Chandigarh
+        { "IN-CT", 20359 }, // Chhattisgarh
+        { "IN-DL", 2074 }, // Delhi
+        { "IN-GA", 2805 }, // Goa
+        { "IN-GJ", 74309 }, // Gujarat
+        { "IN-HP", 723 }, // Himachal Pradesh
+        { "IN-HR", 24822 }, // Haryana
+        { "IN-JH", 21165 }, // Jharkhand
+        { "IN-KA", 77137 }, // Karnataka
+        { "IN-KL", 36672 }, // Kerala
+        { "IN-MH", 129001 }, // Maharashtra
+        { "IN-ML", 2641 }, // Meghalaya
+        { "IN-MP", 69202 }, // Madhya Pradesh
+        { "IN-MZ", 855 }, // Mizoram
+        { "IN-OR", 26928 }, // Odisha
+        { "IN-PB", 24092 }, // Punjab
+        { "IN-PY", 561 }, // Puducherry
+        { "IN-RJ", 102409 }, // Rajasthan
+        { "IN-SK", 523 }, // Sikkim
+        { "IN-TG", 33249 }, // Telangana
+        { "IN-TN", 74838 }, // Tamil Nadu
+        { "IN-TR", 2197 }, // Tripura
+        { "IN-UP", 95296 }, // Uttar Pradesh
+        { "IN-UT", 10063 }, // Uttarakhand
+        { "IN-WB", 53000 }, // West Bengal
+        { "IN-DH", 521 }, // Dadra and Nagar Haveli and Daman and Diu
     };
 
     private static readonly Dictionary<string, int> MG = new()
@@ -2480,17 +2480,6 @@ public class SubdivisionWeights
         { "FR-974", 610 }, //
     };
 
-    private static readonly Dictionary<string, int> LB = new()
-    {
-        { "Keserwan-Jbeil Governorate", 3 }, //
-        { "LB-AS", 4 }, // Liban-Nord
-        { "LB-BA", 3 }, // Beyrouth
-        { "LB-BI", 1 }, // Beqaa
-        { "LB-JA", 1 }, // Liban-Sud
-        { "LB-JL", 9 }, // Mont-Liban
-        { "LB-NA", 1 }, // Nabatiye
-    };
-
     private static readonly Dictionary<string, int> MN = new()
     {
         { "MN-035", 76 }, // Orhon
@@ -2577,6 +2566,21 @@ public class SubdivisionWeights
         { "NA-CA", 10 }, //	Zambezi
     };
 
+    private static readonly Dictionary<string, int> OM = new()
+    {
+        { "OM-DA", 10 }, // Interior
+        { "OM-BU", 10 }, // Buraymi
+        { "OM-WU", 10 }, // Central
+        { "OM-ZA", 10 }, // Dhahira
+        { "OM-BJ", 10 }, // South Batina
+        { "OM-SJ", 10 }, // Southeastern
+        { "OM-MA", 10 }, // Muscat
+        { "OM-MU", 10 }, // Musandam
+        { "OM-BS", 10 }, // North Batina
+        { "OM-SS", 10 }, // Northeastern
+        { "OM-ZU", 10 }, // Dhofar
+    };
+
     private static readonly Dictionary<string, int> KZ = new()
     {
         { "KZ-10", 561 }, // Abay oblysy
@@ -2599,6 +2603,30 @@ public class SubdivisionWeights
         { "KZ-62", 263 }, // Ulytau oblysy
         { "KZ-31", 697 }, // Zhambyl oblysy
         { "KZ-33", 795 }, // Zhetisu oblysy
+    };
+
+    private static readonly Dictionary<string, int> ST = new()
+    {
+        { "ST-01", 41 }, // Agua Grande
+        { "ST-02", 34 }, //
+        { "ST-03", 41 }, //
+        { "ST-04", 24 }, //
+        { "ST-05", 75 }, //
+        { "ST-06", 57 }, //
+        { "ST-P", 36 }, //
+    };
+
+    private static readonly Dictionary<string, int> LB = new()
+    {
+        { "Keserwan-Jbeil Governorate", 3 }, //
+        { "LB-AK", 10 }, // Aakkâr
+        { "LB-BH", 10 }, // Baalbek-Hermel
+        { "LB-BI", 10 }, // Béqaa
+        { "LB-BA", 10 }, // Beyrouth
+        { "LB-AS", 10 }, // Liban-Nord
+        { "LB-JA", 10 }, // Liban-Sud
+        { "LB-JL", 10 }, // Mont-Liban
+        { "LB-NA", 10 }, // Nabatîyé
     };
 
     public static readonly Dictionary<string, Dictionary<string, int>> CountryToSubdivision =
@@ -2720,12 +2748,14 @@ public class SubdivisionWeights
             { "IM", IM },
             { "UM", UM },
             { "KZ", KZ },
+            { "ST", ST },
         };
 
     public static readonly Dictionary<string, Dictionary<string, int>> NotQuiteThereYetCountryToSubdivision =
         new()
         {
-            { "NA", NA }
+            { "NA", NA },
+            { "OM", OM },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;
@@ -2753,10 +2783,10 @@ public class SubdivisionWeights
     public static string SubdivisionName(string countryCode, string code) =>
         GetSubdivisions()[countryCode].FirstOrDefault(x => x.SubdivisionCode == code)?.Name ?? "N/A";
 
-    public static (string subdivisionCode, string file)[] AllSubdivisionFiles(string countryCode)
+    public static (string subdivisionCode, string file)[] AllSubdivisionFiles(string countryCode, RunMode runMode)
     {
         var subdivisionKeys = CountryToSubdivision[countryCode].Keys;
-        var folder = DataDownloadService.CountryFolder(countryCode);
+        var folder = DataDownloadService.CountryFolder(countryCode, runMode);
         return subdivisionKeys.Select(x => (x, Path.Combine(folder, $"{countryCode}+{x}.bin"))).ToArray();
     }
 

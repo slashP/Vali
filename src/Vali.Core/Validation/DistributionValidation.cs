@@ -62,23 +62,6 @@ public static class DistributionValidation
             return null;
         }
 
-        foreach (var countryCode in countryCodes)
-        {
-            var subdivisions = SubdivisionWeights.CountryToSubdivision[countryCode];
-            var countryFolder = DataDownloadService.CountryFolder(countryCode);
-            var files = Directory.Exists(countryFolder) ? Directory.GetFiles(countryFolder, "*.bin") : [];
-
-            var missingDefinitions = files.Where(f => !subdivisions.Any(s => f.EndsWith($"{s.Key}.bin"))).ToArray();
-            if (missingDefinitions.Any())
-            {
-                ConsoleLogger.Error($"""
-                                     Files do not have entries in subdivision weights.
-                                     {missingDefinitions.Merge(Environment.NewLine)}
-                                     """);
-                return null;
-            }
-        }
-
         return definition;
     }
 }

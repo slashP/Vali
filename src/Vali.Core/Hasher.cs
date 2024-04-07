@@ -11,4 +11,6 @@ public class Hasher
         GeoHasher.Encode(latitude, longitude, (int)precision);
 
     public static Dictionary<Direction, string> Neighbors(string hash) => GeoHasher.GetNeighbors(hash);
+
+    public static BoundingBox GetBoundingBox(string geohash) => GeoHasher.GetBoundingBox(geohash);
 }

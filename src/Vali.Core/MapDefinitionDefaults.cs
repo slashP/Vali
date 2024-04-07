@@ -31,6 +31,15 @@ public static class MapDefinitionDefaults
         return definitionWithDefaults;
     }
 
+    public static LiveGenerateMapDefinition ApplyDefaults(this LiveGenerateMapDefinition definition)
+    {
+        var countryCodes = MapCountryCodes(definition.CountryCodes, new());
+        return definition with
+        {
+            CountryCodes = countryCodes
+        };
+    }
+
     private static Dictionary<string, T> ExpandCountryDictionary<T>(Dictionary<string, T> countryDictionary) =>
         countryDictionary == null
             ? new()
@@ -175,6 +184,7 @@ public static class MapDefinitionDefaults
             "acw" => Weights.CommunityWorld,
             "abw" => Weights.BalancedWorld,
             "aiw" => Weights.ImprovedWorld,
+            "proworld" => Weights.ProWorld,
             { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };

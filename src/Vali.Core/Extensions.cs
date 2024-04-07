@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Vali.Core.Google;
 using static Vali.Core.LocationLakeMapGenerator;
 
 namespace Vali.Core;
@@ -212,5 +213,48 @@ public static class Extensions
     {
         await using var fileStream = File.OpenRead(path);
         return await JsonSerializer.DeserializeAsync<T>(fileStream);
+    }
+
+    private static char[] invalids = Path.GetInvalidFileNameChars();
+    public static string GetSafeFileName(string name, char replace = '_')
+    {
+        return new string(name.Select(c => invalids.Contains(c) ? replace : c).ToArray());
+    }
+
+    public static T[][] GetPermutations<T>(this IEnumerable<T> list, int length)
+    {
+        if (length == 1) return list.Select(t => new T[] { t }).ToArray();
+        return GetPermutations(list, length - 1)
+            .SelectMany(t => list.Where(o => !t.Contains(o)), (t1, t2) => t1.Concat(new T[] { t2 }).ToArray()).ToArray();
+    }
+
+    public static string AsCsvString(this IEnumerable<MapCheckrLocation> locations) =>
+        locations.Select(x => $"{x.lat.Format()},{x.lng.Format()}").Merge(Environment.NewLine);
+
+    public static async Task<IReadOnlyCollection<T1>> RunLimitedNumberAtATime<T1, T2>(
+        this IEnumerable<T2> inputList,
+        Func<T2, Task<T1>> asyncFunc,
+        int numberOfTasksConcurrent)
+    {
+        var results = new List<T1>();
+        var inputQueue = new Queue<T2>(inputList);
+        var runningTasks = new List<Task<T1>>(numberOfTasksConcurrent);
+        for (var i = 0; i < numberOfTasksConcurrent && inputQueue.Count > 0; i++)
+        {
+            runningTasks.Add(asyncFunc(inputQueue.Dequeue()));
+        }
+
+        while (inputQueue.Count > 0)
+        {
+            var task = await Task.WhenAny(runningTasks);
+            runningTasks.Remove(task);
+            runningTasks.Add(asyncFunc(inputQueue.Dequeue()));
+            results.Add(task.Result);
+        }
+
+        await Task.WhenAll(runningTasks);
+        results.AddRange(runningTasks.Select(task => task.Result));
+
+        return results;
     }
 }

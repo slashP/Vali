@@ -48,13 +48,13 @@ public class FileDistributor
             Lng = x.lng,
             LocationId = i
         }).ToArray();
-        var selection = LocationDistributor.DistributeEvenly(distributionLocations, fixedMinDistance);
+        var selection = LocationDistributor.DistributeEvenly<DistributionLocation, long>(distributionLocations, fixedMinDistance);
         ConsoleLogger.Success($"Distributed {selection.Count} locations in {sw.Elapsed}. Saved to {locationsOutPath}");
 
         await File.WriteAllTextAsync(locationsOutPath, Serializer.Serialize(selection.Select(x => locations[(int)x.LocationId]).ToArray()));
     }
 
-    public class DistributionLocation : IDistributionLocation
+    public class DistributionLocation : IDistributionLocation<long>
     {
         public double Lat { get; set; }
         public double Lng { get; set; }

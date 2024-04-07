@@ -24,7 +24,7 @@ public class DataDownloadService
                 {
                     var filesFromBlob = await GetFilesFrom(code, blobContainerClient);
 
-                    var filesFromDisk = ExistingFilesForCountry(code);
+                    var filesFromDisk = ExistingFilesForCountry(code, RunMode.Default);
                     var filesToDownload = filesFromBlob.Where(blobFile =>
                     {
                         var matchingFileFromDisk = filesFromDisk.FirstOrDefault(diskFile => Path.GetFileNameWithoutExtension(diskFile.Name) == Path.GetFileNameWithoutExtension(blobFile.BlobName));
@@ -56,7 +56,7 @@ public class DataDownloadService
                     };
                     foreach (var blobFiles in filesToDownload.Chunk(chunkSize))
                     {
-                        await Task.WhenAll(blobFiles.Select(file => DownloadFile(blobContainerClient, code, file.BlobName)));
+                        await Task.WhenAll(blobFiles.Select(file => DownloadFile(blobContainerClient, code, file.BlobName, RunMode.Default)));
                         task.Increment(blobFiles.Sum(x => x.ContentLength ?? 0));
                     }
 
@@ -66,10 +66,10 @@ public class DataDownloadService
         AnsiConsole.MarkupLine("[yellow]Downloads finished.[/]");
     }
 
-    private static async Task DownloadFile(BlobContainerClient blobContainerClient, string countryCode, string blobName)
+    private static async Task DownloadFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, RunMode runMode)
     {
         var blobClient = blobContainerClient.GetBlobClient(blobName);
-        var countryFolder = CountryFolder(countryCode);
+        var countryFolder = CountryFolder(countryCode, runMode);
         Directory.CreateDirectory(countryFolder);
         var destinationFileName = Path.GetFileNameWithoutExtension(blobName) + FileExtension;
         var filePath = Path.Combine(countryFolder, destinationFileName);
@@ -84,9 +84,9 @@ public class DataDownloadService
     private static BlobContainerClient CreateBlobServiceClient() =>
         new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient("countries-v1");
 
-    private static FileInfo[] ExistingFilesForCountry(string countryCode)
+    private static FileInfo[] ExistingFilesForCountry(string countryCode, RunMode runMode)
     {
-        var folder = CountryFolder(countryCode);
+        var folder = CountryFolder(countryCode, runMode);
         if (!Directory.Exists(folder))
         {
             return Array.Empty<FileInfo>();
@@ -95,10 +95,16 @@ public class DataDownloadService
         return Directory.GetFiles(folder, $"*{FileExtension}").Select(x => new FileInfo(x)).ToArray();
     }
 
-    public static string CountryFolder(string countryCode)
+    public static string CountryFolder(string countryCode, RunMode runMode)
     {
+        var applicationSettings = ApplicationSettingsService.ReadApplicationSettings();
+        if (runMode == RunMode.Localhost)
+        {
+            return Path.Combine(applicationSettings.LocalhostDownloadDirectory!, countryCode);
+        }
+
         var defaultDownloadFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        var downloadFolder = ApplicationSettingsService.ReadApplicationSettings().DownloadDirectory ?? defaultDownloadFolder;
+        var downloadFolder = applicationSettings.DownloadDirectory ?? defaultDownloadFolder;
         return Path.Combine(downloadFolder, "Vali", countryCode);
     }
 
@@ -132,7 +138,7 @@ public class DataDownloadService
                 var blobFileName = Path.GetFileNameWithoutExtension(fileName) + ".zip";
                 var blobName = $"{countryCode}/{blobFileName}";
                 ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
-                await DownloadFile(blobContainerClient, countryCode, blobName);
+                await DownloadFile(blobContainerClient, countryCode, blobName, RunMode.Default);
             }
         }
     }
@@ -143,4 +149,10 @@ internal record BlobFile
     public required string BlobName { get; set; }
     public required DateTimeOffset? LastModified { get; set; }
     public long? ContentLength { get; set; }
+}
+
+public enum RunMode
+{
+    Default,
+    Localhost
 }

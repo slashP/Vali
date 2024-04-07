@@ -1,15 +1,13 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Vali.Core;
+﻿namespace Vali.Core;
 
 public static class LocationLakeMapGenerator
 {
-    public static async Task Generate(MapDefinition mapDefinition, string definitionPath, bool includeAdditionalLocationInfo = false)
+    public static async Task Generate(MapDefinition mapDefinition, string definitionPath, RunMode runMode, bool includeAdditionalLocationInfo = false)
     {
         var subdivisionGroups = new List<(IList<Location> locations, int regionGoalCount, int minDistance)>();
         foreach (var countryCode in mapDefinition.CountryCodes)
         {
-            var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode);
+            var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, runMode);
             var availableSubdivisions = allSubdivisions
                 .Select(x => x.subdivisionCode)
                 .ToArray();
@@ -115,7 +113,7 @@ public static class LocationLakeMapGenerator
                 .Select(x => $"{x.locations.FirstOrDefault()?.Nominatim.SubdivisionCode}\t{x.locations.Count}\t{x.regionGoalCount}\t{x.minDistance}m."));
     }
 
-    private static int CountryLocationCountGoal(MapDefinition mapDefinition, string countryCode)
+    public static int CountryLocationCountGoal(MapDefinition mapDefinition, string countryCode)
     {
         var countryWeights = CountryWeights(mapDefinition);
         var countryDistributionTotalWeight = countryWeights.Sum(x => x.Value);

@@ -18,12 +18,12 @@ public static class LocationDistributor
 
     public static readonly int[] Distances = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3300, 3600, 3900, 4200, 4500, 5000, 6000, 7000, 8000, 9000, 10000, 12500, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000];
 
-    public static (IList<T> locations, int minDistance) WithMaxMinDistance<T>(
+    public static (IList<T> locations, int minDistance) WithMaxMinDistance<T, T2>(
         ICollection<T> locations,
         int goalCount,
         IReadOnlyCollection<T>? locationsAlreadyInMap = null,
         bool avoidShuffle = false,
-        int? minMinDistance = null) where T : IDistributionLocation
+        int? minMinDistance = null) where T : IDistributionLocation<T2>
     {
         if (goalCount == 0 || locations.Count == 0)
         {
@@ -37,7 +37,7 @@ public static class LocationDistributor
         do
         {
             var minDistance = distances[minDistanceIndex];
-            var distributedLocations = GetSome(locations, goalCount, minDistance, locationsAlreadyInMap, avoidShuffle);
+            var distributedLocations = GetSome<T, T2>(locations, goalCount, minDistance, locationsAlreadyInMap, avoidShuffle);
             visited[minDistance] = distributedLocations;
             if (visited.First().Value != null && visited.First().Value?.Count < goalCount)
             {
@@ -85,38 +85,47 @@ public static class LocationDistributor
         return (max.Value ?? [], max.Key);
     }
 
-    public static IList<T> DistributeEvenly<T>(
+    public static IList<T> DistributeEvenly<T, T2>(
         ICollection<T> locations,
         int minDistanceBetweenLocations,
         bool avoidShuffle = false,
-        bool ensureNoNeighborSpill = true) where T : IDistributionLocation
+        bool ensureNoNeighborSpill = true,
+        bool silent = false) where T : IDistributionLocation<T2> where T2 : notnull
     {
         var list = new List<(T loc, string hash)>();
         var precision = HashPrecision.Size_km_39x20;
-        AnsiConsole.Progress()
-            .Start(ctx =>
-            {
-                var groups = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, precision));
-                var task = ctx.AddTask($"[green]Distributing locations[/]", maxValue: groups.Count());
-                foreach (var group in groups)
-                {
-                    var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToHashSet();
-                    var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).ToArray() : [];
-                    var selection = TakeSubSelection(group.ToArray(), 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
-                    list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));
-                    task.Increment(1);
-                }
-            });
+        if (silent)
+        {
+            Distribute(null);
+        }
+        else
+        {
+            AnsiConsole.Progress().Start(Distribute);
+        }
 
         return list.Select(x => x.loc).ToArray();
+
+        void Distribute(ProgressContext? ctx)
+        {
+            var groups = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, precision));
+            var task = ctx?.AddTask($"[green]Distributing locations[/]", maxValue: groups.Count());
+            foreach (var group in groups)
+            {
+                var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToHashSet();
+                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).ToArray() : [];
+                var selection = TakeSubSelection<T, T2>(group.ToArray(), 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
+                list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));
+                task?.Increment(1);
+            }
+        }
     }
 
-    public static IList<T> GetSome<T>(
+    public static IList<T> GetSome<T, T2>(
         ICollection<T> locations,
         int goalCount,
         int minDistanceBetweenLocations,
         IReadOnlyCollection<T>? locationsAlreadyInMap = null,
-        bool avoidShuffle = false) where T : IDistributionLocation
+        bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : notnull
     {
         if (goalCount == 0 || locations.Count == 0)
         {
@@ -128,9 +137,9 @@ public static class LocationDistributor
         var latDiff = Math.Abs(maxPoint.Lat - minPoint.Lat) / 500;
         var lngDiff = Math.Abs(maxPoint.Lng - minPoint.Lng) / 500;
 
-        bool IsKindaClose(MapLoc mapLocation1, MapLoc mapLocation2) => Math.Abs(mapLocation1.Lat - mapLocation2.Lat) < latDiff && Math.Abs(mapLocation1.Lng - mapLocation2.Lng) < lngDiff;
+        bool IsKindaClose(MapLoc<T2> mapLocation1, MapLoc<T2> mapLocation2) => Math.Abs(mapLocation1.Lat - mapLocation2.Lat) < latDiff && Math.Abs(mapLocation1.Lng - mapLocation2.Lng) < lngDiff;
 
-        Dictionary<LocationStatus, Dictionary<long, PointOnMap>> Reset(Dictionary<LocationStatus, Dictionary<long, PointOnMap>> dictionary)
+        Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> Reset(Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> dictionary)
         {
             var points = dictionary.SelectMany(x => x.Value.Values);
             return Enum.GetValues<LocationStatus>().ToDictionary(x => x,
@@ -148,9 +157,9 @@ public static class LocationDistributor
 
         var resultLocations = new List<T>(goalCount);
         var locationsLookup = locations.ToDictionary(x => x.LocationId);
-        var points = locations.Select(x => new PointOnMap
+        var points = locations.Select(x => new PointOnMap<T2>
         {
-            MapLocation = new MapLoc
+            MapLocation = new MapLoc<T2>
             {
                 Lat = x.Lat,
                 Lng = x.Lng,
@@ -234,19 +243,19 @@ public static class LocationDistributor
         return resultLocations;
     }
 
-    public static IList<T> TakeSubSelection<T>(
+    public static IList<T> TakeSubSelection<T, T2>(
         ICollection<T> locations,
         int goalCount,
         int minDistanceBetweenLocations,
         IReadOnlyCollection<T>? locationsAlreadyInMap = null,
-        bool avoidShuffle = false) where T : IDistributionLocation
+        bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : notnull
     {
         if (goalCount == 0 || locations.Count == 0)
         {
             return Array.Empty<T>();
         }
 
-        Dictionary<LocationStatus, Dictionary<long, PointOnMap>> Reset(Dictionary<LocationStatus, Dictionary<long, PointOnMap>> dictionary)
+        Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> Reset(Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> dictionary)
         {
             var points = dictionary.SelectMany(x => x.Value.Values);
             return Enum.GetValues<LocationStatus>().ToDictionary(x => x,
@@ -264,9 +273,9 @@ public static class LocationDistributor
 
         var resultLocations = new List<T>(goalCount);
         var locationsLookup = locations.ToDictionary(x => x.LocationId);
-        var points = locations.Select(x => new PointOnMap
+        var points = locations.Select(x => new PointOnMap<T2>
         {
-            MapLocation = new MapLoc
+            MapLocation = new MapLoc<T2>
             {
                 Lat = x.Lat,
                 Lng = x.Lng,
@@ -328,16 +337,16 @@ public static class LocationDistributor
         return resultLocations;
     }
 
-    public class MapLoc
+    public class MapLoc<T>
     {
         public double Lat;
         public double Lng;
-        public long LocationId;
+        public T LocationId;
     }
 
-    public class PointOnMap
+    public class PointOnMap<T>
     {
-        public required MapLoc MapLocation;
+        public required MapLoc<T> MapLocation;
         public LocationStatus LocationStatus;
     }
 }

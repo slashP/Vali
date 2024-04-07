@@ -47,4 +47,5 @@ public static class ApplicationSettingsService
 public record ApplicationSettings
 {
     public string? DownloadDirectory { get; set; }
+    public string? LocalhostDownloadDirectory { get; set; }
 }

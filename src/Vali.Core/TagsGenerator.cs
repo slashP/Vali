@@ -6,23 +6,27 @@ namespace Vali.Core;
 
 public static class TagsGenerator
 {
-    public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l) =>
-        mapDefinition.Output.LocationTags.Any()
+    public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l)
+    {
+        var tags = mapDefinition.Output.LocationTags.Select(e => e switch
+        {
+            "SubdivisionCode" => SubdivisionCode(l),
+            "County" => County(l),
+            "Surface" => Surface(l),
+            "Year" => Year(l.Google.Year),
+            "Month" => Month(l.Google.Month),
+            "YearMonth" => YearMonth(l.Google.Year, l.Google.Month),
+            "Season" => Season(l.Nominatim.CountryCode, l.Google.Month),
+            "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()).Merge(" | "),
+            _ => null
+        }).Concat(new[] { l.Tag }).Where(x => x != null).Select(x => x!).ToArray();
+        return tags.Any()
             ? new GeoMapLocationExtra
             {
-                tags = mapDefinition.Output.LocationTags.Select(e => e switch
-                {
-                    "SubdivisionCode" => SubdivisionCode(l),
-                    "County" => County(l),
-                    "Surface" => Surface(l),
-                    "Year" => Year(l),
-                    "Month" => Month(l),
-                    "YearMonth" => YearMonth(l),
-                    "Season" => Season(l),
-                    _ => null
-                }).Concat(new[] { l.Tag }).Where(x => x != null).Select(x => x!).ToArray()
+                tags = tags
             }
             : null;
+    }
 
     public static string SubdivisionCode(Location l) => l.Nominatim.SubdivisionCode;
 
@@ -30,14 +34,14 @@ public static class TagsGenerator
 
     public static string? Surface(Location l) => l.Osm.Surface;
 
-    public static string Year(Location l) => l.Google.Year.ToString();
+    public static string Year(int year) => year.ToString();
 
-    public static string Month(Location l) => new DateTime(DateTime.Now.Year, l.Google.Month, 1).ToString("MMM", CultureInfo.InvariantCulture);
+    public static string Month(int month) => new DateTime(DateTime.Now.Year, month, 1).ToString("MMM", CultureInfo.InvariantCulture);
 
-    public static string YearMonth(Location l) => $"{l.Google.Year}-{l.Google.Month.ToString().PadLeft(2, '0')}";
+    public static string YearMonth(int year, int month) => $"{year}-{month.ToString().PadLeft(2, '0')}";
 
-    public static string Season(Location l) =>
-        (CountryCodes.Hemisphere(l.Nominatim.CountryCode), l.Google.Month) switch
+    public static string Season(string countryCode, int month) =>
+        (CountryCodes.Hemisphere(countryCode), month) switch
         {
             (Hemisphere.Northern, 12) => "Winter",
             (Hemisphere.Northern, 1) => "Winter",

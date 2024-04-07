@@ -14,7 +14,7 @@ public class SubdivisionSuggester
             return;
         }
 
-        var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode);
+        var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Default);
         var files = allSubdivisions.Select(x => x.file).ToArray();
         await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
         var subdivisions = SubdivisionWeights.GetSubdivisions()[countryCode];
@@ -55,8 +55,8 @@ public class SubdivisionSuggester
                         var subDivision = locations.First().Nominatim.SubdivisionCode;
                         var some = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_39x20));
                         var minDistanceBetweenLocations = 500;
-                        var someOfThem = some.SelectMany(x => LocationDistributor.GetSome(x.ToArray(), 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations + 100)).ToArray();
-                        var distribution = LocationDistributor.GetSome(someOfThem, 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations);
+                        var someOfThem = some.SelectMany(x => LocationDistributor.GetSome<Location, long>(x.ToArray(), 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations + 100)).ToArray();
+                        var distribution = LocationDistributor.GetSome<Location, long>(someOfThem, 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations);
                         entries.Add(new SubdivisionDistributionEntry
                         {
                             Code = subDivision,

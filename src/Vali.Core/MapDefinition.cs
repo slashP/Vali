@@ -17,6 +17,26 @@ public record MapDefinition
     public LocationOutput Output { get; set; } = new();
 }
 
+public record LiveGenerateMapDefinition
+{
+    public string[] CountryCodes { get; init; } = [];
+    public int LocationCountGoal { get; init; }
+    public int MinMinDistance { get; init; }
+    public string[] LocationTags { get; init; } = [];
+    public string? FromDate { get; set; }
+    public string? ToDate { get; set; }
+    public string? HeadingMode { get; set; }
+    public int HeadingDelta { get; set; }
+    public string? PitchMode { get; set; }
+    public int? Pitch { get; set; }
+    public int? RandomPitchMin { get; set; }
+    public int? RandomPitchMax { get; set; }
+    public string? ZoomMode { get; set; }
+    public int? Zoom { get; set; }
+    public double? RandomZoomMin { get; set; }
+    public double? RandomZoomMax { get; set; }
+}
+
 public record DistributionStrategy
 {
     public string? Key { get; init; }

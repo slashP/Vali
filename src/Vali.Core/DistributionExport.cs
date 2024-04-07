@@ -100,9 +100,9 @@ public class DistributionExport
         {
             "SubdivisionCode" => TagsGenerator.SubdivisionCode,
             "County" => TagsGenerator.County,
-            "Year" => TagsGenerator.Year,
-            "Month" => TagsGenerator.Month,
-            "YearMonth" => TagsGenerator.YearMonth,
+            "Year" => l => TagsGenerator.Year(l.Google.Year),
+            "Month" => l => TagsGenerator.Month(l.Google.Month),
+            "YearMonth" => l => TagsGenerator.YearMonth(l.Google.Year, l.Google.Month),
             "Surface" => TagsGenerator.Surface,
             _ => _ => "Invalid property"
         };
@@ -112,7 +112,7 @@ public class DistributionExport
 
         foreach (var countryCode in MapDefinitionDefaults.MapCountryCodes([code], new DistributionStrategy()))
         {
-            var subdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode);
+            var subdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Default);
             var files = subdivisions.Select(x => x.file).ToArray();
             await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
             AnsiConsole.Progress()
