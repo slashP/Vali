@@ -14,8 +14,8 @@ public static class LocationLakeFilterer
         Func<Loc, bool> defaultTunnelSelector =
             !string.IsNullOrEmpty(locationFilterExpression) &&
                 (locationFilterExpression.Contains(nameof(Loc.Osm.Tunnels10)) || locationFilterExpression.Contains(nameof(Loc.Osm.Tunnels200)))
-                ? _ => true
-                : x => x.Osm.Tunnels10 == 0;
+                ? x => x.Google.PanoId.Length < 36
+                : x => x.Osm.Tunnels10 == 0 && x.Google.PanoId.Length < 36;
         var locations = locationsFromFile.Where(defaultTunnelSelector);
         if (!string.IsNullOrEmpty(locationFilterExpression))
         {
@@ -107,6 +107,7 @@ public static class LocationLakeFilterer
         nameof(Loc.Osm.ClosestRiver),
         nameof(Loc.Osm.ClosestRailway),
         nameof(Loc.Osm.HighwayType),
+        nameof(Loc.Osm.HighwayTypeCount),
         nameof(Loc.Google.Month),
         nameof(Loc.Google.Year),
         nameof(Loc.Google.Lat),
@@ -157,6 +158,7 @@ public static class LocationLakeFilterer
             nameof(Loc.Osm.ClosestRiver) => $"x.Osm.{nameof(Loc.Osm.ClosestRiver)}",
             nameof(Loc.Osm.ClosestRailway) => $"x.Osm.{nameof(Loc.Osm.ClosestRailway)}",
             nameof(Loc.Osm.HighwayType) => $"x.Osm.{nameof(Loc.Osm.HighwayType)}",
+            nameof(Loc.Osm.HighwayTypeCount) => $"x.Osm.{nameof(Loc.Osm.HighwayTypeCount)}",
             nameof(Loc.Google.Month) => $"x.Google.{nameof(Loc.Google.Month)}",
             nameof(Loc.Google.Year) => $"x.Google.{nameof(Loc.Google.Year)}",
             nameof(Loc.Google.Lat) => $"x.Google.{nameof(Loc.Google.Lat)}",

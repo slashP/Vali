@@ -222,13 +222,17 @@ public class SubdivisionWeights
         { "NO-15", 3500 }, // More og Romsdal
         { "NO-18", 5800 }, // Nordland
         { "NO-21", 15 }, // Svalbard
-        { "NO-30", 4800 }, // Viken
+        { "NO-31", 1000 }, // Østfold
+        { "NO-32", 1150 }, // Akershus
+        { "NO-33", 2650 }, // Buskerud
         { "NO-34", 6300 }, // Innlandet
-        { "NO-38", 3800 }, // Vestfold og Telemark
+        { "NO-39", 650 }, // Vestfold
+        { "NO-40", 3150 }, // Telemark
         { "NO-42", 3800 }, // Agder
         { "NO-46", 5800 }, // Vestland
         { "NO-50", 6000 }, // Trondelag
-        { "NO-54", 7000 }, // Troms og Finnmark
+        { "NO-55", 3650 }, // Troms
+        { "NO-56", 3550 }, // Finnmark
     };
 
     private static Dictionary<string, int> SE = new()
@@ -655,7 +659,7 @@ public class SubdivisionWeights
 
     private static Dictionary<string, int> ID = new()
     {
-        { "ID-AC", 400 }, // Aceh
+        { "ID-AC", 800 }, // Aceh
         { "ID-BA", 4000 }, // Bali
         { "ID-BB", 2300 }, // Kepulauan Bangka Belitung
         { "ID-BE", 2000 }, // Bengkulu
@@ -2422,6 +2426,7 @@ public class SubdivisionWeights
         { "TW-KEE", 180 }, // Keelung
         { "TW-KHH", 2110 }, // Kaohsiung
         { "TW-KIN", 156 }, // Kinmen
+        { "TW-LIE", 50 }, // Lienchiang
         { "TW-MIA", 1650 }, // Miaoli
         { "TW-NAN", 2213 }, // Nantou
         { "TW-NWT", 1957 }, // New Taipei
@@ -2618,15 +2623,13 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> LB = new()
     {
-        { "Keserwan-Jbeil Governorate", 3 }, //
-        { "LB-AK", 10 }, // Aakkâr
-        { "LB-BH", 10 }, // Baalbek-Hermel
-        { "LB-BI", 10 }, // Béqaa
-        { "LB-BA", 10 }, // Beyrouth
-        { "LB-AS", 10 }, // Liban-Nord
-        { "LB-JA", 10 }, // Liban-Sud
-        { "LB-JL", 10 }, // Mont-Liban
-        { "LB-NA", 10 }, // Nabatîyé
+        { "LB-BH", 1 }, // Baalbek-Hermel
+        { "LB-BI", 19 }, // Beqaa
+        { "LB-BA", 13 }, // Beyrouth
+        { "LB-AS", 5 }, // Liban-Nord
+        { "LB-JA", 1 }, // Liban-Sud
+        { "LB-JL", 28 }, // Mont-Liban
+        { "LB-NA", 1 }, // Nabatiye
     };
 
     public static readonly Dictionary<string, Dictionary<string, int>> CountryToSubdivision =

@@ -115,7 +115,7 @@ public class LiveGenerate
             })
             .Where(x => candidateLocations.All(c => Extensions.CalculateDistance(c.Lat, c.Lng, x.lat, x.lng) > minDistance))
             .ToArray();
-            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, 100_000, radius: 20, rejectLocationsWithoutDescription: true, silent: true);
+            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, 100_000, radius: 20, rejectLocationsWithoutDescription: true, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
             var validForAdding = googleLocations
                 .Where(x => x.result == GoogleApi.LocationLookupResult.Valid)
                 .Select(x => x.location)

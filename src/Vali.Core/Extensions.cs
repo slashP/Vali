@@ -1,4 +1,4 @@
-﻿using NetTopologySuite.Geometries;
+﻿using Spectre.Console;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -6,7 +6,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Vali.Core.Google;
-using static Vali.Core.LocationLakeMapGenerator;
 
 namespace Vali.Core;
 
@@ -254,6 +253,44 @@ public static class Extensions
 
         await Task.WhenAll(runningTasks);
         results.AddRange(runningTasks.Select(task => task.Result));
+
+        return results;
+    }
+
+    public static async Task<IReadOnlyCollection<T1>> RunLimitedNumberAtATimeWithProgressBar<T1, T2>(
+        this IEnumerable<T2> inputList,
+        Func<T2, Task<T1>> asyncFunc,
+        int numberOfTasksConcurrent,
+        string message)
+    {
+        var results = new List<T1>();
+        var inputQueue = new Queue<T2>(inputList);
+        var runningTasks = new List<Task<T1>>(numberOfTasksConcurrent);
+        await AnsiConsole.Progress()
+            .StartAsync(async ctx =>
+            {
+                var progressTask = ctx.AddTask($"[green]{message}[/]", maxValue: inputQueue.Count);
+
+                for (var i = 0; i < numberOfTasksConcurrent && inputQueue.Count > 0; i++)
+                {
+                    runningTasks.Add(asyncFunc(inputQueue.Dequeue()));
+                }
+
+                while (inputQueue.Count > 0)
+                {
+                    var task = await Task.WhenAny(runningTasks);
+                    runningTasks.Remove(task);
+                    runningTasks.Add(asyncFunc(inputQueue.Dequeue()));
+                    results.Add(task.Result);
+                    progressTask.Increment(1);
+                }
+
+                await Task.WhenAll(runningTasks);
+                results.AddRange(runningTasks.Select(task => task.Result));
+                progressTask.Increment(runningTasks.Count);
+
+                progressTask.StopTask();
+            });
 
         return results;
     }

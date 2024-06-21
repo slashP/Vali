@@ -776,8 +776,8 @@ public static class Weights
 
     public static readonly (string, int)[] ProWorld =
     {
-        ("US", 17775),
-        ("BR", 10169),
+        ("US", 12845),
+        ("BR", 9178),
         ("IN", 6370),
         ("RU", 6436),
         ("CA", 5045),

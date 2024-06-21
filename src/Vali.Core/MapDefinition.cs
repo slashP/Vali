@@ -64,4 +64,5 @@ public record LocationOutput
     public Dictionary<string, string> CountryHeadingExpressions { get; init; } = [];
     public double? GlobalZoom { get; set; }
     public double? GlobalPitch { get; set; }
+    public string? PanoVerificationStrategy { get; set; }
 }

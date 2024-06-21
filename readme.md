@@ -317,6 +317,27 @@ You can adjust the zoom on locations with `globalZoom` (range 0-3.6) and set the
 }
 ```
 
+## Pano verification and selection
+Vali offers functionality for verifying each location against Google streetview APIs to ensure no unofficial coverage and/or to select specific/non-default panorama ids. When `panoVerificationStrategy` is not empty, each location is checked and the specified strategy for pano selection is applied. The resulting map will then have locations with `panoId` set. Example:
+```json
+{
+  "countryCodes": [
+    "LU"
+  ],
+  "distributionStrategy": {
+    "key": "FixedCountByMaxMinDistance",
+    "locationCountGoal": 15000,
+    "minMinDistance": 50,
+    "treatCountriesAsSingleSubdivision": []
+  },
+  "globalLocationFilter": "",
+  "output": {
+    "panoVerificationStrategy": "Newest"
+  }
+}
+```
+Available strategies: Newest, Random, RandomNotNewest, RandomAvoidNewest, RandomNotOldest, RandomAvoidOldest, SecondNewest, Oldest, SecondOldest
+
 ## Country code expansions
 Most places that accept country code, can also accept special keywords that will expand into multiple country codes. Possible values:
 * \* -> All countries.

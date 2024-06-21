@@ -1,4 +1,6 @@
-﻿namespace Vali.Core;
+﻿using Vali.Core.Google;
+
+namespace Vali.Core;
 
 public static class LocationLakeMapGenerator
 {
@@ -59,7 +61,8 @@ public static class LocationLakeMapGenerator
         }
     }
 
-    private static async Task StoreMap(MapDefinition mapDefinition,
+    private static async Task StoreMap(
+        MapDefinition mapDefinition,
         List<(IList<Location> locations, int regionGoalCount, int minDistance)> subdivisionGroups,
         string definitionPath,
         bool includeAdditionalLocationInfo)
@@ -71,7 +74,51 @@ public static class LocationLakeMapGenerator
             return;
         }
 
-        var locations = subdivisionGroups.SelectMany(x => x.locations).ToArray();
+        var locations = subdivisionGroups.SelectMany(x => x.locations).Select(x => new
+        {
+            Loc = x,
+            MapCheckrLoc = new MapCheckrLocation
+            {
+                locationId = x.NodeId.ToString(),
+                lat = x.Google.Lat,
+                lng = x.Google.Lng,
+                countryCode = x.Nominatim.CountryCode,
+                subdivisionCode = x.Nominatim.SubdivisionCode,
+                panoId = x.Google.PanoId
+            }
+        }).ToArray();
+        var locationsById = locations.ToDictionary(x => x.Loc.NodeId.ToString());
+        if (Enum.TryParse<GoogleApi.PanoStrategy>(mapDefinition.Output.PanoVerificationStrategy, out var panoStrategy))
+        {
+            var mapCheckrLocations = locations.Select(y => y.MapCheckrLoc).ToArray();
+            var verifiedLocations = await GoogleApi.GetLocations(
+                mapCheckrLocations,
+                null,
+                25,
+                radius: 50,
+                rejectLocationsWithoutDescription: false,
+                silent: false,
+                selectionStrategy: panoStrategy);
+            var percentUnsuccessful = verifiedLocations.Count(x => x.result != GoogleApi.LocationLookupResult.Valid) /
+                                      (decimal)verifiedLocations.Count;
+            if (percentUnsuccessful > 0.05m)
+            {
+                ConsoleLogger.Warn($"{Math.Round(percentUnsuccessful * 100, 2)} % of locations removed during Google verification. Something may be wrong.");
+                ConsoleLogger.Info(verifiedLocations.Where(x => x.result is not GoogleApi.LocationLookupResult.Valid).GroupBy(x => x.result).Select(x => $"{x.Key,20} | {x.Count(),6}").Merge(Environment.NewLine));
+            }
+
+            var unknownErrors = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.UnknownError).Select(x => x.location).ToArray();
+            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, 50, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
+            locations = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.Valid)
+                .Concat(retryUnknownErrors.Where(x => x.result is GoogleApi.LocationLookupResult.Valid))
+                .Select(x => new
+                {
+                    Loc = locationsById[x.location.locationId].Loc,
+                    MapCheckrLoc = x.location
+                })
+                .ToArray();
+        }
+
         var definitionFilename = Path.GetFileNameWithoutExtension(definitionPath);
         var filename = definitionFilename + "-locations.json";
         var locationsPath = Path.Combine(outFolder, filename);
@@ -85,32 +132,37 @@ public static class LocationLakeMapGenerator
             _ => l.Google.Heading
         };
 
+        var isPanoSpecificCheckActive = panoStrategy != GoogleApi.PanoStrategy.None;
         var geoMapLocations = locations
             .Select(l => new GeoMapLocation
             {
-                lat = l.Lat,
-                lng = l.Lng,
-                heading = HeadingSelector(l) % 360,
+                lat = l.MapCheckrLoc.Lat,
+                lng = l.MapCheckrLoc.Lng,
+                heading = HeadingSelector(l.Loc) % 360,
                 zoom = output.GlobalZoom,
                 pitch = output.GlobalPitch,
-                extra = TagsGenerator.Tags(mapDefinition, l),
-                panoId = output.PanoIdCountryCodes.Contains(l.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") ? l.Google.PanoId : null,
-                countryCode = includeAdditionalLocationInfo ? l.Nominatim.CountryCode : null,
-                subdivisionCode = includeAdditionalLocationInfo ? l.Nominatim.SubdivisionCode : null,
+                extra = TagsGenerator.Tags(mapDefinition, l.Loc, l.MapCheckrLoc),
+                panoId = output.PanoIdCountryCodes.Contains(l.Loc.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") || isPanoSpecificCheckActive ? l.MapCheckrLoc.panoId : null,
+                countryCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.CountryCode : null,
+                subdivisionCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.SubdivisionCode : null,
             }).ToArray();
         await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
         ConsoleLogger.Info($"{locations.Length, 6:N0} locations saved to {new FileInfo(locationsPath).FullName}");
-        var countries = locations.GroupBy(x => x.Nominatim.CountryCode).ToArray();
+        var countries = locations.GroupBy(x => x.Loc.Nominatim.CountryCode).ToArray();
         if (countries.Length > 1)
         {
             await File.WriteAllLinesAsync(Path.Combine(outFolder, definitionFilename + "-country-distribution.txt"),
                 countries.OrderBy(x => x.Key).Select(x => $"{x.Key}\t{x.Count()}\t{CountryLocationCountGoal(mapDefinition, x.Key)}"));
         }
 
-        var groups = subdivisionGroups.Where(s => s.locations.Any()).ToArray();
+        var regionalGoalCounts = subdivisionGroups
+            .Select(x => (x.locations.FirstOrDefault()?.Nominatim.SubdivisionCode, x.regionGoalCount, x.minDistance))
+            .Where(x => x.SubdivisionCode != null)
+            .ToDictionary(x => x.SubdivisionCode!);
         await File.WriteAllLinesAsync(Path.Combine(outFolder, definitionFilename + "-subdivision-distribution.txt"),
-            groups.OrderBy(x => x.locations.FirstOrDefault()?.Nominatim.SubdivisionCode)
-                .Select(x => $"{x.locations.FirstOrDefault()?.Nominatim.SubdivisionCode}\t{x.locations.Count}\t{x.regionGoalCount}\t{x.minDistance}m."));
+            locations.GroupBy(x => x.Loc.Nominatim.SubdivisionCode)
+                .OrderBy(x => x.Key)
+                .Select(x => $"{x.Key}\t{x.Count()}\t{regionalGoalCounts[x.Key].regionGoalCount}\t{regionalGoalCounts[x.Key].minDistance}m."));
     }
 
     public static int CountryLocationCountGoal(MapDefinition mapDefinition, string countryCode)

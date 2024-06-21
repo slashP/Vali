@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using System.Numerics;
+using ProtoBuf;
 
 namespace Vali.Core;
 
@@ -90,6 +91,7 @@ public record OsmData
     [ProtoMember(16)]
     public RoadType RoadType { get; set; }
     public HighwayType HighwayType => new HighwayType(RoadType);
+    public int HighwayTypeCount => BitOperations.PopCount((uint)RoadType);
     [ProtoMember(17)]
     public int? ClosestLake { get; set; }
     [ProtoMember(18)]

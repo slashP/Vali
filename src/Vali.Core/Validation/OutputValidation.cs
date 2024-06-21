@@ -1,4 +1,6 @@
-﻿namespace Vali.Core.Validation;
+﻿using Vali.Core.Google;
+
+namespace Vali.Core.Validation;
 
 public static class OutputValidation
 {
@@ -17,6 +19,15 @@ public static class OutputValidation
             var validatedDefinition = definition.ValidateExpression(headingExpression!, DryRun, $"Invalid heading expression {headingExpression}");
             if (validatedDefinition == null)
             {
+                return null;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(definition.Output.PanoVerificationStrategy))
+        {
+            if (!Enum.TryParse<GoogleApi.PanoStrategy>(definition.Output.PanoVerificationStrategy, out var strategy))
+            {
+                ConsoleLogger.Error($"{nameof(definition.Output.PanoVerificationStrategy)} must be empty or one of {Enum.GetValues<GoogleApi.PanoStrategy>().Select(x => x.ToString()).Merge(", ")}");
                 return null;
             }
         }

@@ -1,22 +1,23 @@
 ﻿using static Vali.Core.LocationLakeMapGenerator;
 using System.Globalization;
 using Vali.Core.Data;
+using Vali.Core.Google;
 
 namespace Vali.Core;
 
 public static class TagsGenerator
 {
-    public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l)
+    public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l, MapCheckrLocation mapCheckrLocation)
     {
         var tags = mapDefinition.Output.LocationTags.Select(e => e switch
         {
-            "SubdivisionCode" => SubdivisionCode(l),
+            "SubdivisionCode" => SubdivisionCode(mapCheckrLocation),
             "County" => County(l),
             "Surface" => Surface(l),
-            "Year" => Year(l.Google.Year),
-            "Month" => Month(l.Google.Month),
-            "YearMonth" => YearMonth(l.Google.Year, l.Google.Month),
-            "Season" => Season(l.Nominatim.CountryCode, l.Google.Month),
+            "Year" => mapCheckrLocation.year.ToString(),
+            "Month" => mapCheckrLocation.month.ToString(),
+            "YearMonth" => YearMonth(mapCheckrLocation.year, mapCheckrLocation.month),
+            "Season" => Season(l.Nominatim.CountryCode, mapCheckrLocation.month),
             "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()).Merge(" | "),
             _ => null
         }).Concat(new[] { l.Tag }).Where(x => x != null).Select(x => x!).ToArray();
@@ -29,6 +30,7 @@ public static class TagsGenerator
     }
 
     public static string SubdivisionCode(Location l) => l.Nominatim.SubdivisionCode;
+    public static string? SubdivisionCode(MapCheckrLocation l) => l.subdivisionCode;
 
     public static string? County(Location l) => l.Nominatim.County;
 
