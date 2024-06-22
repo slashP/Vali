@@ -486,8 +486,8 @@ public static class Weights
         ("MX", 2900),
         ("MC", 40),
         ("MN", 250),
-        ("KZ", 250), // my edit
-        ("ST", 15), // my edit
+        ("KZ", 750),
+        ("ST", 12),
         ("ME", 330),
         ("NP", 0),
         ("NL", 800),
@@ -509,7 +509,7 @@ public static class Weights
         ("RE", 125),
         ("RO", 1415),
         ("RU", 4310),
-        ("RW", 15),
+        ("RW", 221),
         ("SM", 125),
         ("SN", 1066),
         ("RS", 600),

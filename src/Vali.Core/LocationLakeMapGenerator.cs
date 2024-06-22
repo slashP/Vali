@@ -99,8 +99,10 @@ public static class LocationLakeMapGenerator
                 rejectLocationsWithoutDescription: false,
                 silent: false,
                 selectionStrategy: panoStrategy);
-            var percentUnsuccessful = verifiedLocations.Count(x => x.result != GoogleApi.LocationLookupResult.Valid) /
-                                      (decimal)verifiedLocations.Count;
+            var percentUnsuccessful = verifiedLocations.Count != 0
+                ? verifiedLocations.Count(x => x.result != GoogleApi.LocationLookupResult.Valid) /
+                  (decimal)verifiedLocations.Count
+                : 0;
             if (percentUnsuccessful > 0.05m)
             {
                 ConsoleLogger.Warn($"{Math.Round(percentUnsuccessful * 100, 2)} % of locations removed during Google verification. Something may be wrong.");
@@ -161,8 +163,14 @@ public static class LocationLakeMapGenerator
             .ToDictionary(x => x.SubdivisionCode!);
         await File.WriteAllLinesAsync(Path.Combine(outFolder, definitionFilename + "-subdivision-distribution.txt"),
             locations.GroupBy(x => x.Loc.Nominatim.SubdivisionCode)
+                .Where(x => !string.IsNullOrEmpty(x.Key))
                 .OrderBy(x => x.Key)
-                .Select(x => $"{x.Key}\t{x.Count()}\t{regionalGoalCounts[x.Key].regionGoalCount}\t{regionalGoalCounts[x.Key].minDistance}m."));
+                .Select(x =>
+                {
+                    var goal = regionalGoalCounts.TryGetValue(x.Key, out var g) ? g : new();
+                    return
+                        $"{x.Key}\t{x.Count()}\t{goal.regionGoalCount}\t{goal.minDistance}m.";
+                }));
     }
 
     public static int CountryLocationCountGoal(MapDefinition mapDefinition, string countryCode)
