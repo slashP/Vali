@@ -53,6 +53,8 @@ public record GoogleData
     public int DrivingDirectionAngle { get; set; }
     [ProtoMember(10)]
     public int ArrowCount { get; set; }
+    [ProtoMember(11)]
+    public int? Elevation { get; set; }
 }
 
 [ProtoContract]

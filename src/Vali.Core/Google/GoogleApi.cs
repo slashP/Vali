@@ -92,6 +92,11 @@ public class GoogleApi
                 return (location, LocationLookupResult.UnknownError);
             }
 
+            if (locationResponse.AsArray().Count == 2 && locationResponse[1] is JsonValue && locationResponse[1].GetValue<string>() == "Unrecoverable data loss or corruption.")
+            {
+                return (location, LocationLookupResult.NoImages);
+            }
+
             if (locationResponse.AsArray().Count == 1 && locationResponse[0][2].GetValue<string>() == "Search returned no images.")
             {
                 return (location, LocationLookupResult.NoImages);
@@ -108,8 +113,8 @@ public class GoogleApi
 
             var baseInfoArray = locationResponse[1][5][0].AsArray();
             var countryCode = baseInfoArray[1].AsArray().Count >= 5 ? baseInfoArray[1][4].GetValue<string>() : knownCountryCode;
-            var year = locationResponse[1][6][7][0].GetValue<int>();
-            var month = locationResponse[1][6][7][1].GetValue<int>();
+            var year = locationResponse[1][6].AsArray().Count >= 8 ? locationResponse[1][6][7][0].GetValue<int>() : -1;
+            var month = locationResponse[1][6].AsArray().Count >= 8 ? locationResponse[1][6][7][1].GetValue<int>() : -1;
 
             var pano = locationResponse[1][1][1].GetValue<string>();
             var defaultImage = new
@@ -124,13 +129,14 @@ public class GoogleApi
                     var index = x[0].GetValue<int>();
                     return new
                     {
-                        Year = x[1][0].GetValue<int>(),
-                        Month = x[1][1].GetValue<int>(),
+                        Year = x[1].AsArray().Count >= 2 ? x[1][0].GetValue<int>() : -1,
+                        Month = x[1].AsArray().Count >= 2 ? x[1][1].GetValue<int>() : -1,
                         PanoId = baseInfoArray[3][0][index][0][1].GetValue<string>()
                     };
                 })).ToArray()
                 : [defaultImage])
                 .Where(x => x.PanoId.Length < 36)
+                .Where(x => x.Year > 2000)
                 .DistinctBy(x => x.PanoId)
                 .OrderByDescending(x => x.Year)
                 .ThenByDescending(x => x.Month)
@@ -148,21 +154,20 @@ public class GoogleApi
 
             var lat = baseInfoArray[1][0][2].GetValue<double>();
             var lng = baseInfoArray[1][0][3].GetValue<double>();
+            var elevation = baseInfoArray[1].AsArray().Count > 1 && baseInfoArray[1][1] is not null ? baseInfoArray[1][1][0].GetValue<double>() : 0;
             var arrows = baseInfoArray.Count > 6 ? baseInfoArray[6]?.AsArray() ?? [] : [];
             var heading = arrows switch
             {
                 { Count: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
                 { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)][1][3].GetValue<decimal>(),
-                _ => baseInfoArray[1][2][0].GetValue<decimal>()
+                _ => baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2].AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : 1000
             };
-            var c = new[] { baseInfoArray[1][2][0].GetValue<decimal>(), heading };
-            var d = new[] { 0, 180, 360 }.Select(x => Math.Abs(c.Max() - x - c.Min())).Min();
             if (rejectLocationsWithoutDescription && string.IsNullOrEmpty(desc))
             {
                 return (location, LocationLookupResult.MissingDescription);
             }
 
-            var defaultDrivingDirectionAngle = (ushort)Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0);
+            var defaultDrivingDirectionAngle = baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2].AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? (ushort)Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : (ushort)1000;
             var defaultArrowCount = (ushort)arrows.Count;
             var selected = selectionStrategy switch
             {
@@ -184,7 +189,7 @@ public class GoogleApi
 
             if (selected.PanoId != pano)
             {
-                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount) = await DetailsFromPanoId(selected.PanoId);
+                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel) = await DetailsFromPanoId(selected.PanoId);
                 if (isGen1 != false)
                 {
                     return (location, LocationLookupResult.NoImages);
@@ -196,9 +201,10 @@ public class GoogleApi
                 defaultDrivingDirectionAngle = drivingDirectionAngle;
                 defaultArrowCount = (ushort)arrowCount;
                 heading = defaultHeading;
+                elevation = metersAboveSeaLevel;
             }
 
-            if (pano.Length >= 36)
+            if (pano.Length >= 36 || defaultDrivingDirectionAngle > 360)
             {
                 return (location, LocationLookupResult.NoImages);
             }
@@ -213,7 +219,8 @@ public class GoogleApi
                 year = year,
                 month = month,
                 drivingDirectionAngle = defaultDrivingDirectionAngle,
-                arrowCount = defaultArrowCount
+                arrowCount = defaultArrowCount,
+                elevation = (int)Math.Round(elevation, 0)
             }, LocationLookupResult.Valid);
         }
         catch (Exception e)
@@ -274,7 +281,7 @@ public class GoogleApi
         }
     }
 
-    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount)> DetailsFromPanoId(string panoId)
+    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation)> DetailsFromPanoId(string panoId)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -289,7 +296,7 @@ public class GoogleApi
         {
             Console.WriteLine(e);
             await Task.Delay(TimeSpan.FromSeconds(5));
-            return (null, 0, 0, 0);
+            return (null, 0, 0, 0, 0);
         }
 
         try
@@ -299,35 +306,32 @@ public class GoogleApi
                 metadataResponse[1].GetValue<string>() == "Internal error encountered.")
             {
                 Console.WriteLine("Got Internal error encountered.");
-                return (null, 0, 0, 0);
+                return (null, 0, 0, 0, 0);
             }
 
             if (metadataResponse.AsArray().Count == 1)
             {
-                return (null, 0, 0, 0);
+                return (null, 0, 0, 0, 0);
             }
 
             var imageSize = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
             var isGen1 = imageSize < 2000;
             var arrows = metadataResponse[1][0][5]?[0]?[6]?.AsArray() ?? [];
             var drivingDirectionAngle = (ushort)Math.Round(metadataResponse[1][0][5][0][1][2][0].GetValue<decimal>(), 0);
-            var a = new MapCheckrLocation
-            {
-                drivingDirectionAngle = drivingDirectionAngle,
-            };
+            var elevation = metadataResponse[1][0][5][0][1][1][0].GetValue<double>();
             var heading = arrows switch
             {
                 { Count: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
                 { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)][1][3].GetValue<decimal>(),
                 _ => drivingDirectionAngle
             };
-            return (isGen1, drivingDirectionAngle, heading, arrows.Count);
+            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation);
         }
         catch (Exception e)
         {
             Console.WriteLine($"Failed verifying gen1. {content}");
             Console.WriteLine(e);
-            return (null, 0, 0, 0);
+            return (null, 0, 0, 0, 0);
         }
     }
 
@@ -383,4 +387,5 @@ public record MapCheckrLocation : IDistributionLocation<string>
     public double Lng => lng;
     [JsonIgnore]
     public string LocationId => locationId;
+    public int? elevation { get; set; }
 }

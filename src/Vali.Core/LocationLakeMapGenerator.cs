@@ -84,11 +84,16 @@ public static class LocationLakeMapGenerator
                 lng = x.Google.Lng,
                 countryCode = x.Nominatim.CountryCode,
                 subdivisionCode = x.Nominatim.SubdivisionCode,
-                panoId = x.Google.PanoId
+                panoId = x.Google.PanoId,
+                heading = x.Google.Heading,
+                arrowCount = (ushort)x.Google.ArrowCount,
+                elevation = x.Google.Elevation,
+                year = x.Google.Year,
+                month = x.Google.Month,
             }
         }).ToArray();
         var locationsById = locations.ToDictionary(x => x.Loc.NodeId.ToString());
-        if (Enum.TryParse<GoogleApi.PanoStrategy>(mapDefinition.Output.PanoVerificationStrategy, out var panoStrategy))
+        if (Enum.TryParse<GoogleApi.PanoStrategy>(mapDefinition.Output.PanoVerificationStrategy, out var panoStrategy) && panoStrategy != GoogleApi.PanoStrategy.None)
         {
             var mapCheckrLocations = locations.Select(y => y.MapCheckrLoc).ToArray();
             var verifiedLocations = await GoogleApi.GetLocations(
@@ -127,12 +132,34 @@ public static class LocationLakeMapGenerator
 
         var output = mapDefinition.Output;
 
-        double HeadingSelector(Location l) => output switch
+        double HeadingSelector(MapCheckrLocation loc)
         {
-            _ when output.CountryHeadingExpressions.TryGetValue(l.Nominatim.CountryCode, out var headingExpression) => LocationLakeFilterer.CompileIntLocationExpression(headingExpression)(l),
-            _ when !string.IsNullOrEmpty(output.GlobalHeadingExpression) => LocationLakeFilterer.CompileIntLocationExpression(output.GlobalHeadingExpression)(l),
-            _ => l.Google.Heading
-        };
+            var l = new Location
+            {
+                Google = new GoogleData
+                {
+                    PanoId = "",
+                    CountryCode = loc.countryCode,
+                    DefaultHeading = (double)loc.heading,
+                    DrivingDirectionAngle = loc.drivingDirectionAngle,
+                },
+                Osm = new OsmData(),
+                Nominatim = new NominatimData
+                {
+                    CountryCode = loc.countryCode,
+                    SubdivisionCode = loc.subdivisionCode ?? ""
+                }
+            };
+
+            return output switch
+            {
+                _ when output.CountryHeadingExpressions.TryGetValue(l.Google.CountryCode, out var headingExpression) =>
+                    LocationLakeFilterer.CompileIntLocationExpression(headingExpression)(l),
+                _ when !string.IsNullOrEmpty(output.GlobalHeadingExpression) => LocationLakeFilterer
+                    .CompileIntLocationExpression(output.GlobalHeadingExpression)(l),
+                _ => l.Google.Heading
+            };
+        }
 
         var isPanoSpecificCheckActive = panoStrategy != GoogleApi.PanoStrategy.None;
         var geoMapLocations = locations
@@ -140,7 +167,7 @@ public static class LocationLakeMapGenerator
             {
                 lat = l.MapCheckrLoc.Lat,
                 lng = l.MapCheckrLoc.Lng,
-                heading = HeadingSelector(l.Loc) % 360,
+                heading = HeadingSelector(l.MapCheckrLoc) % 360,
                 zoom = output.GlobalZoom,
                 pitch = output.GlobalPitch,
                 extra = TagsGenerator.Tags(mapDefinition, l.Loc, l.MapCheckrLoc),

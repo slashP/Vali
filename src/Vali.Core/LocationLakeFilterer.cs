@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using Vali.Core.Google;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
@@ -115,6 +116,7 @@ public static class LocationLakeFilterer
         nameof(Loc.Google.Heading),
         nameof(Loc.Google.DrivingDirectionAngle),
         nameof(Loc.Google.ArrowCount),
+        nameof(Loc.Google.Elevation),
         nameof(Loc.Nominatim.CountryCode),
         nameof(Loc.Nominatim.SubdivisionCode),
         nameof(Loc.Nominatim.County),
@@ -166,6 +168,7 @@ public static class LocationLakeFilterer
             nameof(Loc.Google.Heading) => $"x.Google.{nameof(Loc.Google.Heading)}",
             nameof(Loc.Google.DrivingDirectionAngle) => $"x.Google.{nameof(Loc.Google.DrivingDirectionAngle)}",
             nameof(Loc.Google.ArrowCount) => $"x.Google.{nameof(Loc.Google.ArrowCount)}",
+            nameof(Loc.Google.Elevation) => $"x.Google.{nameof(Loc.Google.Elevation)}",
             nameof(Loc.Nominatim.CountryCode) => $"x.Nominatim.{nameof(Loc.Nominatim.CountryCode)}",
             nameof(Loc.Nominatim.SubdivisionCode) => $"x.Nominatim.{nameof(Loc.Nominatim.SubdivisionCode)}",
             nameof(Loc.Nominatim.County) => $"x.Nominatim.{nameof(Loc.Nominatim.County)}",

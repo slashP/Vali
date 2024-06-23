@@ -17,6 +17,8 @@ public static class TagsGenerator
             "Year" => mapCheckrLocation.year.ToString(),
             "Month" => mapCheckrLocation.month.ToString(),
             "YearMonth" => YearMonth(mapCheckrLocation.year, mapCheckrLocation.month),
+            "Elevation" => mapCheckrLocation.elevation?.ToString(),
+            _ when e.StartsWith("Elevation") => mapCheckrLocation.elevation != null ? Range(mapCheckrLocation.elevation.Value, e.Replace("Elevation", "")) : null,
             "Season" => Season(l.Nominatim.CountryCode, mapCheckrLocation.month),
             "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()).Merge(" | "),
             _ => null
@@ -27,6 +29,18 @@ public static class TagsGenerator
                 tags = tags
             }
             : null;
+    }
+
+    private static string? Range(int number, string bucketString)
+    {
+        if (!int.TryParse(bucketString, out var bucket))
+        {
+            return null;
+        }
+
+        var lower = ((number / bucket) * bucket);
+        var upper = (((number / bucket) + 1) * bucket);
+        return $"[{lower,4}-{upper,4}]m";
     }
 
     public static string SubdivisionCode(Location l) => l.Nominatim.SubdivisionCode;
