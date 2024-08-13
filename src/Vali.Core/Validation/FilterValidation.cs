@@ -135,7 +135,8 @@ public static class FilterValidation
                 !properties.Contains(expressionValue.Trim()) &&
                 !double.TryParse(expressionValue, NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
                 !bool.TryParse(expressionValue, out _) &&
-                !IsSingleQuoteWord(expressionValue))
+                !IsSingleQuoteWord(expressionValue) &&
+                expressionValue != "null")
             {
                 if (expressionValue.Contains("'"))
                 {
@@ -149,6 +150,7 @@ public static class FilterValidation
                                      * A value in single quotes like 'gravel'.
                                      * One of the operators [{operators.Merge(", ")}]
                                      * One of the properties [{properties.Merge(", ")}]
+                                     * null
                                      """);
                 return null;
             }

@@ -154,6 +154,7 @@ Locations can be filtered globally, per country or per subdivision.
 | DrivingDirectionAngle | [Google] The direction of the front of the Google car. Integer between 0 and 359.
 | ArrowCount            | [Google] The number of arrows, mostly corresponds to the possible number of directions you can go in. Integer.
 | Elevation             | [Google] Meters above sea level.
+| DescriptionLength     | [Google] The length of the "description" field in Google's API. Used to distinguish (estimate) trekker coverage. If you want to include all coverage, add `DescriptionLength gt -1` to your respective location filter.
 | CountryCode           | [Nominatim] Two character ISO 3166 country code.
 | SubdivisionCode       | [Nominatim] ISO 3166-2 code for the subdivision. Mostly corresponding to data available at [ISO_3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) (but with some exceptions.)
 | County                | [Nominatim] Municipality/county name where available.
@@ -422,7 +423,8 @@ With all the building blocks described above we can start creating real, serious
     "locationTags": [
       "Year",
       "Month",
-      "Season"
+      "Season",
+      "Elevation500"
     ]
   }
 }

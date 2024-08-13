@@ -1,7 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Security.Cryptography.X509Certificates;
-using Spectre.Console;
-using Vali.Core.Data;
+﻿using Spectre.Console;
 using Vali.Core.Hash;
 
 namespace Vali.Core;
@@ -12,7 +9,6 @@ public static class LocationDistributor
     {
         NotProcessed,
         Taken,
-        TemporarilyRemoved,
         Removed
     }
 
@@ -132,111 +128,48 @@ public static class LocationDistributor
             return Array.Empty<T>();
         }
 
-        var minPoint = locations.MinBy(x => Math.Abs(x.Lat) + Math.Abs(x.Lng))!;
-        var maxPoint = locations.MaxBy(x => Math.Abs(x.Lat) + Math.Abs(x.Lng))!;
-        var latDiff = Math.Abs(maxPoint.Lat - minPoint.Lat) / 500;
-        var lngDiff = Math.Abs(maxPoint.Lng - minPoint.Lng) / 500;
-
-        bool IsKindaClose(MapLoc<T2> mapLocation1, MapLoc<T2> mapLocation2) => Math.Abs(mapLocation1.Lat - mapLocation2.Lat) < latDiff && Math.Abs(mapLocation1.Lng - mapLocation2.Lng) < lngDiff;
-
-        Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> Reset(Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> dictionary)
-        {
-            var points = dictionary.SelectMany(x => x.Value.Values);
-            return Enum.GetValues<LocationStatus>().ToDictionary(x => x,
-                x =>
-                {
-                    var pointOnMaps = points.Where(p => p.LocationStatus == x).ToArray();
-                    if (x == LocationStatus.NotProcessed && !avoidShuffle)
-                    {
-                        pointOnMaps.Shuffle();
-                    }
-
-                    return pointOnMaps.ToDictionary(p => p.MapLocation.LocationId);
-                });
-        }
-
         var resultLocations = new List<T>(goalCount);
         var locationsLookup = locations.ToDictionary(x => x.LocationId);
-        var points = locations.Select(x => new PointOnMap<T2>
-        {
-            MapLocation = new MapLoc<T2>
+        var notProcessed = locations.Select(x => new MapLoc<T2>
             {
                 Lat = x.Lat,
                 Lng = x.Lng,
                 LocationId = x.LocationId
-            },
-            LocationStatus = LocationStatus.NotProcessed
-        }).ToArray();
-        if (!avoidShuffle)
-        {
-            points.Shuffle();
-        }
+            })
+            .ToDictionary(p => p.LocationId);
 
         if (locationsAlreadyInMap != null && locationsAlreadyInMap.Any())
         {
-            foreach (var point in points)
+            foreach (var point in notProcessed)
             {
                 if (locationsAlreadyInMap.Any(p =>
                         Extensions.PointsAreCloserThan(
                             p.Lat,
                             p.Lng,
-                            point.MapLocation.Lat,
-                            point.MapLocation.Lng,
+                            point.Value.Lat,
+                            point.Value.Lng,
                             minDistanceBetweenLocations)))
                 {
-                    point.LocationStatus = LocationStatus.Removed;
+                    notProcessed.Remove(point.Key);
                 }
             }
         }
 
-        var dict = Reset(Enum.GetValues<LocationStatus>()
-            .ToDictionary(x => x, x => points.Where(p => p.LocationStatus == x).ToDictionary(p => p.MapLocation.LocationId)));
-
-        while (resultLocations.Count < goalCount &&
-               dict[LocationStatus.NotProcessed].Any())
+        while (resultLocations.Count < goalCount && notProcessed.Any())
         {
-            var randomPoint = dict[LocationStatus.NotProcessed].First().Value;
-            randomPoint.LocationStatus = LocationStatus.Taken;
-            dict[LocationStatus.NotProcessed].Remove(randomPoint.MapLocation.LocationId);
-            resultLocations.Add(locationsLookup[randomPoint.MapLocation.LocationId]);
+            var randomPoint = notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value;
+            notProcessed.Remove(randomPoint.LocationId);
+            resultLocations.Add(locationsLookup[randomPoint.LocationId]);
 
-            foreach (var pointOnMap in dict[LocationStatus.NotProcessed].Values.Where(p =>
+            foreach (var pointOnMap in notProcessed.Values.Where(p =>
                          Extensions.PointsAreCloserThan(
-                             p.MapLocation.Lat,
-                             p.MapLocation.Lng,
-                             randomPoint.MapLocation.Lat,
-                             randomPoint.MapLocation.Lng,
+                             p.Lat,
+                             p.Lng,
+                             randomPoint.Lat,
+                             randomPoint.Lng,
                              minDistanceBetweenLocations)))
             {
-                pointOnMap.LocationStatus = LocationStatus.Removed;
-                dict[LocationStatus.NotProcessed].Remove(pointOnMap.MapLocation.LocationId);
-            }
-
-            foreach (var pointOnMap in dict[LocationStatus.TemporarilyRemoved].Values.Where(p =>
-                         Extensions.PointsAreCloserThan(
-                             p.MapLocation.Lat,
-                             p.MapLocation.Lng,
-                             randomPoint.MapLocation.Lat,
-                             randomPoint.MapLocation.Lng,
-                             minDistanceBetweenLocations)))
-            {
-                pointOnMap.LocationStatus = LocationStatus.Removed;
-                dict[LocationStatus.TemporarilyRemoved].Remove(pointOnMap.MapLocation.LocationId);
-            }
-
-            foreach (var pointOnMap in dict[LocationStatus.NotProcessed].Where(p =>
-                         IsKindaClose(p.Value.MapLocation, randomPoint.MapLocation)))
-            {
-                if (pointOnMap.Value.LocationStatus == LocationStatus.NotProcessed)
-                {
-                    pointOnMap.Value.LocationStatus = LocationStatus.TemporarilyRemoved;
-                    dict[LocationStatus.TemporarilyRemoved][pointOnMap.Value.MapLocation.LocationId] = pointOnMap.Value;
-                }
-            }
-
-            if (!dict[LocationStatus.NotProcessed].Any())
-            {
-                dict = Reset(dict);
+                notProcessed.Remove(pointOnMap.LocationId);
             }
         }
 
@@ -255,98 +188,58 @@ public static class LocationDistributor
             return Array.Empty<T>();
         }
 
-        Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> Reset(Dictionary<LocationStatus, Dictionary<T2, PointOnMap<T2>>> dictionary)
-        {
-            var points = dictionary.SelectMany(x => x.Value.Values);
-            return Enum.GetValues<LocationStatus>().ToDictionary(x => x,
-                x =>
-                {
-                    var pointOnMaps = points.Where(p => p.LocationStatus == x).ToArray();
-                    if (x == LocationStatus.NotProcessed && !avoidShuffle)
-                    {
-                        Random.Shared.Shuffle(pointOnMaps);
-                    }
-
-                    return pointOnMaps.ToDictionary(p => p.MapLocation.LocationId);
-                });
-        }
-
         var resultLocations = new List<T>(goalCount);
         var locationsLookup = locations.ToDictionary(x => x.LocationId);
-        var points = locations.Select(x => new PointOnMap<T2>
-        {
-            MapLocation = new MapLoc<T2>
+        var notProcessed = locations.Select(x => new MapLoc<T2>
             {
                 Lat = x.Lat,
                 Lng = x.Lng,
                 LocationId = x.LocationId
-            },
-            LocationStatus = LocationStatus.NotProcessed
-        }).ToArray();
-        if (!avoidShuffle)
-        {
-            Random.Shared.Shuffle(points);
-        }
-
+            })
+            .ToDictionary(p => p.LocationId);
         if (locationsAlreadyInMap != null && locationsAlreadyInMap.Any())
         {
-            foreach (var point in points)
+            foreach (var point in notProcessed)
             {
                 if (locationsAlreadyInMap.Any(p =>
                         Extensions.PointsAreCloserThan(
                             p.Lat,
                             p.Lng,
-                            point.MapLocation.Lat,
-                            point.MapLocation.Lng,
+                            point.Value.Lat,
+                            point.Value.Lng,
                             minDistanceBetweenLocations)))
                 {
-                    point.LocationStatus = LocationStatus.Removed;
+                    notProcessed.Remove(point.Key);
                 }
             }
         }
 
-        var dict = Reset(Enum.GetValues<LocationStatus>()
-            .ToDictionary(x => x, x => points.Where(p => p.LocationStatus == x).ToDictionary(p => p.MapLocation.LocationId)));
-
         while (resultLocations.Count < goalCount &&
-               dict[LocationStatus.NotProcessed].Any())
+               notProcessed.Any())
         {
-            var randomPoint = dict[LocationStatus.NotProcessed].First().Value;
-            randomPoint.LocationStatus = LocationStatus.Taken;
-            dict[LocationStatus.NotProcessed].Remove(randomPoint.MapLocation.LocationId);
-            resultLocations.Add(locationsLookup[randomPoint.MapLocation.LocationId]);
+            var randomPoint = notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value;
+            notProcessed.Remove(randomPoint.LocationId);
+            resultLocations.Add(locationsLookup[randomPoint.LocationId]);
 
-            foreach (var pointOnMap in dict[LocationStatus.NotProcessed].Values.Where(p =>
+            foreach (var pointOnMap in notProcessed.Values.Where(p =>
                          Extensions.PointsAreCloserThan(
-                             p.MapLocation.Lat,
-                             p.MapLocation.Lng,
-                             randomPoint.MapLocation.Lat,
-                             randomPoint.MapLocation.Lng,
+                             p.Lat,
+                             p.Lng,
+                             randomPoint.Lat,
+                             randomPoint.Lng,
                              minDistanceBetweenLocations)))
             {
-                pointOnMap.LocationStatus = LocationStatus.Removed;
-                dict[LocationStatus.NotProcessed].Remove(pointOnMap.MapLocation.LocationId);
-            }
-
-            if (!dict[LocationStatus.NotProcessed].Any())
-            {
-                dict = Reset(dict);
+                notProcessed.Remove(pointOnMap.LocationId);
             }
         }
 
         return resultLocations;
     }
 
-    public class MapLoc<T>
+    public struct MapLoc<T>
     {
         public double Lat;
         public double Lng;
         public T LocationId;
-    }
-
-    public class PointOnMap<T>
-    {
-        public required MapLoc<T> MapLocation;
-        public LocationStatus LocationStatus;
     }
 }

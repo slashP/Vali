@@ -282,9 +282,7 @@ liveGenerateMapCommand.SetHandler(async context =>
         return;
     }
 
-    var validatedMapDefinition = mapDefinition.ApplyDefaults();
-
-    await LiveGenerate.Generate(validatedMapDefinition, fileOptionValue);
+    await LiveGenerate.Generate(mapDefinition, fileOptionValue);
 });
 
 await rootCommand.InvokeAsync(args);

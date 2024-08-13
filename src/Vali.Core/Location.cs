@@ -55,6 +55,8 @@ public record GoogleData
     public int ArrowCount { get; set; }
     [ProtoMember(11)]
     public int? Elevation { get; set; }
+    [ProtoMember(12)]
+    public int? DescriptionLength { get; set; }
 }
 
 [ProtoContract]

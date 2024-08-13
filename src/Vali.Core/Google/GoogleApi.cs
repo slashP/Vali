@@ -85,9 +85,8 @@ public class GoogleApi
         try
         {
             var locationResponse = JsonNode.Parse(content);
-            if (locationResponse.AsArray().Count == 2 && locationResponse[1] is JsonValue && locationResponse[1].GetValue<string>() == "Internal error encountered.")
+            if (locationResponse.AsArray().Count == 2 && locationResponse[1] is JsonValue && locationResponse[1].GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
             {
-                Console.WriteLine("Got Internal error encountered.");
                 await Task.Delay(TimeSpan.FromSeconds(3));
                 return (location, LocationLookupResult.UnknownError);
             }
@@ -102,7 +101,6 @@ public class GoogleApi
                 return (location, LocationLookupResult.NoImages);
             }
 
-            var copyright = locationResponse[1][4][0][0][0][0].GetValue<string>();
             var descriptionNode = locationResponse[1][3];
             var desc = descriptionNode.AsArray().Count >= 3 && descriptionNode[2] != null
                 ?
@@ -117,7 +115,7 @@ public class GoogleApi
             var month = locationResponse[1][6].AsArray().Count >= 8 ? locationResponse[1][6][7][1].GetValue<int>() : -1;
 
             var pano = locationResponse[1][1][1].GetValue<string>();
-            var defaultImage = new
+            var defaultImage = new AlternativePano
             {
                 Year = year,
                 Month = month,
@@ -127,7 +125,7 @@ public class GoogleApi
                 ? new[] { defaultImage }.Concat(baseInfoArray[8].AsArray().Select(x =>
                 {
                     var index = x[0].GetValue<int>();
-                    return new
+                    return new AlternativePano
                     {
                         Year = x[1].AsArray().Count >= 2 ? x[1][0].GetValue<int>() : -1,
                         Month = x[1].AsArray().Count >= 2 ? x[1][1].GetValue<int>() : -1,
@@ -154,20 +152,20 @@ public class GoogleApi
 
             var lat = baseInfoArray[1][0][2].GetValue<double>();
             var lng = baseInfoArray[1][0][3].GetValue<double>();
-            var elevation = baseInfoArray[1].AsArray().Count > 1 && baseInfoArray[1][1] is not null ? baseInfoArray[1][1][0].GetValue<double>() : 0;
+            var elevation = baseInfoArray[1].AsArray().Count > 1 && baseInfoArray[1][1] is not null ? (baseInfoArray[1][1][0]?.GetValue<double>() ?? -1) : 0;
             var arrows = baseInfoArray.Count > 6 ? baseInfoArray[6]?.AsArray() ?? [] : [];
             var heading = arrows switch
             {
                 { Count: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
                 { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)][1][3].GetValue<decimal>(),
-                _ => baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2].AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : 1000
+                _ => baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : 1000
             };
             if (rejectLocationsWithoutDescription && string.IsNullOrEmpty(desc))
             {
                 return (location, LocationLookupResult.MissingDescription);
             }
 
-            var defaultDrivingDirectionAngle = baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2].AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? (ushort)Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : (ushort)1000;
+            var defaultDrivingDirectionAngle = baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? (ushort)Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : (ushort)1000;
             var defaultArrowCount = (ushort)arrows.Count;
             var selected = selectionStrategy switch
             {
@@ -189,7 +187,7 @@ public class GoogleApi
 
             if (selected.PanoId != pano)
             {
-                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel) = await DetailsFromPanoId(selected.PanoId);
+                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _) = await DetailsFromPanoId(selected.PanoId);
                 if (isGen1 != false)
                 {
                     return (location, LocationLookupResult.NoImages);
@@ -220,7 +218,9 @@ public class GoogleApi
                 month = month,
                 drivingDirectionAngle = defaultDrivingDirectionAngle,
                 arrowCount = defaultArrowCount,
-                elevation = (int)Math.Round(elevation, 0)
+                elevation = (int)Math.Round(elevation, 0),
+                descriptionLength = desc?.Length ?? 0,
+                alternativePanos = alternativeImages.Where(a => a.PanoId != pano).ToArray()
             }, LocationLookupResult.Valid);
         }
         catch (Exception e)
@@ -236,7 +236,8 @@ public class GoogleApi
     {
         return countryCode switch
         {
-            "US" or "NZ" or "AU" or "FR" or "JP" or "MX" => year < 2011,
+            "AU" or "CA" or "FR" => year < 2009,
+            "US" or "NZ" or "JP" or "MX" => year < 2011,
             _ => false
         };
     }
@@ -263,25 +264,24 @@ public class GoogleApi
         {
             var metadataResponse = JsonNode.Parse(content);
             if (metadataResponse.AsArray().Count == 2 && metadataResponse[1] is JsonValue &&
-                metadataResponse[1].GetValue<string>() == "Internal error encountered.")
+                metadataResponse[1].GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
             {
-                Console.WriteLine("Got Internal error encountered.");
                 return null;
             }
 
-            var imageSize = metadataResponse[1][0][2][2][0].GetValue<double>();
+            var imageSize = metadataResponse[1][0][2]?[2][0].GetValue<double>();
             var isGen1 = imageSize < 2000;
             return isGen1;
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed verifying gen1. {content}");
+            Console.WriteLine($"Failed verifying IsGen1. {content}");
             Console.WriteLine(e);
             return null;
         }
     }
 
-    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation)> DetailsFromPanoId(string panoId)
+    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng)> DetailsFromPanoId(string panoId)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -296,42 +296,94 @@ public class GoogleApi
         {
             Console.WriteLine(e);
             await Task.Delay(TimeSpan.FromSeconds(5));
-            return (null, 0, 0, 0, 0);
+            return (null, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
         try
         {
             var metadataResponse = JsonNode.Parse(content);
             if (metadataResponse.AsArray().Count == 2 && metadataResponse[1] is JsonValue &&
-                metadataResponse[1].GetValue<string>() == "Internal error encountered.")
+                metadataResponse[1].GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
             {
-                Console.WriteLine("Got Internal error encountered.");
-                return (null, 0, 0, 0, 0);
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0);
             }
 
             if (metadataResponse.AsArray().Count == 1)
             {
-                return (null, 0, 0, 0, 0);
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0);
             }
 
             var imageSize = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
             var isGen1 = imageSize < 2000;
-            var arrows = metadataResponse[1][0][5]?[0]?[6]?.AsArray() ?? [];
-            var drivingDirectionAngle = (ushort)Math.Round(metadataResponse[1][0][5][0][1][2][0].GetValue<decimal>(), 0);
-            var elevation = metadataResponse[1][0][5][0][1][1][0].GetValue<double>();
+            var arrows = metadataResponse[1][0][5]?[0]?.AsArray().Count > 6 ? metadataResponse[1][0][5]?[0]?[6]?.AsArray() ?? []: [];
+            var drivingDirectionAngle = (ushort)Math.Round(metadataResponse[1][0][5]?[0][1][2][0].GetValue<decimal>() ?? 0, 0);
+            var elevation = metadataResponse[1][0][5]?[0][1][1][0].GetValue<double>() ?? -1;
             var heading = arrows switch
             {
                 { Count: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
                 { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)][1][3].GetValue<decimal>(),
                 _ => drivingDirectionAngle
             };
-            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation);
+            var year = metadataResponse[1][0][6]?[7][0].GetValue<int>() ?? 2000;
+            var month = metadataResponse[1][0][6]?[7][1].GetValue<int>() ?? 2000;
+            var lat = metadataResponse[1][0][5]?[0][1][0][2].GetValue<double>() ?? 0;
+            var lng = metadataResponse[1][0][5]?[0][1][0][3].GetValue<double>() ?? 0;
+            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng);
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed verifying gen1. {content}");
+            Console.WriteLine($"Failed verifying {nameof(DetailsFromPanoId)}. {content}");
             Console.WriteLine(e);
-            return (null, 0, 0, 0, 0);
+            return (null, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+    }
+
+    public static async Task<(string panoId, double lat, double lng)[]> Neighbours(string panoId)
+    {
+        var body = $"""
+                    [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
+                    """;
+        string content;
+        try
+        {
+            var responseMessage = await _client.PostAsync("$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetMetadata", new StringContent(body, Encoding.UTF8, "application/json+protobuf"));
+            content = await responseMessage.Content.ReadAsStringAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            return [];
+        }
+
+        try
+        {
+            var metadataResponse = JsonNode.Parse(content);
+            if (metadataResponse.AsArray().Count == 2 && metadataResponse[1] is JsonValue &&
+                metadataResponse[1].GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
+            {
+                return [];
+            }
+
+            if (metadataResponse.AsArray().Count == 1)
+            {
+                return [];
+            }
+
+            var whatNow = metadataResponse[1][0][5]?[0]?[3]?[0]?.AsArray() ?? [];
+            var whaaat = whatNow.Select(x => new
+            {
+                lat = x[2][0][2].GetValue<double>(),
+                lng = x[2][0][3].GetValue<double>(),
+                panoId = x[0][1].GetValue<string>()
+            }).ToArray();
+            return whaaat.Select(x => (x.panoId, x.lat, x.lng)).ToArray();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed verifying {nameof(Neighbours)}. {content}");
+            Console.WriteLine(e);
+            return [];
         }
     }
 
@@ -388,4 +440,13 @@ public record MapCheckrLocation : IDistributionLocation<string>
     [JsonIgnore]
     public string LocationId => locationId;
     public int? elevation { get; set; }
+    public int? descriptionLength { get; set; }
+    public AlternativePano[] alternativePanos { get; set; }
+}
+
+public record AlternativePano
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string PanoId { get; set; }
 }

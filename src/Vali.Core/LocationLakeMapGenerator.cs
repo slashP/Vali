@@ -90,6 +90,8 @@ public static class LocationLakeMapGenerator
                 elevation = x.Google.Elevation,
                 year = x.Google.Year,
                 month = x.Google.Month,
+                drivingDirectionAngle = (ushort)x.Google.DrivingDirectionAngle,
+                descriptionLength = x.Google.DescriptionLength
             }
         }).ToArray();
         var locationsById = locations.ToDictionary(x => x.Loc.NodeId.ToString());
@@ -98,8 +100,8 @@ public static class LocationLakeMapGenerator
             var mapCheckrLocations = locations.Select(y => y.MapCheckrLoc).ToArray();
             var verifiedLocations = await GoogleApi.GetLocations(
                 mapCheckrLocations,
-                null,
-                25,
+                countryCode: null,
+                chunkSize: 100,
                 radius: 50,
                 rejectLocationsWithoutDescription: false,
                 silent: false,
@@ -115,7 +117,7 @@ public static class LocationLakeMapGenerator
             }
 
             var unknownErrors = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.UnknownError).Select(x => x.location).ToArray();
-            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, 50, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
+            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
             locations = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.Valid)
                 .Concat(retryUnknownErrors.Where(x => x.result is GoogleApi.LocationLookupResult.Valid))
                 .Select(x => new

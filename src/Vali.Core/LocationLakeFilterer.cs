@@ -1,23 +1,45 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
-using Vali.Core.Google;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
 
 public static class LocationLakeFilterer
 {
+    public static readonly string[] CountryCodesAcceptableWithoutDescription =
+    [
+        "CX", "CC", "MP", "GU", "EG", "ML", "MG", "PN", "GL", "MN", "KR", "FO", "UG", "KG", "RW", "CR", "LB", "RE",
+        "MQ", "NP", "PK", "BY", "UM"
+    ];
+
+    public static readonly string[] SubdivisionCodesAcceptableWithoutDescription =
+    [
+        "NO-21", "CA-NU", "US-AK", "BR-PE"
+    ];
+
     public static IList<Loc> Filter(
         IEnumerable<Loc> locationsFromFile,
         string? locationFilterExpression)
     {
-        Func<Loc, bool> defaultTunnelSelector =
-            !string.IsNullOrEmpty(locationFilterExpression) &&
-                (locationFilterExpression.Contains(nameof(Loc.Osm.Tunnels10)) || locationFilterExpression.Contains(nameof(Loc.Osm.Tunnels200)))
-                ? x => x.Google.PanoId.Length < 36
-                : x => x.Osm.Tunnels10 == 0 && x.Google.PanoId.Length < 36;
-        var locations = locationsFromFile.Where(defaultTunnelSelector);
+        List<Func<Loc, bool>> defaultFilterSelectors =
+        [
+            x => x.Google.PanoId.Length < 36
+        ];
+        if (string.IsNullOrEmpty(locationFilterExpression) || !locationFilterExpression.Contains("Tunnels"))
+        {
+            defaultFilterSelectors.Add(x => x.Osm.Tunnels10 == 0);
+        }
+
+        if (string.IsNullOrEmpty(locationFilterExpression) || !locationFilterExpression.Contains(nameof(Loc.Google.DescriptionLength)))
+        {
+            defaultFilterSelectors.Add(x => x.Google.DescriptionLength is null or > 0 ||
+                                            CountryCodesAcceptableWithoutDescription.Contains(x.Nominatim.CountryCode) ||
+                                            SubdivisionCodesAcceptableWithoutDescription.Contains(x.Nominatim.SubdivisionCode));
+        }
+
+        var locations = defaultFilterSelectors.Aggregate(locationsFromFile, (current, defaultFilterSelector) => current.Where(defaultFilterSelector));
+
         if (!string.IsNullOrEmpty(locationFilterExpression))
         {
             var typedExpression = CompileBoolLocationExpression(locationFilterExpression);
@@ -117,6 +139,7 @@ public static class LocationLakeFilterer
         nameof(Loc.Google.DrivingDirectionAngle),
         nameof(Loc.Google.ArrowCount),
         nameof(Loc.Google.Elevation),
+        nameof(Loc.Google.DescriptionLength),
         nameof(Loc.Nominatim.CountryCode),
         nameof(Loc.Nominatim.SubdivisionCode),
         nameof(Loc.Nominatim.County),
@@ -169,6 +192,7 @@ public static class LocationLakeFilterer
             nameof(Loc.Google.DrivingDirectionAngle) => $"x.Google.{nameof(Loc.Google.DrivingDirectionAngle)}",
             nameof(Loc.Google.ArrowCount) => $"x.Google.{nameof(Loc.Google.ArrowCount)}",
             nameof(Loc.Google.Elevation) => $"x.Google.{nameof(Loc.Google.Elevation)}",
+            nameof(Loc.Google.DescriptionLength) => $"x.Google.{nameof(Loc.Google.DescriptionLength)}",
             nameof(Loc.Nominatim.CountryCode) => $"x.Nominatim.{nameof(Loc.Nominatim.CountryCode)}",
             nameof(Loc.Nominatim.SubdivisionCode) => $"x.Nominatim.{nameof(Loc.Nominatim.SubdivisionCode)}",
             nameof(Loc.Nominatim.County) => $"x.Nominatim.{nameof(Loc.Nominatim.County)}",

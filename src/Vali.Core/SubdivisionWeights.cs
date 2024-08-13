@@ -200,6 +200,7 @@ public class SubdivisionWeights
         { "BE-WLG", 1282 }, // Liege
         { "BE-WLX", 819 }, // Luxembourg
         { "BE-WNA", 1140 }, // Namurc
+        { "BE-BRU", 80 }, // Brussels
     };
 
     private static Dictionary<string, int> AU = new()
@@ -209,7 +210,7 @@ public class SubdivisionWeights
         { "AU-NT", 4366 }, // Northern Territory
         { "AU-QLD", 8735 }, // Queensland
         { "AU-SA",  8735 }, // South Australia
-        { "AU-TAS", 4366 }, // Tasmania
+        { "AU-TAS", 4850 }, // Tasmania
         { "AU-VIC", 8735 }, // Victoria
         { "AU-WA",  8735 }, // Western Australia
         { "Jervis Bay Territory", 1 }, // Jervis Bay Territory
@@ -307,57 +308,57 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> US = new()
     {
-        { "US-AL", 978 }, // Alabama
-        { "US-AK", 485 }, // Alaska
-        { "US-AZ", 1215 }, // Arizona
-        { "US-AR", 846 }, // Arkansas
-        { "US-CA", 3403 }, // California
-        { "US-CO", 1159 }, // Colorado
-        { "US-CT", 527 }, // Connecticut
-        { "US-DE", 330 }, // Delaware
-        { "US-FL", 1988 }, // Florida
-        { "US-GA", 1412 }, // Georgia
-        { "US-HI", 350 }, // Hawaii
-        { "US-ID", 634 }, // Idaho
-        { "US-IL", 1528 }, // Illinois
-        { "US-IN", 973 }, // Indiana
-        { "US-IA", 882 }, // Iowa
-        { "US-KS", 961 }, // Kansas
-        { "US-KY", 874 }, // Kentucky
-        { "US-LA", 833 }, // Louisiana
-        { "US-ME", 460 }, // Maine
-        { "US-MD", 707 }, // Maryland
-        { "US-MA", 746 }, // Massachusetts
-        { "US-MI", 1227 }, // Michigan
-        { "US-MN", 1225 }, // Minnesota
-        { "US-MS", 791 }, // Mississippi
-        { "US-MO", 1143 }, // Missouri
-        { "US-MT", 751 }, // Montana
-        { "US-NE", 739 }, // Nebraska
-        { "US-NV", 668 }, // Nevada
-        { "US-NH", 400 }, // New Hampshire
-        { "US-NJ", 876 }, // New Jersey
-        { "US-NM", 819 }, // New Mexico
-        { "US-NY", 1795 }, // New York
-        { "US-NC", 1379 }, // North Carolina
-        { "US-ND", 600 }, // North Dakota
-        { "US-OH", 1375 }, // Ohio
-        { "US-OK", 908 }, // Oklahoma
-        { "US-OR", 942 }, // Oregon
-        { "US-PA", 1426 }, // Pennsylvania
-        { "US-RI", 329 }, // Rhode Island
-        { "US-SC", 886 }, // South Carolina
-        { "US-SD", 616 }, // South Dakota
-        { "US-TN", 1017 }, // Tennessee
-        { "US-TX", 3311 }, // Texas
-        { "US-UT", 732 }, // Utah
-        { "US-VT", 343 }, // Vermont
-        { "US-VA", 1103 }, // Virginia
-        { "US-WA", 1062 }, // Washington
-        { "US-WV", 476 }, // West Virginia
-        { "US-WI", 1074 }, // Wisconsin
-        { "US-WY", 528 }, // Wyoming
-        { "US-DC", 169 }, // District of Columbia
+        { "US-AL", 1800 },
+        { "US-AK", 1300 },
+        { "US-AZ", 2300 },
+        { "US-AR", 1750 },
+        { "US-CA", 4500 },
+        { "US-CO", 2500 },
+        { "US-CT", 860 },
+        { "US-DE", 550 },
+        { "US-FL", 2400 },
+        { "US-GA", 2300 },
+        { "US-HI", 1000 },
+        { "US-ID", 2700 },
+        { "US-IL", 2400 },
+        { "US-IN", 1850 },
+        { "US-IA", 1800 },
+        { "US-KS", 1900 },
+        { "US-KY", 1800 },
+        { "US-LA", 1700 },
+        { "US-ME", 1750 },
+        { "US-MD", 1100 },
+        { "US-MA", 1000 },
+        { "US-MI", 2050 },
+        { "US-MN", 2050 },
+        { "US-MS", 1800 },
+        { "US-MO", 1900 },
+        { "US-MT", 2900 },
+        { "US-NE", 2100 },
+        { "US-NV", 1900 },
+        { "US-NH", 900 },
+        { "US-NJ", 1100 },
+        { "US-NM", 2250 },
+        { "US-NY", 3100 },
+        { "US-NC", 2300 },
+        { "US-ND", 2100 },
+        { "US-OH", 2400 },
+        { "US-OK", 2100 },
+        { "US-OR", 2600 },
+        { "US-PA", 2800 },
+        { "US-RI", 450 },
+        { "US-SC", 1600 },
+        { "US-SD", 2200 },
+        { "US-TN", 2200 },
+        { "US-TX", 4000 },
+        { "US-UT", 2300 },
+        { "US-VT", 900 },
+        { "US-VA", 2500 },
+        { "US-WA", 2600 },
+        { "US-WV", 1800 },
+        { "US-WI", 2050 },
+        { "US-WY", 2500 },
+        { "US-DC", 15 },
     };
 
     private static Dictionary<string, int> MX = new()
@@ -432,6 +433,7 @@ public class SubdivisionWeights
 
     private static Dictionary<string, int> CO = new()
     {
+        { "CO-AMA", 0 }, // Amazonas
         { "CO-ANT", 4335 }, // Antioquia
         { "CO-ARA", 1186 }, // Arauca
         { "CO-ATL", 1717 }, // Atlantico
@@ -446,6 +448,7 @@ public class SubdivisionWeights
         { "CO-COR", 2280 }, // Cordoba
         { "CO-CUN", 4010 }, // Cundinamarca
         { "CO-DC", 1004 }, // Distrito Capital de Bogota
+        { "CO-GUA", 0 }, // Guainia
         { "CO-GUV", 360 }, // Guaviare
         { "CO-HUI", 2479 }, // Huila
         { "CO-LAG", 2208 }, // La Guajira
@@ -457,9 +460,12 @@ public class SubdivisionWeights
         { "CO-QUI", 1186 }, // Quindio
         { "CO-RIS", 1610 }, // Risaralda
         { "CO-SAN", 3203 }, // Santander
+        { "CO-SAP", 0 },   // San Andrés
         { "CO-SUC", 1710 }, // Sucre
         { "CO-TOL", 2673 }, // Tolima
         { "CO-VAC", 3226 }, // Valle del Cauca
+        { "CO-VAU", 0 }, // Vaupes
+        { "CO-VID", 110 }, // Vichada
     };
 
     private static Dictionary<string, int> EC = new()
@@ -2178,7 +2184,7 @@ public class SubdivisionWeights
     {
         { "RW-01", 749 }, // Ville de Kigali
         { "RW-02", 232 }, // Est
-        { "RW-03", 102 }, // Nord
+        { "RW-03", 500 }, // Nord
         { "RW-04", 510 }, // Ouest
         { "RW-05", 334 }, // Sud
     };
@@ -2632,6 +2638,117 @@ public class SubdivisionWeights
         { "LB-NA", 1 }, // Nabatiye
     };
 
+    private static readonly Dictionary<string, int> PY = new()
+    {
+        { "PY-16", 10 }, // Alto Paraguay	Upper Paraguay	department
+        { "PY-10", 10 }, // Alto Paraná	Upper Parana	department
+        { "PY-13", 10 }, // Amambay	Amambay	department
+        { "PY-ASU", 10 }, // Asunción	Asuncion	capital
+        { "PY-19", 10 }, // Boquerón	Boqueron	department
+        { "PY-5", 10 }, // Caaguazú	Caaguazu	department
+        { "PY-6", 10 }, // Caazapá	Caazapa	department
+        { "PY-14", 10 }, // Canindeyú	Canindeyu	department
+        { "PY-11", 10 }, // Central	Central	department
+        { "PY-1", 10 }, // Concepción	Concepcion	department
+        { "PY-3", 10 }, // Cordillera	Cordillera	department
+        { "PY-4", 10 }, // Guairá	Guaira	department
+        { "PY-7", 10 }, // Itapúa	Itapua	department
+        { "PY-8", 10 }, // Misiones	Misiones	department
+        { "PY-12", 10 }, // Ñeembucú	Neembucu	department
+        { "PY-9", 10 }, // Paraguarí	Paraguari	department
+        { "PY-15", 10 }, // Presidente Hayes	President Hayes	department
+        { "PY-2", 10 }, // San Pedro	Saint Peter	department
+    };
+
+    private static readonly Dictionary<string, int> BA = new()
+    {
+        { "BA-BIH", 10 }, // Federacija Bosne i Hercegovine	Federation of Bosnia and Herzegovina	entity
+        { "BA-SRP", 10 }, // Republika Srpska	Republika Srpska	entity
+        { "BA-BRC", 10 }, // Brčko distrikt	Brčko District	district with special status
+    };
+
+    private static readonly Dictionary<string, int> VN = new()
+    {
+        { "VN-44", 10 }, // An Giang	province
+        { "VN-43", 10 }, // Bà Rịa - Vũng Tàu	province
+        { "VN-54", 10 }, // Bắc Giang	province
+        { "VN-53", 10 }, // Bắc Kạn	province
+        { "VN-55", 10 }, // Bạc Liêu	province
+        { "VN-56", 10 }, // Bắc Ninh	province
+        { "VN-50", 10 }, // Bến Tre	province
+        { "VN-31", 10 }, // Bình Định	province
+        { "VN-57", 10 }, // Bình Dương	province
+        { "VN-58", 10 }, // Bình Phước	province
+        { "VN-40", 10 }, // Bình Thuận	province
+        { "VN-59", 10 }, // Cà Mau	province
+        { "VN-CT", 10 }, // Cần Thơ	municipality
+        { "VN-04", 10 }, // Cao Bằng	province
+        { "VN-DN", 10 }, // Đà Nẵng	municipality
+        { "VN-33", 10 }, // Đắk Lắk	province
+        { "VN-72", 10 }, // Đắk Nông	province
+        { "VN-71", 10 }, // Điện Biên	province
+        { "VN-39", 10 }, // Đồng Nai	province
+        { "VN-45", 10 }, // Đồng Tháp	province
+        { "VN-30", 10 }, // Gia Lai	province
+        { "VN-03", 10 }, // Hà Giang	province
+        { "VN-63", 10 }, // Hà Nam	province
+        { "VN-HN", 10 }, // Hà Nội	municipality
+        { "VN-23", 10 }, // Hà Tĩnh	province
+        { "VN-61", 10 }, // Hải Dương	province
+        { "VN-HP", 10 }, // Hải Phòng	municipality
+        { "VN-73", 10 }, // Hậu Giang	province
+        { "VN-SG", 10 }, // Hồ Chí Minh
+        { "VN-14", 10 }, // Hòa Bình	province
+        { "VN-66", 10 }, // Hưng Yên	province
+        { "VN-34", 10 }, // Khánh Hòa	province
+        { "VN-47", 10 }, // Kiến Giang	province
+        { "VN-28", 10 }, // Kon Tum	province
+        { "VN-01", 10 }, // Lai Châu	province
+        { "VN-35", 10 }, // Lâm Đồng	province
+        { "VN-09", 10 }, // Lạng Sơn	province
+        { "VN-02", 10 }, // Lào Cai	province
+        { "VN-41", 10 }, // Long An	province
+        { "VN-67", 10 }, // Nam Định	province
+        { "VN-22", 10 }, // Nghệ An	province
+        { "VN-18", 10 }, // Ninh Bình	province
+        { "VN-36", 10 }, // Ninh Thuận	province
+        { "VN-68", 10 }, // Phú Thọ	province
+        { "VN-32", 10 }, // Phú Yên	province
+        { "VN-24", 10 }, // Quảng Bình	province
+        { "VN-27", 10 }, // Quảng Nam	province
+        { "VN-29", 10 }, // Quảng Ngãi	province
+        { "VN-13", 10 }, // Quảng Ninh	province
+        { "VN-25", 10 }, // Quảng Trị	province
+        { "VN-52", 10 }, // Sóc Trăng	province
+        { "VN-05", 10 }, // Sơn La	province
+        { "VN-37", 10 }, // Tây Ninh	province
+        { "VN-20", 10 }, // Thái Bình	province
+        { "VN-69", 10 }, // Thái Nguyên	province
+        { "VN-21", 10 }, // Thanh Hóa	province
+        { "VN-26", 10 }, // Thừa Thiên-Huế	province
+        { "VN-46", 10 }, // Tiền Giang	province
+        { "VN-51", 10 }, // Trà Vinh	province
+        { "VN-07", 10 }, // Tuyên Quang	province
+        { "VN-49", 10 }, // Vĩnh Long	province
+        { "VN-70", 10 }, // Vĩnh Phúc	province
+        { "VN-06", 10 }, // Yên Bái	province
+    };
+
+    private static readonly Dictionary<string, int> LI = new()
+    {
+        { "LI-01", 10 }, // Balzers
+        { "LI-02", 10 }, // Eschen
+        { "LI-03", 10 }, // Gamprin
+        { "LI-04", 10 }, // Mauren
+        { "LI-05", 10 }, // Planken
+        { "LI-06", 10 }, // Ruggell
+        { "LI-07", 10 }, // Schaan
+        { "LI-08", 10 }, // Schellenberg
+        { "LI-09", 10 }, // Triesen
+        { "LI-10", 10 }, // Triesenberg
+        { "LI-11", 10 }, // Vaduz
+    };
+
     public static readonly Dictionary<string, Dictionary<string, int>> CountryToSubdivision =
         new()
         {
@@ -2759,6 +2876,10 @@ public class SubdivisionWeights
         {
             { "NA", NA },
             { "OM", OM },
+            { "PY", PY },
+            { "BA", BA },
+            { "VN", VN },
+            { "LI", LI },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;
@@ -2788,7 +2909,7 @@ public class SubdivisionWeights
 
     public static (string subdivisionCode, string file)[] AllSubdivisionFiles(string countryCode, RunMode runMode)
     {
-        var subdivisionKeys = CountryToSubdivision[countryCode].Keys;
+        var subdivisionKeys = CountryToSubdivision[countryCode].Where(x => x.Value > 0).Select(x => x.Key);
         var folder = DataDownloadService.CountryFolder(countryCode, runMode);
         return subdivisionKeys.Select(x => (x, Path.Combine(folder, $"{countryCode}+{x}.bin"))).ToArray();
     }

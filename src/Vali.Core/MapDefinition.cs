@@ -19,8 +19,7 @@ public record MapDefinition
 
 public record LiveGenerateMapDefinition
 {
-    public string[] CountryCodes { get; init; } = [];
-    public int LocationCountGoal { get; init; }
+    public Dictionary<string, int> Countries { get; init; } = [];
     public int MinMinDistance { get; init; }
     public string[] LocationTags { get; init; } = [];
     public string? FromDate { get; set; }
