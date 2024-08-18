@@ -5,13 +5,6 @@ namespace Vali.Core;
 
 public static class LocationDistributor
 {
-    public enum LocationStatus
-    {
-        NotProcessed,
-        Taken,
-        Removed
-    }
-
     public static readonly int[] Distances = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3300, 3600, 3900, 4200, 4500, 5000, 6000, 7000, 8000, 9000, 10000, 12500, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000];
 
     public static (IList<T> locations, int minDistance) WithMaxMinDistance<T, T2>(
@@ -33,7 +26,9 @@ public static class LocationDistributor
         do
         {
             var minDistance = distances[minDistanceIndex];
-            var distributedLocations = GetSome<T, T2>(locations, goalCount, minDistance, locationsAlreadyInMap, avoidShuffle);
+            var distributedLocations = DistributeEvenly<T, T2>(locations, minDistance, avoidShuffle: avoidShuffle, silent: true, locationsAlreadyInMap: locationsAlreadyInMap)
+                .TakeRandom(goalCount)
+                .ToArray();
             visited[minDistance] = distributedLocations;
             if (visited.First().Value != null && visited.First().Value?.Count < goalCount)
             {
@@ -86,6 +81,7 @@ public static class LocationDistributor
         int minDistanceBetweenLocations,
         bool avoidShuffle = false,
         bool ensureNoNeighborSpill = true,
+        IReadOnlyCollection<T>? locationsAlreadyInMap = null,
         bool silent = false) where T : IDistributionLocation<T2> where T2 : notnull
     {
         var list = new List<(T loc, string hash)>();
@@ -107,10 +103,12 @@ public static class LocationDistributor
             var task = ctx?.AddTask($"[green]Distributing locations[/]", maxValue: groups.Count());
             foreach (var group in groups)
             {
-                var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToHashSet();
-                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).ToArray() : [];
-                var selection = TakeSubSelection<T, T2>(group.ToArray(), 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
+                var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToArray();
+                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).Concat(locationsAlreadyInMap ?? []).ToArray() : (locationsAlreadyInMap ?? []);
+                var distributionLocations = group.ToArray();
+                var selection = GetSome<T, T2>(distributionLocations, 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
                 list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));
+
                 task?.Increment(1);
             }
         }
@@ -128,7 +126,7 @@ public static class LocationDistributor
             return Array.Empty<T>();
         }
 
-        var resultLocations = new List<T>(goalCount);
+        var resultLocations = new List<T>();
         var locationsLookup = locations.ToDictionary(x => x.LocationId);
         var notProcessed = locations.Select(x => new MapLoc<T2>
             {
@@ -156,66 +154,6 @@ public static class LocationDistributor
         }
 
         while (resultLocations.Count < goalCount && notProcessed.Any())
-        {
-            var randomPoint = notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value;
-            notProcessed.Remove(randomPoint.LocationId);
-            resultLocations.Add(locationsLookup[randomPoint.LocationId]);
-
-            foreach (var pointOnMap in notProcessed.Values.Where(p =>
-                         Extensions.PointsAreCloserThan(
-                             p.Lat,
-                             p.Lng,
-                             randomPoint.Lat,
-                             randomPoint.Lng,
-                             minDistanceBetweenLocations)))
-            {
-                notProcessed.Remove(pointOnMap.LocationId);
-            }
-        }
-
-        return resultLocations;
-    }
-
-    public static IList<T> TakeSubSelection<T, T2>(
-        ICollection<T> locations,
-        int goalCount,
-        int minDistanceBetweenLocations,
-        IReadOnlyCollection<T>? locationsAlreadyInMap = null,
-        bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : notnull
-    {
-        if (goalCount == 0 || locations.Count == 0)
-        {
-            return Array.Empty<T>();
-        }
-
-        var resultLocations = new List<T>(goalCount);
-        var locationsLookup = locations.ToDictionary(x => x.LocationId);
-        var notProcessed = locations.Select(x => new MapLoc<T2>
-            {
-                Lat = x.Lat,
-                Lng = x.Lng,
-                LocationId = x.LocationId
-            })
-            .ToDictionary(p => p.LocationId);
-        if (locationsAlreadyInMap != null && locationsAlreadyInMap.Any())
-        {
-            foreach (var point in notProcessed)
-            {
-                if (locationsAlreadyInMap.Any(p =>
-                        Extensions.PointsAreCloserThan(
-                            p.Lat,
-                            p.Lng,
-                            point.Value.Lat,
-                            point.Value.Lng,
-                            minDistanceBetweenLocations)))
-                {
-                    notProcessed.Remove(point.Key);
-                }
-            }
-        }
-
-        while (resultLocations.Count < goalCount &&
-               notProcessed.Any())
         {
             var randomPoint = notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value;
             notProcessed.Remove(randomPoint.LocationId);

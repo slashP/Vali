@@ -29,14 +29,33 @@ public static class Extensions
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ApproximateDistance(double lat1, double lon1, double lat2, double lon2)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static double radians(double angle) => angle * 0.017453292519943295769236907684886127d; // = angle * Math.Pi / 180.0d
+        const int R = 6371137; // radius of the earth in m.
+        var x = (radians(lon2) - radians(lon1)) * Math.Cos(0.5 * (radians(lat2) + radians(lat1)));
+        var y = radians(lat2) - radians(lat1);
+        return R * Math.Sqrt(x * x + y * y);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool PointsAreCloserThan(double lat1, double lon1, double lat2, double lon2, int meters)
     {
-        if (meters < 1000 && (Math.Abs(lat1 - lat2) > .1 || Math.Abs(lon1 - lon2) > .1))
+        var isDefinitelyFartherAway = meters switch
+        {
+            < 110 => Math.Abs(lat1 - lat2) > .001,
+            < 1100 => Math.Abs(lat1 - lat2) > .01,
+            < 11_000 => Math.Abs(lat1 - lat2) > .1,
+            < 110_000 => Math.Abs(lat1 - lat2) > 1,
+            _ => false
+        };
+        if (isDefinitelyFartherAway)
         {
             return false;
         }
 
-        return CalculateDistance(lat1, lon1, lat2, lon2) < meters;
+        return ApproximateDistance(lat1, lon1, lat2, lon2) < meters;
     }
 
     public static bool PointsAreCloserThan(decimal lat1, decimal lon1, decimal lat2, decimal lon2, int meters)

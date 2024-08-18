@@ -1,6 +1,5 @@
 ﻿using Geohash;
 using Spectre.Console;
-using System;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
@@ -42,24 +41,13 @@ public static class DistributionStrategies
             return (Array.Empty<Loc>(), 0, 0);
         }
 
-        var regionBasisCount = Math.Min(filteredLocations.Count, 30_000);
-        var chunkSize = 10_000;
-        var chunks = (decimal)filteredLocations.Count / chunkSize;
-        if (chunks == 0)
+
+        if (filteredLocations.Count == 0)
         {
             return (Array.Empty<Loc>(), 0, 0);
         }
 
-        var perChunkRegionGoalCount = (regionBasisCount / chunks).RoundToInt();
         var minDistance = mapDefinition.DistributionStrategy.MinMinDistance;
-        filteredLocations = filteredLocations.Count < regionBasisCount
-            ? filteredLocations
-            : filteredLocations
-                .OrderBy(x => x.Lat * x.Lng)
-                .Chunk(chunkSize)
-                .AsParallel()
-                .SelectMany(x => LocationDistributor.GetSome<Loc, long>(x.ToArray(), perChunkRegionGoalCount, minDistance / 2))
-                .ToArray();
 
         if (!filteredLocations.Any())
         {

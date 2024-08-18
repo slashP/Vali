@@ -13,7 +13,7 @@ public class LiveGenerate
 {
     private static readonly Dictionary<string, IReadOnlyCollection<(double lat, double lng)>> _roads = new();
     private static readonly Dictionary<string, IList<MapCheckrLocation>> _countries = new();
-    private static readonly HashSet<string> _panoIds = new();
+    private static HashSet<string> _panoIds = new();
 
     public static async Task Generate(LiveGenerateMapDefinition map, string definitionPath)
     {
@@ -25,15 +25,13 @@ public class LiveGenerate
                 _countries[locsByCountry.Key] = locsByCountry.ToList();
             }
 
-            foreach (var mapCheckrLocation in _countries.SelectMany(x => x.Value))
-            {
-                _panoIds.Add(mapCheckrLocation.panoId);
-            }
+            _panoIds = _countries.SelectMany(x => x.Value.Select(y => y.panoId)).ToHashSet();
 
             await AnsiConsole.Progress()
                 .StartAsync(async ctx =>
                 {
                     ProgressTask defaultTask = null;
+                    var overshootFactor = 4;
 
                     while (map.Countries.Any(c => !_countries.TryGetValue(c.Key, out var locs) || locs.Count < c.Value))
                     {
@@ -48,13 +46,12 @@ public class LiveGenerate
                             {
                                 { Count: 1 } => defaultTask ??=
                                     ctx.AddTask(
-                                        $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations.[/]", maxValue: locationCount),
+                                        $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations.[/]", maxValue: locationCount * overshootFactor),
                                 _ => ctx.AddTask(
-                                    $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations.[/]", maxValue: locationCount)
+                                    $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations.[/]", maxValue: locationCount * overshootFactor)
                             };
                             await Task.Delay(5);
-                            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                            var locations = await LocationsInCountry(countryCode, locationCount, task, definitionPath, cts.Token, map.FromDate, map.ToDate);
+                            var locations = await LocationsInCountry(countryCode, locationCount, overshootFactor: overshootFactor, task, definitionPath, map.FromDate, map.ToDate, map.MinMinDistance);
                             await StoreMap(definitionPath, map);
                             task.StopTask();
                         }
@@ -122,12 +119,16 @@ public class LiveGenerate
     private static async Task<IList<MapCheckrLocation>> LocationsInCountry(
         string countryCode,
         int goalCount,
+        int overshootFactor,
         ProgressTask task,
         string definitionPath,
-        CancellationToken ct,
         string? mapFromDate,
-        string? mapToDate)
+        string? mapToDate,
+        int minMinDistance)
     {
+        var boxPrecision = HashPrecision.Size_m_153x153;
+        var radius = 100;
+        var chunkSize = 100;
         var roads = await Roads(countryCode);
         var candidateLocations = _countries.TryGetValue(countryCode, out var locs)
             ? locs
@@ -140,13 +141,9 @@ public class LiveGenerate
         var toDate = !string.IsNullOrEmpty(mapToDate)
             ? DateTime.ParseExact(mapToDate, "yyyy-MM", CultureInfo.InvariantCulture)
             : (DateTime?)null;
-        while (candidateLocations.Count < goalCount)
+        while (candidateLocations.Count < goalCount * overshootFactor)
         {
             _countries[countryCode] = candidateLocations.Where(c => c.countryCode == countryCode).ToList();
-            if (ct.IsCancellationRequested)
-            {
-                break;
-            }
 
             var exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
             if (exitRequested)
@@ -154,19 +151,19 @@ public class LiveGenerate
                 throw new PleaseStopException();
             }
 
-            var sampleRoads = roads.TakeRandom(2500);
+            var sampleRoads = roads.TakeRandom(5000);
             var locations = sampleRoads.Select(x =>
             {
-                var (lat, lng) = RandomPointInPoly(Hasher.GetBoundingBox(Hasher.Encode(x.lat, x.lng, HashPrecision.Size_km_1x1)));
+                var (lat, lng) = RandomPointInPoly(Hasher.GetBoundingBox(Hasher.Encode(x.lat, x.lng, boxPrecision)));
                 return new MapCheckrLocation
                 {
                     lat = lat,
                     lng = lng,
-                    locationId = (counter++).ToString()
+                    locationId = Guid.NewGuid().ToString("N")
                 };
             })
             .ToArray();
-            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: 100, radius: 300, rejectLocationsWithoutDescription: true, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
+            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: true, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
             var validForAdding = googleLocations
                 .Where(x => x.result == GoogleApi.LocationLookupResult.Valid)
                 .Select(x => x.location)
@@ -185,7 +182,9 @@ public class LiveGenerate
             task.Value(candidateLocations.Count);
         }
 
-        _countries[countryCode] = candidateLocations.Where(c => c.countryCode == countryCode).ToList();
+        var undistributedLocations = candidateLocations.Where(c => c.countryCode == countryCode).ToList();
+        var distributedLocations = LocationDistributor.GetSome<MapCheckrLocation, string>(undistributedLocations, minDistanceBetweenLocations: minMinDistance, goalCount: goalCount).ToList();
+        _countries[countryCode] = distributedLocations;
         return candidateLocations;
     }
 
