@@ -10,6 +10,7 @@ public static class LocationLakeMapGenerator
         var subdivisionGroups = new List<(IList<Location> locations, int regionGoalCount, int minDistance)>();
         foreach (var countryCode in mapDefinition.CountryCodes)
         {
+            GC.Collect();
             var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, runMode);
             var availableSubdivisions = allSubdivisions
                 .Select(x => x.subdivisionCode)

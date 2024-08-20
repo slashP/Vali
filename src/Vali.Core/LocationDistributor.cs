@@ -12,17 +12,17 @@ public static class LocationDistributor
         int goalCount,
         IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
         bool avoidShuffle = false,
-        int? minMinDistance = null) where T : IDistributionLocation<T2>
+        int? minMinDistance = null) where T : IDistributionLocation<T2> where T2 : notnull
     {
         if (goalCount <= 0 || locations.Count == 0)
         {
-            return (Array.Empty<T>(), 0);
+            return ([], 0);
         }
 
         var distances = Distances.OrderBy(x => x).SkipWhile(x => x < minMinDistance).ToArray();
         var initialMinDistance = distances.Skip(distances.Length / 2).First();
         var minDistanceIndex = Array.IndexOf(distances, initialMinDistance);
-        var visited = distances.ToDictionary(x => x, _ => (IList<T>?)null);
+        var visited = distances.ToDictionary(x => x, IList<T>? (_) => null);
         do
         {
             var minDistance = distances[minDistanceIndex];
@@ -85,7 +85,12 @@ public static class LocationDistributor
         bool silent = false) where T : IDistributionLocation<T2>, ILatLng where T2 : notnull
     {
         var list = new List<(T loc, string hash)>();
-        var precision = HashPrecision.Size_km_39x20;
+        var precision = minDistanceBetweenLocations switch
+        {
+            <= 200 => HashPrecision.Size_km_1x1,
+            <= 1000 => HashPrecision.Size_km_5x5,
+            _ => HashPrecision.Size_km_39x20
+        };
         if (silent)
         {
             Distribute(null);
@@ -136,38 +141,33 @@ public static class LocationDistributor
             })
             .ToDictionary(p => p.LocationId);
 
-        if (locationsAlreadyInMap != null && locationsAlreadyInMap.Any())
+        if (locationsAlreadyInMap != null && locationsAlreadyInMap.Count != 0)
         {
             foreach (var point in notProcessed)
             {
-                if (locationsAlreadyInMap.Any(p =>
-                        Extensions.PointsAreCloserThan(
-                            p.Lat,
-                            p.Lng,
-                            point.Value.Lat,
-                            point.Value.Lng,
-                            minDistanceBetweenLocations)))
+                foreach (var p in locationsAlreadyInMap)
                 {
-                    notProcessed.Remove(point.Key);
+                    if (Extensions.PointsAreCloserThan(p.Lat, p.Lng, point.Value.Lat, point.Value.Lng, minDistanceBetweenLocations))
+                    {
+                        notProcessed.Remove(point.Key);
+                        break;
+                    }
                 }
             }
         }
 
-        while (resultLocations.Count < goalCount && notProcessed.Any())
+        while (resultLocations.Count < goalCount && notProcessed.Count != 0)
         {
             var randomPoint = notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value;
             notProcessed.Remove(randomPoint.LocationId);
             resultLocations.Add(locationsLookup[randomPoint.LocationId]);
 
-            foreach (var pointOnMap in notProcessed.Values.Where(p =>
-                         Extensions.PointsAreCloserThan(
-                             p.Lat,
-                             p.Lng,
-                             randomPoint.Lat,
-                             randomPoint.Lng,
-                             minDistanceBetweenLocations)))
+            foreach (var pointOnMap in notProcessed.Values)
             {
-                notProcessed.Remove(pointOnMap.LocationId);
+                if (Extensions.PointsAreCloserThan(pointOnMap.Lat, pointOnMap.Lng, randomPoint.Lat, randomPoint.Lng, minDistanceBetweenLocations))
+                {
+                    notProcessed.Remove(pointOnMap.LocationId);
+                }
             }
         }
 

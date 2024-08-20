@@ -39,17 +39,23 @@ public static class Extensions
         return R * Math.Sqrt(x * x + y * y);
     }
 
+    private static readonly int MaxDistance = LocationDistributor.Distances.Max();
+
+    public static readonly int LatitudeBucketSize = 5;
+
+    private static readonly double[] LatitudeDifferenceArray =
+        Enumerable.Range(0, MaxDistance / LatitudeBucketSize + 1).Select(i => i * LatitudeBucketSize / (double)110000).ToArray();
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool PointsAreCloserThan(double lat1, double lon1, double lat2, double lon2, int meters)
     {
-        var isDefinitelyFartherAway = meters switch
+        if (meters > MaxDistance)
         {
-            < 110 => Math.Abs(lat1 - lat2) > .001,
-            < 1100 => Math.Abs(lat1 - lat2) > .01,
-            < 11_000 => Math.Abs(lat1 - lat2) > .1,
-            < 110_000 => Math.Abs(lat1 - lat2) > 1,
-            _ => false
-        };
+            return ApproximateDistance(lat1, lon1, lat2, lon2) < meters;
+        }
+
+        var latitudeDifference = LatitudeDifferenceArray[meters / LatitudeBucketSize];
+        var isDefinitelyFartherAway = Math.Abs(lat1 - lat2) > latitudeDifference;
         if (isDefinitelyFartherAway)
         {
             return false;

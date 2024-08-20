@@ -281,3 +281,4 @@ yarn-error.log*
 **/Logs/*.txt
 **/Properties/PublishProfiles/
 publish.txt
+**/BenchmarkDotNet.Artifacts/
