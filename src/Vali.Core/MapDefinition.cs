@@ -15,6 +15,13 @@ public record MapDefinition
     public Dictionary<string, LocationPreferenceFilter[]> CountryLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
     public LocationOutput Output { get; set; } = new();
+    public ProximityFilter ProximityFilter { get; set; } = new();
+}
+
+public record ProximityFilter
+{
+    public string LocationsPath { get; set; } = "";
+    public int Radius { get; set; }
 }
 
 public record LiveGenerateMapDefinition

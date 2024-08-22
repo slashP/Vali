@@ -227,10 +227,10 @@ public static class Extensions
         return result;
     }
 
-    public static async ValueTask<T?> DeserializeJsonFromFile<T>(string path)
+    public static T? DeserializeJsonFromFile<T>(string path)
     {
-        await using var fileStream = File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<T>(fileStream);
+        using var fileStream = File.OpenRead(path);
+        return JsonSerializer.Deserialize<T>(fileStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
     private static char[] invalids = Path.GetInvalidFileNameChars();

@@ -959,14 +959,14 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> SK = new()
     {
-        { "SK-BC", 1583 }, // Banskobystricky kraj
-        { "SK-BL", 512 }, // Bratislavsky kraj
-        { "SK-KI", 1188 }, // Kosicky kraj
-        { "SK-NI", 110 }, // Nitriansky kraj
-        { "SK-PV", 1783 }, // Presovsky kraj
-        { "SK-TA", 801 }, // Trnavsky kraj
-        { "SK-TC", 873 }, // Trenciansky kraj
-        { "SK-ZI", 1149 }, // Zilinsky kraj
+        { "SK-BC", 3950 }, // Banskobystricky kraj
+        { "SK-BL", 1334 }, // Bratislavsky kraj
+        { "SK-KI", 3127 }, // Kosicky kraj
+        { "SK-NI", 3520 }, // Nitriansky kraj
+        { "SK-PV", 3690 }, // Presovsky kraj
+        { "SK-TA", 2596 }, // Trnavsky kraj
+        { "SK-TC", 2366 }, // Trenciansky kraj
+        { "SK-ZI", 2603 }, // Zilinsky kraj
     };
 
     private static readonly Dictionary<string, int> PT = new()
@@ -2061,70 +2061,70 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> PH = new()
     {
-        { "PH-00", 962 }, // National Capital Region
-        { "PH-01", 7063 }, // Ilocos
-        { "PH-02", 5268 }, // Cagayan Valley
-        { "PH-03", 10568 }, // Central Luzon
-        { "PH-05", 6165 }, // Bicol
-        { "PH-06", 7710 }, // Western Visayas
-        { "PH-07", 8900 }, // Central Visayas
-        { "PH-08", 3506 }, // Eastern Visayas
-        { "PH-09", 1294 }, // Zamboanga Peninsula
-        { "PH-10", 3090 }, // Northern Mindanao
-        { "PH-11", 3549 }, // Davao
-        { "PH-12", 2155 }, // Soccsksargen
-        { "PH-13", 1166 }, // Caraga
-        { "PH-14", 477 }, // Autonomous Region in Muslim Mindanao
-        { "PH-15", 1451 }, // Cordillera Administrative Region
-        { "PH-40", 8164 }, // Calabarzon
-        { "PH-41", 4614 }, // Mimaropa
+        { "PH-00", 982 }, // National Capital Region
+        { "PH-01", 7235 }, //
+        { "PH-02", 5706 }, //
+        { "PH-03", 11055 }, //
+        { "PH-05", 7176 }, //
+        { "PH-06", 10265 }, //
+        { "PH-07", 10257 }, //
+        { "PH-08", 5669 }, //
+        { "PH-09", 2949 }, //
+        { "PH-10", 5579 }, //
+        { "PH-11", 5896 }, //
+        { "PH-12", 5080 }, //
+        { "PH-13", 2071 }, //
+        { "PH-14", 662 }, //
+        { "PH-15", 2748 }, //
+        { "PH-40", 8851 }, //
+        { "PH-41", 6173 }, //
     };
 
     private static readonly Dictionary<string, int> LK = new()
     {
-        { "LK-1", 4170 }, // Western Province
-        { "LK-2", 3082 }, // Central Province
-        { "LK-3", 3883 }, // Southern Province
-        { "LK-4", 3130 }, // Northern Province
-        { "LK-5", 2777 }, // Eastern Province
-        { "LK-6", 4286 }, // North Western Province
-        { "LK-7", 4807 }, // North Central Province
-        { "LK-8", 2644 }, // Uva Province
-        { "LK-9", 2484 }, // Sabaragamuwa Province
+        { "LK-1", 4292 }, // Western Province
+        { "LK-2", 3291 }, // Central Province
+        { "LK-3", 4075 }, // Southern Province
+        { "LK-4", 3422 }, // Northern Province
+        { "LK-5", 2983 }, // Eastern Province
+        { "LK-6", 4753 }, // North Western Province
+        { "LK-7", 5451 }, // North Central Province
+        { "LK-8", 2816 }, // Uva Province
+        { "LK-9", 2611 }, // Sabaragamuwa Province
     };
 
     private static readonly Dictionary<string, int> IN = new()
     {
-        { "IN-AP", 51331 }, // Andhra Pradesh
-        { "IN-AR", 767 }, // Arunachal Pradesh
-        { "IN-AS", 24769 }, // Assam
-        { "IN-BR", 63864 }, // Bihar
+        { "IN-AP", 50641 }, // Andhra Pradesh
+        { "IN-AR", 2065 }, // Arunachal Pradesh
+        { "IN-AS", 25967 }, // Assam
+        { "IN-BR", 64068 }, // Bihar
         { "IN-CH", 179 }, // Chandigarh
-        { "IN-CT", 20359 }, // Chhattisgarh
-        { "IN-DL", 2074 }, // Delhi
-        { "IN-GA", 2805 }, // Goa
-        { "IN-GJ", 74309 }, // Gujarat
-        { "IN-HP", 723 }, // Himachal Pradesh
-        { "IN-HR", 24822 }, // Haryana
-        { "IN-JH", 21165 }, // Jharkhand
-        { "IN-KA", 77137 }, // Karnataka
-        { "IN-KL", 36672 }, // Kerala
-        { "IN-MH", 129001 }, // Maharashtra
-        { "IN-ML", 2641 }, // Meghalaya
-        { "IN-MP", 69202 }, // Madhya Pradesh
-        { "IN-MZ", 855 }, // Mizoram
-        { "IN-OR", 26928 }, // Odisha
-        { "IN-PB", 24092 }, // Punjab
-        { "IN-PY", 561 }, // Puducherry
-        { "IN-RJ", 102409 }, // Rajasthan
-        { "IN-SK", 523 }, // Sikkim
-        { "IN-TG", 33249 }, // Telangana
-        { "IN-TN", 74838 }, // Tamil Nadu
-        { "IN-TR", 2197 }, // Tripura
-        { "IN-UP", 95296 }, // Uttar Pradesh
-        { "IN-UT", 10063 }, // Uttarakhand
-        { "IN-WB", 53000 }, // West Bengal
-        { "IN-DH", 521 }, // Dadra and Nagar Haveli and Daman and Diu
+        { "IN-CT", 19668 }, // Chhattisgarh
+        { "IN-DL", 2092 }, // Delhi
+        { "IN-GA", 2778 }, // Goa
+        { "IN-GJ", 81463 }, // Gujarat
+        { "IN-HP", 1195 }, // Himachal Pradesh
+        { "IN-HR", 25525 }, // Haryana
+        { "IN-JH", 24536 }, // Jharkhand
+        { "IN-KA", 89289 }, // Karnataka
+        { "IN-KL", 38911 }, // Kerala
+        { "IN-MH", 139085 }, // Maharashtra
+        { "IN-ML", 2783 }, // Meghalaya
+        { "IN-MP", 91836 }, // Madhya Pradesh
+        { "IN-MZ", 1118 }, // Mizoram
+        { "IN-OR", 26320 }, // Odisha
+        { "IN-PB", 25856 }, // Punjab
+        { "IN-PY", 564 }, // Puducherry
+        { "IN-RJ", 120519 }, // Rajasthan
+        { "IN-SK", 828 }, // Sikkim
+        { "IN-TG", 32735 }, // Telangana
+        { "IN-TN", 80007 }, // Tamil Nadu
+        { "IN-TR", 2704 }, // Tripura
+        { "IN-UP", 99969 }, // Uttar Pradesh
+        { "IN-UT", 9959 }, // Uttarakhand
+        { "IN-WB", 55172 }, // West Bengal
+        { "IN-DH", 514 }, // Dadra and Nagar Haveli and Daman and Diu
     };
 
     private static readonly Dictionary<string, int> MG = new()
@@ -2182,11 +2182,11 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> RW = new()
     {
-        { "RW-01", 749 }, // Ville de Kigali
-        { "RW-02", 232 }, // Est
-        { "RW-03", 500 }, // Nord
-        { "RW-04", 510 }, // Ouest
-        { "RW-05", 334 }, // Sud
+        { "RW-01", 1001 }, // Ville de Kigali
+        { "RW-02", 584 }, // Est
+        { "RW-03", 139 }, // Nord
+        { "RW-04", 516 }, // Ouest
+        { "RW-05", 339 }, // Sud
     };
 
     private static readonly Dictionary<string, int> EG = new()
@@ -2363,31 +2363,31 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> KH = new()
     {
-        { "KH-1", 976 }, // Banteay Mean Choay
-        { "KH-10", 443 }, // Kracheh
-        { "KH-11", 410 }, // Mondol Kiri
-        { "KH-12", 701 }, // Phnom Penh
-        { "KH-13", 644 }, // Preah Vihear
-        { "KH-14", 1308 }, // Prey Veaeng
-        { "KH-15", 950 }, // Pousaat
-        { "KH-16", 492 }, // Rotanak Kiri
-        { "KH-17", 2136 }, // Siem Reab
-        { "KH-18", 335 }, // Preah Sihanouk
-        { "KH-19", 421 }, // Stueng Traeng
-        { "KH-2", 1505 }, // Baat Dambang
-        { "KH-20", 926 }, // Svaay Rieng
-        { "KH-21", 1343 }, // Taakaev
-        { "KH-22", 369 }, // Otdar Mean Chey
-        { "KH-23", 71 }, // Kaeb
-        { "KH-24", 292 }, // Pailin
-        { "KH-25", 682 }, // Tbong Khmum
-        { "KH-3", 734 }, // Kampong Chaam
-        { "KH-4", 734 }, // Kampong Chhnang
-        { "KH-5", 926 }, // Kampong Spueu
-        { "KH-6", 680 }, // Kampong Thum
-        { "KH-7", 609 }, // Kampot
-        { "KH-8", 1104 }, // Kandaal
-        { "KH-9", 506 }, // Kaoh Kong
+        { "KH-1", 1856 }, // Banteay Mean Choay
+        { "KH-10", 512 }, // Kracheh
+        { "KH-11", 473 }, // Mondol Kiri
+        { "KH-12", 928 }, // Phnom Penh
+        { "KH-13", 813 }, // Preah Vihear
+        { "KH-14", 2626 }, // Prey Veaeng
+        { "KH-15", 1176 }, // Pousaat
+        { "KH-16", 554 }, //
+        { "KH-17", 3359 }, // Siem Reab
+        { "KH-18", 710 }, // Preah Sihanouk
+        { "KH-19", 523 }, // Stueng Traeng
+        { "KH-2", 3426 }, // Baat Dambang
+        { "KH-20", 1912 }, // Svaay Rieng
+        { "KH-21", 2301 }, // Taakaev
+        { "KH-22", 441 }, //
+        { "KH-23", 164 }, // Kaeb
+        { "KH-24", 417 }, // Pailin
+        { "KH-25", 2042 }, //
+        { "KH-3", 1796 }, // Kampong Chaam
+        { "KH-4", 968 }, // Kampong Chhnang
+        { "KH-5", 3056 }, // Kampong Spueu
+        { "KH-6", 854 }, // Kampong Thum
+        { "KH-7", 2485 }, // Kampot
+        { "KH-8", 2121 }, // Kandaal
+        { "KH-9", 857 }, //
     };
 
     private static readonly Dictionary<string, int> KR = new()

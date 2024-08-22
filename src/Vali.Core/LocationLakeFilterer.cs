@@ -20,7 +20,8 @@ public static class LocationLakeFilterer
 
     public static IList<Loc> Filter(
         IEnumerable<Loc> locationsFromFile,
-        string? locationFilterExpression)
+        string? locationFilterExpression,
+        MapDefinition mapDefinition)
     {
         List<Func<Loc, bool>> defaultFilterSelectors =
         [
@@ -46,10 +47,16 @@ public static class LocationLakeFilterer
             locations = locations.Where(typedExpression);
         }
 
+        if (mapDefinition.ProximityFilter.Radius > 0 && File.Exists(mapDefinition.ProximityFilter.LocationsPath))
+        {
+            locations = FilterByProximity(locations, mapDefinition.ProximityFilter);
+        }
+
         return locations.ToArray();
     }
 
     private static readonly ConcurrentDictionary<string, Func<Loc, int>> _cacheInt = new();
+
     private static readonly ConcurrentDictionary<string, Func<Loc, bool>> _cacheBool = new();
 
     public static Func<Loc, int> CompileIntLocationExpression(string initialExpression)
@@ -215,4 +222,11 @@ public static class LocationLakeFilterer
         "*" => "*",
         _ => throw new ArgumentOutOfRangeException(nameof(@operator), $"operator {@operator} not implemented.")
     };
+
+    private static IEnumerable<Loc> FilterByProximity(IEnumerable<Loc> locations, ProximityFilter proximityFilter)
+    {
+        var proximityLocations = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath);
+        var proximityFilterRadius = proximityFilter.Radius;
+        return locations.Where(l => proximityLocations.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius));
+    }
 }

@@ -69,7 +69,7 @@ public static class DistributionStrategies
         IEnumerable<Location> deserializeFromFile)
     {
         var locationFilters = LocationFilter(countryCode, mapDefinition, subdivision);
-        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, locationFilters);
+        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, locationFilters, mapDefinition);
         return filteredLocations;
     }
 
@@ -124,7 +124,7 @@ public static class DistributionStrategies
             var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
 
             allAvailableLocations[subdivision] = availableSubdivisions.Contains(subdivision)
-                    ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter)
+                    ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition)
                     : Array.Empty<Loc>();
         }
 
@@ -221,7 +221,7 @@ public static class DistributionStrategies
             var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
 
             allAvailableLocations.AddRange(availableSubdivisions.Contains(subdivision)
-                ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter)
+                ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition)
                 : Array.Empty<Loc>());
         }
 
@@ -254,7 +254,7 @@ public static class DistributionStrategies
             {
                 var filtered = locationPreferenceFilter.Expression == "*" ?
                     filteredLocations :
-                    LocationLakeFilterer.Filter(filteredLocations, locationPreferenceFilter.Expression);
+                    LocationLakeFilterer.Filter(filteredLocations, locationPreferenceFilter.Expression, mapDefinition);
                 var goalCount = locationPreferenceFilter.Fill || locationPreferenceFilter.Percentage is null
                     ? regionGoalCount - locations.Count
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();

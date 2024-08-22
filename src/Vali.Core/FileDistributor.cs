@@ -41,7 +41,7 @@ public class FileDistributor
         }
 
         var sw = Stopwatch.StartNew();
-        var locations = await LocationReader.DeserializeLocationsFromFile(path);
+        var locations = LocationReader.DeserializeLocationsFromFile(path);
         var distributionLocations = locations.Select((x, i) => new DistributionLocation
         {
             Lat = x.lat,
