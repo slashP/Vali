@@ -232,12 +232,13 @@ public class GoogleApi
         }
     }
 
-    private static bool IsGen1Possible(string countryCode, int year)
+    public static bool IsGen1Possible(string countryCode, int year)
     {
         return countryCode switch
         {
             "AU" or "CA" or "FR" => year < 2009,
-            "US" or "NZ" or "JP" or "MX" => year < 2011,
+            "NZ" => year < 2010,
+            "US" or "JP" or "MX" => year < 2011,
             _ => false
         };
     }

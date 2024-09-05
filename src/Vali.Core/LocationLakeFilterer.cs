@@ -225,7 +225,9 @@ public static class LocationLakeFilterer
 
     private static IEnumerable<Loc> FilterByProximity(IEnumerable<Loc> locations, ProximityFilter proximityFilter)
     {
-        var proximityLocations = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath);
+        var proximityLocations = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
+            .Where(x => x.countryCode == locations.First().Nominatim.CountryCode)
+            .ToArray();
         var proximityFilterRadius = proximityFilter.Radius;
         return locations.Where(l => proximityLocations.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius));
     }

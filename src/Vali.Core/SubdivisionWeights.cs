@@ -857,22 +857,22 @@ public class SubdivisionWeights
 
     private static Dictionary<string, int> PL = new()
     {
-        { "PL-02", 1075 }, // Dolnoslaskie
-        { "PL-04", 910 }, // Kujawsko-pomorskie
-        { "PL-06", 1216 }, // Lubelskie
-        { "PL-08", 652 }, // Lubuskie
-        { "PL-10", 934 }, // Lodzkie
-        { "PL-12", 927 }, // Malopolskie
-        { "PL-14", 1870 }, // Mazowieckie
-        { "PL-16", 457 }, // Opolskie
-        { "PL-18", 952 }, // Podkarpackie
-        { "PL-20", 933 }, // Podlaskie
-        { "PL-22", 927 }, // Pomorskie
-        { "PL-24", 863 }, // Slaskie
-        { "PL-26", 580 }, // Swietokrzyskie
-        { "PL-28", 1100 }, // Warminsko-mazurskie
-        { "PL-30", 1526 }, // Wielkopolskie
-        { "PL-32", 1078 }, // Zachodniopomorskie
+        { "PL-02", 8253 }, // Dolnoslaskie
+        { "PL-04", 8998 }, // Kujawsko-pomorskie
+        { "PL-06", 7683 }, // Lubelskie
+        { "PL-08", 3933 }, // Lubuskie
+        { "PL-10", 7876 }, // Lodzkie
+        { "PL-12", 8618 }, // Malopolskie
+        { "PL-14", 14713 }, // Mazowieckie
+        { "PL-16", 2849 }, // Opolskie
+        { "PL-18", 8213 }, // Podkarpackie
+        { "PL-20", 6997 }, // Podlaskie
+        { "PL-22", 6267 }, // Pomorskie
+        { "PL-24", 8289 }, // Slaskie
+        { "PL-26", 4507 }, // Swietokrzyskie
+        { "PL-28", 5538 }, // Warminsko-mazurskie
+        { "PL-30", 14305 }, // Wielkopolskie
+        { "PL-32", 7089 }, // Zachodniopomorskie
     };
 
     private static Dictionary<string, int> SZ = new()
@@ -941,56 +941,56 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> CZ = new()
     {
-        { "CZ-10", 338 }, // Praha, Hlavní město
-        { "CZ-20", 2011 }, // Stredocesky kraj
-        { "CZ-31", 1707 }, // Jihocesky kraj
-        { "CZ-32", 1235 }, // Plzensky kraj
-        { "CZ-41", 549 }, // Karlovarsky kraj
-        { "CZ-42", 954 }, // Ustecky kraj
-        { "CZ-51", 560 }, // Liberecky kraj
-        { "CZ-52", 813 }, // Kralovehradecky kraj
-        { "CZ-53", 774 }, // Pardubicky kraj
-        { "CZ-63", 1143 }, // Kraj Vysocina
-        { "CZ-64", 1254 }, // Jihomoravsky kraj
-        { "CZ-71", 913 }, // Olomoucky kraj
-        { "CZ-72", 679 }, // Zlinsky kraj
-        { "CZ-80", 1070 }, // Moravskoslezsky kraj
+        { "CZ-10", 784 }, // Praha, Hlavní mesto
+        { "CZ-20", 9781 }, // Stredocesky kraj
+        { "CZ-31", 7767 }, // Jihocesky kraj
+        { "CZ-32", 5360 }, // Plzensky kraj
+        { "CZ-41", 2063 }, // Karlovarsky kraj
+        { "CZ-42", 4229 }, // Ustecky kraj
+        { "CZ-51", 2587 }, // Liberecky kraj
+        { "CZ-52", 4052 }, // Kralovehradecky kraj
+        { "CZ-53", 3834 }, // Pardubicky kraj
+        { "CZ-63", 5756 }, // Kraj Vysocina
+        { "CZ-64", 5001 }, // Jihomoravsky kraj
+        { "CZ-71", 3831 }, // Olomoucky kraj
+        { "CZ-72", 2569 }, // Zlinsky kraj
+        { "CZ-80", 4227 }, // Moravskoslezsky kraj
     };
 
     private static readonly Dictionary<string, int> SK = new()
     {
-        { "SK-BC", 3950 }, // Banskobystricky kraj
-        { "SK-BL", 1334 }, // Bratislavsky kraj
-        { "SK-KI", 3127 }, // Kosicky kraj
-        { "SK-NI", 3520 }, // Nitriansky kraj
-        { "SK-PV", 3690 }, // Presovsky kraj
-        { "SK-TA", 2596 }, // Trnavsky kraj
-        { "SK-TC", 2366 }, // Trenciansky kraj
-        { "SK-ZI", 2603 }, // Zilinsky kraj
+        { "SK-BC", 3922 }, // Banskobystricky kraj
+        { "SK-BL", 1331 }, // Bratislavsky kraj
+        { "SK-KI", 3150 }, // Kosicky kraj
+        { "SK-NI", 3542 }, // Nitriansky kraj
+        { "SK-PV", 3700 }, // Presovsky kraj
+        { "SK-TA", 2573 }, // Trnavsky kraj
+        { "SK-TC", 2379 }, // Trenciansky kraj
+        { "SK-ZI", 2561 }, // Zilinsky kraj
     };
 
     private static readonly Dictionary<string, int> PT = new()
     {
-        { "PT-01", 794 }, // Aveiro
-        { "PT-02", 1852 }, // Beja
-        { "PT-03", 801 }, // Braga
-        { "PT-04", 1091 }, // Braganca
-        { "PT-05", 1242 }, // Castelo Branco
-        { "PT-06", 875 }, // Coimbra
-        { "PT-07", 1344 }, // Evora
-        { "PT-08", 1073 }, // Faro
-        { "PT-09", 1035 }, // Guarda
-        { "PT-10", 1006 }, // Leiria
-        { "PT-11", 1134 }, // Lisboa
-        { "PT-12", 1101 }, // Portalegre
-        { "PT-13", 980 }, // Porto
-        { "PT-14", 1398 }, // Santarem
-        { "PT-15", 1110 }, // Setubal
-        { "PT-16", 510 }, // Viana do Castelo
-        { "PT-17", 884 }, // Vila Real
-        { "PT-18", 1050 }, // Viseu
-        { "PT-20", 495 }, // Regiao Autonoma dos Acores
-        { "PT-30", 224 }, // Regiao Autonoma da Madeira
+        { "PT-01", 3384 }, // Aveiro
+        { "PT-02", 3397 }, // Beja
+        { "PT-03", 3228 }, // Braga
+        { "PT-04", 3155 }, // Braganca
+        { "PT-05", 3691 }, // Castelo Branco
+        { "PT-06", 3998 }, // Coimbra
+        { "PT-07", 2259 }, // Evora
+        { "PT-08", 3691 }, // Faro
+        { "PT-09", 3195 }, // Guarda
+        { "PT-10", 4008 }, // Leiria
+        { "PT-11", 3192 }, // Lisboa
+        { "PT-12", 2093 }, // Portalegre
+        { "PT-13", 3283 }, // Porto
+        { "PT-14", 4681 }, // Santarem
+        { "PT-15", 2459 }, // Setubal
+        { "PT-16", 2110 }, // Viana do Castelo
+        { "PT-17", 3222 }, // Vila Real
+        { "PT-18", 4525 }, // Viseu
+        { "PT-20", 903 }, // Regiao Autonoma dos Acores
+        { "PT-30", 416 }, // Regiao Autonoma da Madeira
     };
 
     private static readonly Dictionary<string, int> RO = new()
@@ -1465,40 +1465,40 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> IE = new()
     {
-        { "IE-CE", 1739 }, // Clare
-        { "IE-CN", 354 }, // Cavan
-        { "IE-CO", 2886 }, // Cork
-        { "IE-CW", 293 }, // Carlow
-        { "IE-D", 2110 }, // Dublin
-        { "IE-DL", 739 }, // Donegal
-        { "IE-G", 1408 }, // Galway
-        { "IE-KE", 1524 }, // Kildare
-        { "IE-KK", 1344 }, // Kilkenny
-        { "IE-KY", 2730 }, // Kerry
-        { "IE-LD", 188 }, // Longford
-        { "IE-LH", 725 }, // Louth
-        { "IE-LK", 608 }, // Limerick
-        { "IE-LM", 84 }, // Leitrim
-        { "IE-LS", 310 }, // Laois
-        { "IE-MH", 1052 }, // Meath
-        { "IE-MN", 756 }, // Monaghan
-        { "IE-MO", 2673 }, // Mayo
-        { "IE-OY", 416 }, // Offaly
-        { "IE-RN", 289 }, // Roscommon
-        { "IE-SO", 308 }, // Sligo
-        { "IE-TA", 742 }, // Tipperary
-        { "IE-WD", 705 }, // Waterford
-        { "IE-WH", 418 }, // Westmeath
-        { "IE-WW", 1065 }, // Wicklow
-        { "IE-WX", 534 }, // Wexford
+        { "IE-CE", 3207 }, // Clare
+        { "IE-CN", 2336 }, // Cavan
+        { "IE-CO", 8777 }, // Cork
+        { "IE-CW", 1006 }, // Carlow
+        { "IE-D", 1234 }, // Dublin
+        { "IE-DL", 4724 }, // Donegal
+        { "IE-G", 5765 }, // Galway
+        { "IE-KE", 1832 }, // Kildare
+        { "IE-KK", 2324 }, // Kilkenny
+        { "IE-KY", 4037 }, // Kerry
+        { "IE-LD", 1179 }, // Longford
+        { "IE-LH", 1037 }, // Louth
+        { "IE-LK", 2888 }, // Limerick
+        { "IE-LM", 1663 }, // Leitrim
+        { "IE-LS", 1811 }, // Laois
+        { "IE-MH", 2724 }, // Meath
+        { "IE-MN", 1783 }, // Monaghan
+        { "IE-MO", 4954 }, // Mayo
+        { "IE-OY", 1758 }, // Offaly
+        { "IE-RN", 2924 }, // Roscommon
+        { "IE-SO", 1941 }, // Sligo
+        { "IE-TA", 4414 }, // Tipperary
+        { "IE-WD", 2043 }, // Waterford
+        { "IE-WH", 1816 }, // Westmeath
+        { "IE-WW", 1718 }, // Wicklow
+        { "IE-WX", 2830 }, // Wexford
     };
 
     private static readonly Dictionary<string, int> GB = new()
     {
-        { "GB-ENG", 1500 }, // England
-        { "GB-NIR", 750 }, // Northern Ireland
-        { "GB-SCT", 1000 }, // Scotland
-        { "GB-WLS", 600 }, // Wales
+        { "GB-ENG", 10380 }, // England
+        { "GB-NIR", 1551 }, // Northern Ireland
+        { "GB-SCT", 3577 }, // Scotland
+        { "GB-WLS", 1906 }, // Wales
     };
 
     private static readonly Dictionary<string, int> TR = new()
@@ -2061,23 +2061,23 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> PH = new()
     {
-        { "PH-00", 982 }, // National Capital Region
-        { "PH-01", 7235 }, //
-        { "PH-02", 5706 }, //
-        { "PH-03", 11055 }, //
-        { "PH-05", 7176 }, //
-        { "PH-06", 10265 }, //
-        { "PH-07", 10257 }, //
-        { "PH-08", 5669 }, //
-        { "PH-09", 2949 }, //
-        { "PH-10", 5579 }, //
-        { "PH-11", 5896 }, //
-        { "PH-12", 5080 }, //
-        { "PH-13", 2071 }, //
-        { "PH-14", 662 }, //
-        { "PH-15", 2748 }, //
-        { "PH-40", 8851 }, //
-        { "PH-41", 6173 }, //
+        { "PH-00", 984 }, // National Capital Region
+        { "PH-01", 7246 }, //
+        { "PH-02", 5662 }, //
+        { "PH-03", 11112 }, //
+        { "PH-05", 7180 }, //
+        { "PH-06", 10251 }, //
+        { "PH-07", 10302 }, //
+        { "PH-08", 5710 }, //
+        { "PH-09", 2928 }, //
+        { "PH-10", 5572 }, //
+        { "PH-11", 5863 }, //
+        { "PH-12", 5078 }, //
+        { "PH-13", 2065 }, //
+        { "PH-14", 648 }, //
+        { "PH-15", 2730 }, //
+        { "PH-40", 8876 }, //
+        { "PH-41", 6153 }, //
     };
 
     private static readonly Dictionary<string, int> LK = new()
@@ -2095,36 +2095,39 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> IN = new()
     {
-        { "IN-AP", 50641 }, // Andhra Pradesh
-        { "IN-AR", 2065 }, // Arunachal Pradesh
-        { "IN-AS", 25967 }, // Assam
-        { "IN-BR", 64068 }, // Bihar
-        { "IN-CH", 179 }, // Chandigarh
-        { "IN-CT", 19668 }, // Chhattisgarh
-        { "IN-DL", 2092 }, // Delhi
-        { "IN-GA", 2778 }, // Goa
-        { "IN-GJ", 81463 }, // Gujarat
-        { "IN-HP", 1195 }, // Himachal Pradesh
-        { "IN-HR", 25525 }, // Haryana
-        { "IN-JH", 24536 }, // Jharkhand
-        { "IN-KA", 89289 }, // Karnataka
-        { "IN-KL", 38911 }, // Kerala
-        { "IN-MH", 139085 }, // Maharashtra
-        { "IN-ML", 2783 }, // Meghalaya
-        { "IN-MP", 91836 }, // Madhya Pradesh
-        { "IN-MZ", 1118 }, // Mizoram
-        { "IN-OR", 26320 }, // Odisha
-        { "IN-PB", 25856 }, // Punjab
-        { "IN-PY", 564 }, // Puducherry
-        { "IN-RJ", 120519 }, // Rajasthan
-        { "IN-SK", 828 }, // Sikkim
-        { "IN-TG", 32735 }, // Telangana
-        { "IN-TN", 80007 }, // Tamil Nadu
-        { "IN-TR", 2704 }, // Tripura
-        { "IN-UP", 99969 }, // Uttar Pradesh
-        { "IN-UT", 9959 }, // Uttarakhand
-        { "IN-WB", 55172 }, // West Bengal
-        { "IN-DH", 514 }, // Dadra and Nagar Haveli and Daman and Diu
+        { "IN-AP", 2660 }, // Andhra Pradesh
+        { "IN-AR", 192 }, // Arunachal Pradesh
+        { "IN-AS", 1143 }, // Assam
+        { "IN-BR", 1908 }, // Bihar
+        { "IN-CH", 4 }, // Chandigarh
+        { "IN-CT", 1234 }, // Chhattisgarh
+        { "IN-DL", 38 }, // Delhi
+        { "IN-GA", 81 }, // Goa
+        { "IN-GJ", 3253 }, // Gujarat
+        { "IN-HP", 97 }, // Himachal Pradesh
+        { "IN-HR", 937 }, // Haryana
+        { "IN-JH", 1244 }, // Jharkhand
+        { "IN-KA", 3817 }, // Karnataka
+        { "IN-KL", 777 }, // Kerala
+        { "IN-MH", 5910 }, // Maharashtra
+        { "IN-ML", 218 }, // Meghalaya
+        { "IN-MP", 4981 }, // Madhya Pradesh
+        { "IN-MZ", 96 }, // Mizoram
+        { "IN-OR", 1746 }, // Odisha
+        { "IN-PB", 900 }, // Punjab
+        { "IN-PY", 26 }, // Puducherry
+        { "IN-RJ", 5914 }, // Rajasthan
+        { "IN-SK", 29 }, // Sikkim
+        { "IN-TG", 1777 }, // Telangana
+        { "IN-TN", 2568 }, // Tamil Nadu
+        { "IN-TR", 122 }, // Tripura
+        { "IN-UP", 4549 }, // Uttar Pradesh
+        { "IN-UT", 486 }, // Uttarakhand
+        { "IN-WB", 1783 }, // West Bengal
+        { "IN-DH", 26 }, // Dadra and Nagar Haveli and Daman and Diu
+        { "IN-JK", 52 }, // Jammu and Kashmir
+        { "IN-AN", 33 }, // Andaman and Nicobar Islands
+        { "IN-LA", 17 }, //
     };
 
     private static readonly Dictionary<string, int> MG = new()
