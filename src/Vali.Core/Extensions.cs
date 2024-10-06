@@ -199,7 +199,7 @@ public static class Extensions
             var matchedValue = match.Groups[1].Value;
             var newValue = $"{PlaceholderValue}{counter++}";
             list.Add((matchedValue, newValue));
-            input = input.Replace(matchedValue, newValue);
+            input = input.Replace($"'{matchedValue}'", $"'{newValue}'");
         }
 
         list.Add(("\\'", "$01"));

@@ -17,10 +17,11 @@ public class LocationLakeFiltererTests
     [InlineData("(ArrowCount eq 1 and Buildings100 eq 0) or (DrivingDirectionAngle lt 10 and DrivingDirectionAngle gt 350)")]
     [InlineData("ArrowCount eq 2 and Year gt 2011 and Year lt 2019 and DrivingDirectionAngle neq 0")]
     [InlineData("(DrivingDirectionAngle gt 10 and Heading gt 10 and DrivingDirectionAngle lt 80 and Heading lt 80) or (DrivingDirectionAngle gt 100 and Heading gt 100 and DrivingDirectionAngle lt 170 and Heading lt 170) or (DrivingDirectionAngle gt 190 and Heading gt 190 and DrivingDirectionAngle lt 260 and Heading lt 260) or (DrivingDirectionAngle gt 280 and Heading gt 280 and DrivingDirectionAngle lt 350 and Heading lt 350)")]
+    [InlineData("Roads25 eq 1 and (HighwayType eq 'Residential' or HighwayType eq 'Service' or HighwayType eq 'Tertiary' or HighwayType eq 'Road' or HighwayType eq 'Track' or HighwayType eq 'Unclassified')")]
     public void Should_compile_expressions(string expression)
     {
         var locations = LocationArray();
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, expression));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, expression, new()));
     }
 
     private static IReadOnlyCollection<Location> LocationArray() =>
