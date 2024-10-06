@@ -2739,17 +2739,17 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, int> LI = new()
     {
-        { "LI-01", 10 }, // Balzers
-        { "LI-02", 10 }, // Eschen
-        { "LI-03", 10 }, // Gamprin
-        { "LI-04", 10 }, // Mauren
-        { "LI-05", 10 }, // Planken
-        { "LI-06", 10 }, // Ruggell
-        { "LI-07", 10 }, // Schaan
-        { "LI-08", 10 }, // Schellenberg
-        { "LI-09", 10 }, // Triesen
-        { "LI-10", 10 }, // Triesenberg
-        { "LI-11", 10 }, // Vaduz
+        { "LI-01", 1 }, // Balzers
+        { "LI-02", 3 }, // Eschen
+        { "LI-03", 3 }, // Gamprin
+        { "LI-04", 2 }, // Mauren
+        { "LI-05", 1 }, // Planken
+        { "LI-06", 2 }, // Ruggell
+        { "LI-07", 5 }, // Schaan
+        { "LI-08", 2 }, // Schellenberg
+        { "LI-09", 2 }, // Triesen
+        { "LI-10", 3 }, // Triesenberg
+        { "LI-11", 4 }, // Vaduz
     };
 
     public static readonly Dictionary<string, Dictionary<string, int>> CountryToSubdivision =
@@ -2872,6 +2872,7 @@ public class SubdivisionWeights
             { "UM", UM },
             { "KZ", KZ },
             { "ST", ST },
+            { "LI", LI },
         };
 
     public static readonly Dictionary<string, Dictionary<string, int>> NotQuiteThereYetCountryToSubdivision =
@@ -2882,7 +2883,6 @@ public class SubdivisionWeights
             { "PY", PY },
             { "BA", BA },
             { "VN", VN },
-            { "LI", LI },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;

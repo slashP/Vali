@@ -2,12 +2,15 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Vali.Core.Google;
 
 public class GoogleApi
 {
     private static readonly HttpClient _client;
+    private static readonly HttpClient _shortenerClient;
 
     static GoogleApi()
     {
@@ -15,6 +18,7 @@ public class GoogleApi
         {
             BaseAddress = new Uri("https://maps.googleapis.com")
         };
+        _shortenerClient = new HttpClient();
         _client.DefaultRequestHeaders.Add("x-user-agent", "grpc-web-javascript/0.1");
     }
 
@@ -108,7 +112,6 @@ public class GoogleApi
                 : descriptionNode.AsArray().Count >= 3 && descriptionNode[0] != null
                     ? descriptionNode[0][0].GetValue<string>()
                     : null;
-
             var baseInfoArray = locationResponse[1][5][0].AsArray();
             var countryCode = baseInfoArray[1].AsArray().Count >= 5 ? baseInfoArray[1][4].GetValue<string>() : knownCountryCode;
             var year = locationResponse[1][6].AsArray().Count >= 8 ? locationResponse[1][6][7][0].GetValue<int>() : -1;
@@ -149,6 +152,14 @@ public class GoogleApi
             {
                 return (location, LocationLookupResult.Gen1);
             }
+
+            var subdivision = (descriptionNode.AsArray().Count >= 3 && descriptionNode[2] != null &&
+                              descriptionNode[2].AsArray().Count >= 2
+                ? descriptionNode[2]?[1]?[0]?.GetValue<string>()
+                : descriptionNode.AsArray().Count >= 3 && descriptionNode[2] != null &&
+                  descriptionNode[2].AsArray().Count >= 1
+                    ? descriptionNode[2]?[0]?[0]?.GetValue<string>()
+                    : null)?.Split(',').Last().Trim();
 
             var lat = baseInfoArray[1][0][2].GetValue<double>();
             var lng = baseInfoArray[1][0][3].GetValue<double>();
@@ -220,7 +231,8 @@ public class GoogleApi
                 arrowCount = defaultArrowCount,
                 elevation = (int)Math.Round(elevation, 0),
                 descriptionLength = desc?.Length ?? 0,
-                alternativePanos = alternativeImages.Where(a => a.PanoId != pano).ToArray()
+                alternativePanos = alternativeImages.Where(a => a.PanoId != pano).ToArray(),
+                subdivision = subdivision
             }, LocationLookupResult.Valid);
         }
         catch (Exception e)
@@ -388,6 +400,14 @@ public class GoogleApi
         }
     }
 
+    public static async Task<string?> Shorten(double lat, double lng, string panoId)
+    {
+        var url = $"https://www.google.com/maps/rpc/shorturl?authuser=0&hl=no&gl=no&pb=!1shttps%3A%2F%2Fwww.google.com%2Fmaps%2F%40{lat.Format()}%2C{lng.Format()}%2C3a%2C90y%2C113.93h%2C90t%2Fdata%3D*213m7*211e1*213m5*211s{panoId}*212e0*216shttps%3A%252F%252Fstreetviewpixels-pa.googleapis.com%252Fv1%252Fthumbnail%253Fw%253D900%2526h%253D600%2526panoid%253D{panoId}%2526cb_client%253Dmaps_sv.share%2526yaw%253D113.928345%2526pitch%253D0%2526thumbfov%253D133*217i16384*218i8192%3Fentry%3Dtts%26g_ep%3DEgoyMDI0MDkxMS4wKgBIAVAD!2m2!1s3nDoZoWUOvbZwPAPmdvYqQY!7e81!6b1";
+        var responseMessage = await _shortenerClient.GetAsync(url);
+        var response = await responseMessage.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<string[]>(response.Split("\n")[1])?[0];
+    }
+
     public enum LocationLookupResult
     {
         DefinitelyInvalid,
@@ -434,6 +454,7 @@ public record MapCheckrLocation : IDistributionLocation<string>
     public int month { get; set; }
     public ushort drivingDirectionAngle { get; set; }
     public ushort arrowCount { get; set; }
+    public DateOnly? date { get; set; }
     [JsonIgnore]
     public double Lat => lat;
     [JsonIgnore]
@@ -443,6 +464,7 @@ public record MapCheckrLocation : IDistributionLocation<string>
     public int? elevation { get; set; }
     public int? descriptionLength { get; set; }
     public AlternativePano[] alternativePanos { get; set; }
+    public string? subdivision { get; set; }
 }
 
 public record AlternativePano

@@ -13,7 +13,6 @@ public static class Weights
         ("AT", 60),
         ("BA", 0),
         ("BY", 0),
-        ("LI", 0),
         ("MD", 0),
         ("VA", 0),
         ("BD", 60),
@@ -101,6 +100,7 @@ public static class Weights
         ("TH", 160),
         ("TN", 80),
         ("TR", 160),
+        ("LI", 3),
         ("UG", 25),
         ("UA", 80),
         ("AE", 50),
@@ -179,6 +179,7 @@ public static class Weights
         ("TR", 959),
         ("UA", 2866),
         ("KZ", 120),
+        ("LI", 95),
     ];
 
     public static readonly (string, int)[] Asia =
@@ -371,9 +372,9 @@ public static class Weights
 
         ("AS", 3),
         ("AD", 25),
+        ("LI", 6),
         ("BA", 0),
         ("BY", 0),
-        ("LI", 0),
         ("MD", 0),
         ("VA", 0),
         ("BM", 0),
@@ -410,7 +411,7 @@ public static class Weights
     ];
 
     public static readonly (string, int)[] CommunityWorld =
-    {
+    [
         ("AL", 400),
         ("AS", 50),
         ("AD", 125),
@@ -471,10 +472,10 @@ public static class Weights
         ("KE", 1649),
         ("KG", 600),
         ("LA", 150),
+        ("LI", 105),
         ("LV", 600),
         ("LB", 13),
         ("LS", 250),
-        ("LI", 0),
         ("LT", 600),
         ("LU", 225),
         ("MO", 60),
@@ -539,11 +540,11 @@ public static class Weights
         ("UY", 900),
         ("VU", 0),
         ("VE", 0),
-        ("PS", 236),
-    };
+        ("PS", 236)
+    ];
 
     public static readonly (string, int)[] BalancedWorld =
-    {
+    [
         ("AD", 12),
         ("AE", 54),
         ("AL", 36),
@@ -597,6 +598,7 @@ public static class Weights
         ("KH", 144),
         ("KR", 108),
         ("LA", 36),
+        ("LI", 4),
         ("LK", 144),
         ("LS", 54),
         ("LT", 54),
@@ -644,11 +646,11 @@ public static class Weights
         ("UG", 36),
         ("US", 2160),
         ("UY", 108),
-        ("ZA", 648),
-    };
+        ("ZA", 648)
+    ];
 
     public static readonly (string, int)[] ImprovedWorld =
-    {
+    [
         ("US", 10800),
         ("BR", 7200),
         ("RU", 6700),
@@ -750,6 +752,7 @@ public static class Weights
         ("VI", 20),
         ("AS", 15),
         ("JE", 15),
+        ("LI", 15),
         ("MG", 15),
         ("SM", 15),
         ("BM", 10),
@@ -771,11 +774,11 @@ public static class Weights
         ("FK", 0),
         ("MQ", 2),
         ("GS", 0),
-        ("TZ", 0),
-    };
+        ("TZ", 0)
+    ];
 
     public static readonly (string, int)[] ProWorld =
-    {
+    [
         ("US", 12845),
         ("BR", 9178),
         ("IN", 6370),
@@ -885,10 +888,11 @@ public static class Weights
         ("CC", 2),
         ("JE", 2),
         ("GI", 1),
+        ("LI", 1),
         ("PN", 1),
         ("MC", 1),
         ("BY", 1),
         ("VU", 0),
-        ("CX", 1),
-    };
+        ("CX", 1)
+    ];
 }

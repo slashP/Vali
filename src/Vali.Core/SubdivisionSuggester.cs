@@ -1,5 +1,6 @@
 ﻿using Geohash;
 using Spectre.Console;
+using System.Linq;
 using Vali.Core.Hash;
 
 namespace Vali.Core;
@@ -14,7 +15,7 @@ public class SubdivisionSuggester
             return;
         }
 
-        var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Default);
+        var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Localhost);
         var files = allSubdivisions.Select(x => x.file).ToArray();
         await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
         var subdivisions = SubdivisionWeights.GetSubdivisions()[countryCode];
@@ -52,7 +53,18 @@ public class SubdivisionSuggester
                     foreach (var file in files)
                     {
                         var locations = Extensions.ProtoDeserializeFromFile<Location[]>(file);
-                        var subDivision = locations.First().Nominatim.SubdivisionCode;
+                        var subDivision = locations.FirstOrDefault()?.Nominatim.SubdivisionCode;
+                        if (subDivision == null)
+                        {
+                            entries.Add(new SubdivisionDistributionEntry
+                            {
+                                Code = "FIX",
+                                Weight = 0,
+                                Subdivision = subdivisions.FirstOrDefault(y => subDivision == y.SubdivisionCode)
+                            });
+                            continue;
+                        }
+
                         var some = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_39x20));
                         var minDistanceBetweenLocations = 2000;
                         var someOfThem = some.SelectMany(x => LocationDistributor.GetSome<Location, long>(x.ToArray(), 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations + 100)).ToArray();

@@ -132,7 +132,7 @@ public static class MapDefinitionDefaults
         var defaultDistribution = DefaultDistribution(distributionStrategy);
         return countryCode switch
         {
-            "*" => CodesFromWeights(defaultDistribution),
+            "*" or "world" => CodesFromWeights(defaultDistribution),
             "europe" => CodesFromWeights(Weights.Europe),
             "asia" => CodesFromWeights(Weights.Asia),
             "africa" => CodesFromWeights(Weights.Africa),
