@@ -26,7 +26,7 @@ public class DistributionExport
                 {
                     if (SubdivisionWeights.CountryToSubdivision.TryGetValue(countryCode, out var subDivisionWeights))
                     {
-                        response.Add(countryCode, subDivisionWeights.ToDictionary(s => s.Key, s => s.Value));
+                        response.Add(countryCode, subDivisionWeights.ToDictionary(s => s.Key, s => s.Value.weight));
                     }
                 }
 

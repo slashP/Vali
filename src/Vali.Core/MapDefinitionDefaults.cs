@@ -176,6 +176,8 @@ public static class MapDefinitionDefaults
             "abw" => Weights.BalancedWorld,
             "aiw" => Weights.ImprovedWorld,
             "proworld" => Weights.ProWorld,
+            "aow" => Weights.OfficialWorld,
+            "rainboltworld" => Weights.RainboltWorld,
             { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };

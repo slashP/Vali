@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
@@ -18,8 +19,8 @@ public static class LocationLakeFilterer
         "NO-21", "CA-NU", "US-AK", "BR-PE"
     ];
 
-    public static IList<Loc> Filter(
-        IEnumerable<Loc> locationsFromFile,
+    public static Loc[] Filter(
+        Loc[] locationsFromFile,
         string? locationFilterExpression,
         MapDefinition mapDefinition)
     {
@@ -39,7 +40,7 @@ public static class LocationLakeFilterer
                                             SubdivisionCodesAcceptableWithoutDescription.Contains(x.Nominatim.SubdivisionCode));
         }
 
-        var locations = defaultFilterSelectors.Aggregate(locationsFromFile, (current, defaultFilterSelector) => current.Where(defaultFilterSelector));
+        var locations = defaultFilterSelectors.Aggregate(locationsFromFile.AsEnumerable(), (current, defaultFilterSelector) => current.Where(defaultFilterSelector));
 
         if (!string.IsNullOrEmpty(locationFilterExpression))
         {
@@ -50,6 +51,11 @@ public static class LocationLakeFilterer
         if (mapDefinition.ProximityFilter.Radius > 0 && File.Exists(mapDefinition.ProximityFilter.LocationsPath))
         {
             locations = FilterByProximity(locations, mapDefinition.ProximityFilter);
+        }
+
+        if (mapDefinition.NeighbourFilter.Radius > 0)
+        {
+            locations = FilterByNeighbours(locations, locationsFromFile, mapDefinition.NeighbourFilter);
         }
 
         return locations.ToArray();
@@ -230,5 +236,40 @@ public static class LocationLakeFilterer
             .ToArray();
         var proximityFilterRadius = proximityFilter.Radius;
         return locations.Where(l => proximityLocations.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius));
+    }
+
+    private static IEnumerable<Loc> FilterByNeighbours(IEnumerable<Loc> locations, Loc[] allLocations, NeighbourFilter neighbourFilter)
+    {
+        var filterExpression = string.IsNullOrEmpty(neighbourFilter.Expression)
+            ? _ => true
+            : CompileBoolLocationExpression(neighbourFilter.Expression);
+        var directions = neighbourFilter.InEitherCardinalDirection ? Enum.GetValues<CardinalDirection>().Cast<CardinalDirection?>().ToArray() : [null];
+        return neighbourFilter.Limit switch
+        {
+            0 => locations
+                .AsParallel()
+                .Where(l => directions.Any(d => !allLocations.Any(l2 =>
+                    IsInDirection(d, l, l2) &&
+                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighbourFilter.Radius &&
+                    filterExpression(l2)))),
+            _ => locations
+                .AsParallel()
+                .Where(l => directions.Any(d => allLocations.Count(l2 =>
+                    IsInDirection(d, l, l2) &&
+                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighbourFilter.Radius &&
+                    filterExpression(l2)) <= neighbourFilter.Limit))
+        };
+    }
+
+    private static bool IsInDirection(CardinalDirection? direction, Loc x1, Loc x2)
+    {
+        return direction switch
+        {
+            CardinalDirection.West => x1.Lng < x2.Lng,
+            CardinalDirection.East => x1.Lng > x2.Lng,
+            CardinalDirection.North => x1.Lat > x2.Lat,
+            CardinalDirection.South => x1.Lat < x2.Lat,
+            _ => true
+        };
     }
 }

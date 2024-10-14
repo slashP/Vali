@@ -24,7 +24,7 @@ public class LocationLakeFiltererTests
         Should.NotThrow(() => LocationLakeFilterer.Filter(locations, expression, new()));
     }
 
-    private static IReadOnlyCollection<Location> LocationArray() =>
+    private static Location[] LocationArray() =>
         new[]
         {
             new Location

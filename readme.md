@@ -352,6 +352,17 @@ Most places that accept country code, can also accept special keywords that will
 * lefthandtraffic -> Countries that drive on the left side of the road.
 * righthandtraffic -> Countries that drive on the right side of the road.
 
+## Country distributions from famous maps
+Default is acw. Possible values for distributionStrategy->countryDistributionFromMap:
+* aarw
+* aaw
+* acw
+* abw
+* aiw
+* proworld
+* aow
+* rainboltworld
+
 # Full examples
 With all the building blocks described above we can start creating real, serious maps.
 

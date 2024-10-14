@@ -18,7 +18,7 @@ AnsiConsole.MarkupLine(
   [/]
   """);
 
-//args = new[] { "live-generate", "--file", @"C:\dev\priv\location-lake\maps\map-testing\2024.json" };
+//args = new[] { "generate", "--file", @"C:\dev\priv\map-definitions\pro\ASDF\map.json" };
 
 var rootCommand = new RootCommand("Vali - create locations.");
 var countriesArgument = new Argument<string>("countries");
@@ -135,7 +135,11 @@ generateMapCommand.SetHandler(async context =>
         return;
     }
 
-    await LocationLakeMapGenerator.Generate(validatedMapDefinition, fileOptionValue, RunMode.Default);
+    var runMode = RunMode.Default;
+#if DEBUG
+    runMode = RunMode.Localhost;
+#endif
+    await LocationLakeMapGenerator.Generate(validatedMapDefinition, fileOptionValue, runMode);
     context.ExitCode = 100;
 });
 

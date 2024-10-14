@@ -16,12 +16,21 @@ public record MapDefinition
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
     public LocationOutput Output { get; set; } = new();
     public ProximityFilter ProximityFilter { get; set; } = new();
+    public NeighbourFilter NeighbourFilter { get; set; } = new();
 }
 
 public record ProximityFilter
 {
     public string LocationsPath { get; set; } = "";
     public int Radius { get; set; }
+}
+
+public record NeighbourFilter
+{
+    public bool InEitherCardinalDirection { get; set; }
+    public int Radius { get; set; }
+    public string Expression { get; set; } = "";
+    public int Limit { get; set; }
 }
 
 public record LiveGenerateMapDefinition

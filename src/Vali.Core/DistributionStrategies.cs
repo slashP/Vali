@@ -42,7 +42,7 @@ public static class DistributionStrategies
         }
 
 
-        if (filteredLocations.Count == 0)
+        if (filteredLocations.Length == 0)
         {
             return (Array.Empty<Loc>(), 0, 0);
         }
@@ -62,11 +62,11 @@ public static class DistributionStrategies
         return (tuple.locations, regionGoalCount, tuple.minDistance);
     }
 
-    private static IList<Location> FilteredLocations(
+    private static Loc[] FilteredLocations(
         string countryCode,
         MapDefinition mapDefinition,
         string subdivision,
-        IEnumerable<Location> deserializeFromFile)
+        Loc[] deserializeFromFile)
     {
         var locationFilters = LocationFilter(countryCode, mapDefinition, subdivision);
         var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, locationFilters, mapDefinition);
@@ -111,7 +111,7 @@ public static class DistributionStrategies
         string[] availableSubdivisions,
         MapDefinition mapDefinition)
     {
-        var allAvailableLocations = new Dictionary<string, IList<Loc>>();
+        var allAvailableLocations = new Dictionary<string, Loc[]>();
         foreach (var file in files)
         {
             var deserializeFromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
@@ -143,7 +143,7 @@ public static class DistributionStrategies
             {
                 var subdivisionGoalCount = subdivisionGoalCounts[subdivision];
                 var subdivisionAvailableLocations = allAvailableLocations[subdivision];
-                if (subdivisionAvailableLocations.Count < subdivisionGoalCount)
+                if (subdivisionAvailableLocations.Length < subdivisionGoalCount)
                 {
                     triedGoalCounts.Add((totalGoalCount, Status.Fail));
                     break;
@@ -231,7 +231,7 @@ public static class DistributionStrategies
     }
 
     private static (IList<Loc> locations, int minDistance) ByMaxMinDistance(
-        IList<Loc> filteredLocations,
+        Loc[] filteredLocations,
         int regionGoalCount,
         int minDistance,
         MapDefinition mapDefinition,
