@@ -362,6 +362,49 @@ Default is acw. Possible values for distributionStrategy->countryDistributionFro
 * proworld
 * aow
 * rainboltworld
+* geotime
+* lerg
+
+## Tagging locations
+You can tag locations in `output.locationTags`. Available tags:
+* SubdivisionCode
+* County
+* Surface
+* Year
+* Month
+* YearMonth
+* Elevation
+* ArrowCount
+* DescriptionLength
+* Season
+* HighwayType
+* IsResidential
+* Elevation500 - elevation in buckets of 500 meters. Elevation1000/Elevation10 etc.
+* Buildings10 - exact number of buildings within 10 meters.
+* Buildings25 - exact number of buildings within 25 meters.
+* Buildings100 - exact number of buildings within 100 meters.
+* Buildings200 - exact number of buildings within 200 meters.
+* Roads0 - exact number of roads within 0 meters.
+* Roads10 - exact number of roads within 10 meters.
+* Roads25 - exact number of roads within 25 meters.
+* Roads50 - exact number of roads within 50 meters.
+* Roads100 - exact number of roads within 100 meters.
+* Roads200 - exact number of roads within 200 meters.
+* Buildings10-5 - number of buildings within 10 meters in buckets of 5, i.e. 0-4 buildings, 5-9 buildings etc.
+* Buildings25-5 - number of buildings within 25 meters in buckets of 5, i.e. 0-4 buildings, 5-9 buildings etc.
+* Buildings100-10 - number of buildings within 100 meters in buckets of 10, i.e. 0-9 buildings, 10-19 buildings etc.
+* Buildings200-20 - number of buildings within 200 meters in buckets of 20, i.e. 0-19 buildings, 20-39 buildings etc.
+* Roads0-3 - number of roads within 0 meters in buckets of 3, i.e. 0-2 roads, 3-5 roads etc.
+* Roads10-5 - number of roads within 10 meters in buckets of 5, i.e. 0-4 roads, 5-9 roads etc.
+* Roads25-5 - number of roads within 25 meters in buckets of 5, i.e. 0-4 roads, 5-9 roads etc.
+* Roads50-10 - number of roads within 50 meters in buckets of 10, i.e. 0-9 roads, 10-19 roads etc.
+* Roads100-10 - number of roads within 100 meters in buckets of 10, i.e. 0-9 roads, 10-19 roads etc.
+* Roads200-20 - number of roads within 200 meters in buckets of 10, i.e. 0-19 roads, 20-39 roads etc.
+* ClosestCoast-100 - distance to coast in buckets of 100 meters, i.e. 0-99 meters, 100-199 meters etc.
+* ClosestLake-500 - distance to lake in buckets of 500 meters, i.e. 0-499 meters, 500-999 meters etc.
+* ClosestRiver-2000 - distance to river in buckets of 2000 meters, i.e. 0-1999 meters, 2000-3999 meters etc.
+* ClosestRailway-25 - distance to railway in buckets of 25 meters, i.e. 0-24 meters, 25-49 meters etc.
+* DrivingDirectionAngle-45 - angle of driving direction in buckets of 45 degrees, i.e. 0-44 degrees, 45-89 degrees etc.
 
 # Full examples
 With all the building blocks described above we can start creating real, serious maps.

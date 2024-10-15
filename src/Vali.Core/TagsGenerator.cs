@@ -9,20 +9,41 @@ public static class TagsGenerator
 {
     public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l, MapCheckrLocation mapCheckrLocation)
     {
-        var tags = mapDefinition.Output.LocationTags.Select(e => e switch
+        var tags = mapDefinition.Output.LocationTags.SelectMany(e => e switch
         {
-            "SubdivisionCode" => SubdivisionCode(mapCheckrLocation),
-            "County" => County(l),
-            "Surface" => Surface(l),
-            "Year" => mapCheckrLocation.year.ToString(),
-            "Month" => mapCheckrLocation.month.ToString(),
-            "YearMonth" => YearMonth(mapCheckrLocation.year, mapCheckrLocation.month),
-            "Elevation" => mapCheckrLocation.elevation?.ToString(),
-            _ when e.StartsWith("Elevation") => mapCheckrLocation.elevation != null ? Range(mapCheckrLocation.elevation.Value, e.Replace("Elevation", "")) : null,
-            "Season" => Season(l.Nominatim.CountryCode, mapCheckrLocation.month),
-            "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()).Merge(" | "),
-            _ => null
-        }).Concat(new[] { l.Tag }).Where(x => x != null).Select(x => x!).ToArray();
+            "SubdivisionCode" => [SubdivisionCode(mapCheckrLocation) ?? ""],
+            "County" => [County(l) ?? ""],
+            "Surface" => [Surface(l) ?? ""],
+            "Year" => [mapCheckrLocation.year.ToString()],
+            "Month" => [mapCheckrLocation.month.ToString()],
+            "YearMonth" => [YearMonth(mapCheckrLocation.year, mapCheckrLocation.month)],
+            "Elevation" => [mapCheckrLocation.elevation?.ToString() ?? ""],
+            _ when e.StartsWith("Elevation") => [mapCheckrLocation.elevation != null ? Range("Elevation", mapCheckrLocation.elevation.Value, e.Replace("Elevation", ""), "m") ?? "" : ""],
+            "ArrowCount" => [$"ArrowCount-{mapCheckrLocation.arrowCount}"],
+            _ when e.StartsWith(nameof(Location.Google.DrivingDirectionAngle)) => IntTag(mapCheckrLocation, nameof(l.Google.DrivingDirectionAngle), x => x.drivingDirectionAngle, e),
+            _ when e.StartsWith(nameof(Location.Google.Heading)) => IntTag(mapCheckrLocation, nameof(l.Google.Heading), x => (int)x.heading, e),
+            "DescriptionLength" => [$"DescriptionLength-{(mapCheckrLocation.descriptionLength != null ? mapCheckrLocation.descriptionLength.Value : "null")}"],
+            "Season" => [Season(l.Nominatim.CountryCode, mapCheckrLocation.month)],
+            "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()),
+            _ when e.StartsWith(nameof(Location.Osm.Buildings200)) => IntTag(l, nameof(l.Osm.Buildings200), x => x.Osm.Buildings200, e),
+            _ when e.StartsWith(nameof(Location.Osm.Buildings100)) => IntTag(l, nameof(l.Osm.Buildings100), x => x.Osm.Buildings100, e),
+            _ when e.StartsWith(nameof(Location.Osm.Buildings25)) => IntTag(l, nameof(l.Osm.Buildings25), x => x.Osm.Buildings25, e),
+            _ when e.StartsWith(nameof(Location.Osm.Buildings10)) => IntTag(l, nameof(l.Osm.Buildings10), x => x.Osm.Buildings10, e),
+            _ when e.StartsWith(nameof(Location.Osm.Roads200)) => IntTag(l, nameof(l.Osm.Roads200), x => x.Osm.Roads200, e),
+            _ when e.StartsWith(nameof(Location.Osm.Roads100)) => IntTag(l, nameof(l.Osm.Roads100), x => x.Osm.Roads100, e),
+            _ when e.StartsWith(nameof(Location.Osm.Roads50)) => IntTag(l, nameof(l.Osm.Roads50), x => x.Osm.Roads50, e),
+            _ when e.StartsWith(nameof(Location.Osm.Roads25)) => IntTag(l, nameof(l.Osm.Roads25), x => x.Osm.Roads25, e),
+            _ when e.StartsWith(nameof(Location.Osm.Roads10)) => IntTag(l, nameof(l.Osm.Roads10), x => x.Osm.Roads10, e),
+            _ when e.StartsWith(nameof(Location.Osm.Roads0)) => IntTag(l, nameof(l.Osm.Roads0), x => x.Osm.Roads0, e),
+            _ when e.StartsWith(nameof(Location.Osm.Tunnels200)) => IntTag(l, nameof(l.Osm.Tunnels200), x => x.Osm.Tunnels200, e),
+            _ when e.StartsWith(nameof(Location.Osm.Tunnels10)) => IntTag(l, nameof(l.Osm.Tunnels10), x => x.Osm.Tunnels10, e),
+            _ when e.StartsWith(nameof(Location.Osm.ClosestCoast)) => l.Osm.ClosestCoast != null ? IntTag(l, nameof(l.Osm.ClosestCoast), x => x.Osm.ClosestCoast!.Value, e) : [],
+            _ when e.StartsWith(nameof(Location.Osm.ClosestLake)) => l.Osm.ClosestLake != null ? IntTag(l, nameof(l.Osm.ClosestLake), x => x.Osm.ClosestLake!.Value, e) : [],
+            _ when e.StartsWith(nameof(Location.Osm.ClosestRiver)) => l.Osm.ClosestRiver != null ? IntTag(l, nameof(l.Osm.ClosestRiver), x => x.Osm.ClosestRiver!.Value, e) : [],
+            _ when e.StartsWith(nameof(Location.Osm.ClosestRailway)) => l.Osm.ClosestRailway != null ? IntTag(l, nameof(l.Osm.ClosestRailway), x => x.Osm.ClosestRailway!.Value, e) : [],
+            nameof(Location.Osm.IsResidential) => [$"{nameof(Location.Osm.IsResidential)}-{(l.Osm.IsResidential ? "Yes" : "No")}"],
+            _ => []
+        }).Concat([l.Tag]).Where(x => !string.IsNullOrEmpty(x)).Select(x => x!).ToArray();
         return tags.Any()
             ? new GeoMapLocationExtra
             {
@@ -31,7 +52,17 @@ public static class TagsGenerator
             : null;
     }
 
-    private static string? Range(int number, string bucketString)
+    private static IEnumerable<string> IntTag(Location l, string name, Func<Location, int> func, string e)
+    {
+        return e.Contains("-") ? [Range(name, func(l), e.Replace($"{name}-", ""), "") ?? ""] : [$"{name}-{func(l)}"];
+    }
+
+    private static IEnumerable<string> IntTag(MapCheckrLocation l, string name, Func<MapCheckrLocation, int> func, string e)
+    {
+        return e.Contains("-") ? [Range(name, func(l), e.Replace($"{name}-", ""), "") ?? ""] : [$"{name}-{func(l)}"];
+    }
+
+    private static string? Range(string prefix, int number, string bucketString, string suffix)
     {
         if (!int.TryParse(bucketString, out var bucket))
         {
@@ -39,8 +70,8 @@ public static class TagsGenerator
         }
 
         var lower = ((number / bucket) * bucket);
-        var upper = (((number / bucket) + 1) * bucket);
-        return $"[{lower,4}-{upper,4}]m";
+        var upper = (((number / bucket) + 1) * bucket) - 1;
+        return $"{prefix}[{lower,4}-{upper,4}]{suffix}";
     }
 
     public static string SubdivisionCode(Location l) => l.Nominatim.SubdivisionCode;

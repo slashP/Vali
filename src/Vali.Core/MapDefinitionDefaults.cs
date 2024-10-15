@@ -178,6 +178,8 @@ public static class MapDefinitionDefaults
             "proworld" => Weights.ProWorld,
             "aow" => Weights.OfficialWorld,
             "rainboltworld" => Weights.RainboltWorld,
+            "geotime" => Weights.GeoTime,
+            "lerg" => Weights.LessExtremeRegionGuessing,
             { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };

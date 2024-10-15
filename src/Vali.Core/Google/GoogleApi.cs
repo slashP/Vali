@@ -329,7 +329,7 @@ public class GoogleApi
             var imageSize = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
             var isGen1 = imageSize < 2000;
             var arrows = metadataResponse[1][0][5]?[0]?.AsArray().Count > 6 ? metadataResponse[1][0][5]?[0]?[6]?.AsArray() ?? []: [];
-            var drivingDirectionAngle = (ushort)Math.Round(metadataResponse[1][0][5]?[0][1][2][0].GetValue<decimal>() ?? 0, 0);
+            var drivingDirectionAngle = metadataResponse[1][0][5]?[0][1].AsArray().Count > 2 ? (ushort)Math.Round(metadataResponse[1][0][5]?[0][1][2][0].GetValue<decimal>() ?? 0, 0) : (ushort)0;
             var elevation = metadataResponse[1][0][5]?[0][1][1][0].GetValue<double>() ?? -1;
             var heading = arrows switch
             {
