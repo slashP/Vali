@@ -14,7 +14,7 @@ public static class LocationDistributor
         bool avoidShuffle = false,
         int? minMinDistance = null) where T : IDistributionLocation<T2>
     {
-        if (goalCount == 0 || locations.Count == 0)
+        if (goalCount <= 0 || locations.Count == 0)
         {
             return (Array.Empty<T>(), 0);
         }
@@ -121,7 +121,7 @@ public static class LocationDistributor
         IReadOnlyCollection<T>? locationsAlreadyInMap = null,
         bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : notnull
     {
-        if (goalCount == 0 || locations.Count == 0)
+        if (goalCount <= 0 || locations.Count == 0)
         {
             return Array.Empty<T>();
         }
