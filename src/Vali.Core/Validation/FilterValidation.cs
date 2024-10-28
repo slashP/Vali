@@ -8,6 +8,22 @@ public static class FilterValidation
 {
     public static MapDefinition? ValidateFilters(this MapDefinition definition)
     {
+        foreach (var namedExpression in definition.NamedExpressions)
+        {
+            if (!namedExpression.Key.StartsWith("$$"))
+            {
+                ConsoleLogger.Error($"All named expressions must start with $$. {namedExpression.Key} does not.");
+                return null;
+            }
+
+            var overlapping = definition.NamedExpressions.FirstOrDefault(x => x.Key != namedExpression.Key && x.Key.Contains(namedExpression.Key));
+            if (overlapping.Key != null)
+            {
+                ConsoleLogger.Error($"Named expression keys must not overlap. {overlapping.Key} vs. {namedExpression.Key}");
+                return null;
+            }
+        }
+
         foreach (var filter in definition.CountryLocationFilters)
         {
             if (!CountryCodes.Countries.ContainsKey(filter.Key))

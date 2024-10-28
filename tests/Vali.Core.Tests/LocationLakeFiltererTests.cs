@@ -24,6 +24,25 @@ public class LocationLakeFiltererTests
         Should.NotThrow(() => LocationLakeFilterer.Filter(locations, expression, new()));
     }
 
+    [Fact]
+    public void Should_translate_named_expressions()
+    {
+        var locations = LocationArray();
+        var mapDefinition = new MapDefinition
+        {
+            NamedExpressions = new()
+            {
+                { "$$rural", "Buildings100 lt 2 and Roads100 lt 4" },
+                { "$$urban", "Buildings100 gt 12" },
+            }
+        };
+
+        var orExpression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$rural or $$urban");
+        var andExpression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$rural and $$urban");
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, orExpression, mapDefinition));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, andExpression, mapDefinition));
+    }
+
     private static Location[] LocationArray() =>
         new[]
         {

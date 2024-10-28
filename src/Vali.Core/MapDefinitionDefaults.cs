@@ -10,6 +10,8 @@ public static class MapDefinitionDefaults
     {
         var countryCodes = MapCountryCodes(definition.CountryCodes, definition.DistributionStrategy);
         var countryDistribution = CountryDistribution(definition);
+        var namedExpressions = definition.NamedExpressions
+            .ToDictionary(x => x.Key, x => ExpressionDefaults.Expand(definition.NamedExpressions, x.Value));
         var definitionWithDefaults = definition with
         {
             CountryCodes = countryCodes,
@@ -25,9 +27,37 @@ public static class MapDefinitionDefaults
             {
                 TreatCountriesAsSingleSubdivision = MapCountryCodes(definition.DistributionStrategy.TreatCountriesAsSingleSubdivision, definition.DistributionStrategy)
             },
-            CountryLocationFilters = ExpandCountryDictionary(definition.CountryLocationFilters).ApplyContinentBorderFilters(definition),
-            CountryLocationPreferenceFilters = ExpandCountryDictionary(definition.CountryLocationPreferenceFilters),
+            CountryLocationFilters = ExpandCountryDictionary(definition.CountryLocationFilters).ApplyContinentBorderFilters(definition)
+                .ToDictionary(x => x.Key, x => ExpressionDefaults.Expand(namedExpressions, x.Value)),
+            CountryLocationPreferenceFilters = ExpandCountryDictionary(definition.CountryLocationPreferenceFilters)
+                .ToDictionary(x => x.Key, x => x.Value.Select(y => y with
+                {
+                    Expression = ExpressionDefaults.Expand(namedExpressions, y.Expression)
+                }).ToArray()),
+            GlobalLocationFilter = definition.GlobalLocationFilter switch
+            {
+                {Length: > 0} => ExpressionDefaults.Expand(namedExpressions, definition.GlobalLocationFilter!),
+                _ => "",
+            },
+            GlobalLocationPreferenceFilters = definition.GlobalLocationPreferenceFilters.Select(x => x with
+            {
+                Expression = ExpressionDefaults.Expand(namedExpressions, x.Expression)
+            }).ToArray(),
+            NeighbourFilter = definition.NeighbourFilter with
+            {
+                Expression = ExpressionDefaults.Expand(namedExpressions, definition.NeighbourFilter.Expression)
+            },
+            SubdivisionLocationFilters = definition.SubdivisionLocationFilters
+                .ToDictionary(x => x.Key, x => x.Value
+                    .ToDictionary(y => y.Key, y => ExpressionDefaults.Expand(namedExpressions, y.Value))),
+            SubdivisionLocationPreferenceFilters = definition.SubdivisionLocationPreferenceFilters
+                .ToDictionary(x => x.Key, x => x.Value
+                    .ToDictionary(y => y.Key, y => y.Value.Select(z => z with
+                    {
+                        Expression = ExpressionDefaults.Expand(namedExpressions, z.Expression)
+                    }).ToArray())),
         };
+
         return definitionWithDefaults;
     }
 

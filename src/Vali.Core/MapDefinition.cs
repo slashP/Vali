@@ -17,6 +17,7 @@ public record MapDefinition
     public LocationOutput Output { get; set; } = new();
     public ProximityFilter ProximityFilter { get; set; } = new();
     public NeighbourFilter NeighbourFilter { get; set; } = new();
+    public Dictionary<string, string> NamedExpressions { get; set; } = new();
 }
 
 public record ProximityFilter
