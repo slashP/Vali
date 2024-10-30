@@ -144,7 +144,7 @@ public static class Extensions
     }
 
     public static IEnumerable<T> TakeRandom<T>(this IEnumerable<T> collection, int take) =>
-        collection.Count() <= take ? collection : collection.OrderBy(_ => Random.Shared.Next()).Take(take);
+        collection == null ? [] : collection.Count() <= take ? collection : collection.OrderBy(_ => Random.Shared.Next()).Take(take);
 
     public static T ProtoDeserializeFromFile<T>(string path)
     {

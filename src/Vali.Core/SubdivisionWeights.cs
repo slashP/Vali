@@ -1685,17 +1685,17 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> OM = new()
     {
-        { "OM-DA", (10, "Interior") },
-        { "OM-BU", (10, "Buraymi") },
-        { "OM-WU", (10, "Central") },
-        { "OM-ZA", (10, "Dhahira") },
-        { "OM-BJ", (10, "South Batina") },
-        { "OM-SJ", (10, "Southeastern") },
-        { "OM-MA", (10, "Muscat") },
-        { "OM-MU", (10, "Musandam") },
-        { "OM-BS", (10, "North Batina") },
-        { "OM-SS", (10, "Northeastern") },
-        { "OM-ZU", (10, "Dhofar") },
+        { "OM-DA", (433, "Interior") },
+        { "OM-BU", (230, "Buraymi") },
+        { "OM-WU", (344, "Central") },
+        { "OM-ZA", (202, "Dhahira") },
+        { "OM-BJ", (177, "South Batina") },
+        { "OM-SJ", (172, "Southeastern") },
+        { "OM-MA", (271, "Muscat") },
+        { "OM-MU", (12, "Musandam") },
+        { "OM-BS", (584, "North Batina") },
+        { "OM-SS", (274, "Northeastern") },
+        { "OM-ZU", (755, "Dhofar") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> PA = new()
@@ -2884,13 +2884,13 @@ public class SubdivisionWeights
             { "KZ", KZ },
             { "ST", ST },
             { "LI", LI },
+            { "OM", OM },
         };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> NotQuiteThereYetCountryToSubdivision =
         new()
         {
             { "NA", NA },
-            { "OM", OM },
             { "PY", PY },
             { "BA", BA },
             { "VN", VN },

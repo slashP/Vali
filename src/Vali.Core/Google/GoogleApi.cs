@@ -163,12 +163,12 @@ public class GoogleApi
 
             var lat = baseInfoArray[1][0][2].GetValue<double>();
             var lng = baseInfoArray[1][0][3].GetValue<double>();
-            var elevation = baseInfoArray[1].AsArray().Count > 1 && baseInfoArray[1][1] is not null ? (baseInfoArray[1][1][0]?.GetValue<double>() ?? -1) : 0;
-            var arrows = baseInfoArray.Count > 6 ? baseInfoArray[6]?.AsArray() ?? [] : [];
+            var elevation = baseInfoArray[1].AsArray().Count > 1 && baseInfoArray[1][1] is not null ? (baseInfoArray[1][1][0]?.GetValueKind() == JsonValueKind.String ? -1 : baseInfoArray[1][1][0]?.GetValue<double>() ?? -1) : 0;
+            var arrows = baseInfoArray.Count > 6 ? baseInfoArray[6]?.AsArray().DistinctBy(x => x[1][3].GetValue<double>()).ToArray() ?? [] : [];
             var heading = arrows switch
             {
-                { Count: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
-                { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)][1][3].GetValue<decimal>(),
+                { Length: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
+                { Length: > 0 } => arrows[Random.Shared.Next(0, arrows.Length)][1][3].GetValue<decimal>(),
                 _ => baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : 1000
             };
             if (rejectLocationsWithoutDescription && string.IsNullOrEmpty(desc))
@@ -177,7 +177,7 @@ public class GoogleApi
             }
 
             var defaultDrivingDirectionAngle = baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? (ushort)Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : (ushort)1000;
-            var defaultArrowCount = (ushort)arrows.Count;
+            var defaultArrowCount = (ushort)arrows.Length;
             var selected = selectionStrategy switch
             {
                 PanoStrategy.Newest => alternativeImages.FirstOrDefault(),
@@ -213,7 +213,7 @@ public class GoogleApi
                 elevation = metersAboveSeaLevel;
             }
 
-            if (pano.Length >= 36 || defaultDrivingDirectionAngle > 360)
+            if (pano.Length >= 36 || defaultDrivingDirectionAngle > 360 || year < 2005)
             {
                 return (location, LocationLookupResult.NoImages);
             }
@@ -282,6 +282,11 @@ public class GoogleApi
                 return null;
             }
 
+            if (metadataResponse.AsArray().Count == 1 && metadataResponse.AsArray()[0]?.AsArray().Count == 1)
+            {
+                return null;
+            }
+
             var imageSize = metadataResponse[1][0][2]?[2][0].GetValue<double>();
             var isGen1 = imageSize < 2000;
             return isGen1;
@@ -329,16 +334,21 @@ public class GoogleApi
             var imageSize = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
             var isGen1 = imageSize < 2000;
             var arrows = metadataResponse[1][0][5]?[0]?.AsArray().Count > 6 ? metadataResponse[1][0][5]?[0]?[6]?.AsArray() ?? []: [];
-            var drivingDirectionAngle = metadataResponse[1][0][5]?[0][1].AsArray().Count > 2 ? (ushort)Math.Round(metadataResponse[1][0][5]?[0][1][2][0].GetValue<decimal>() ?? 0, 0) : (ushort)0;
-            var elevation = metadataResponse[1][0][5]?[0][1][1][0].GetValue<double>() ?? -1;
+            var drivingDirectionAngle = metadataResponse[1][0][5]?[0][1].AsArray().Count > 2 ? (ushort)Math.Round(metadataResponse[1][0][5]?[0][1][2]?[0].GetValue<decimal>() ?? 0, 0) : (ushort)0;
+            var elevation = metadataResponse[1][0][5]?[0][1][1]?[0]?.GetValue<double>() ?? -1;
             var heading = arrows switch
             {
                 { Count: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
                 { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)][1][3].GetValue<decimal>(),
                 _ => drivingDirectionAngle
             };
-            var year = metadataResponse[1][0][6]?[7][0].GetValue<int>() ?? 2000;
-            var month = metadataResponse[1][0][6]?[7][1].GetValue<int>() ?? 2000;
+            var year = metadataResponse[1][0][6]?.AsArray().Count >= 8 ? metadataResponse[1][0][6]?[7][0].GetValue<int>() ?? 2000 : 2000;
+            if (year < 2001)
+            {
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0);
+            }
+
+            var month = metadataResponse[1][0][6].AsArray().Count >= 8 ? metadataResponse[1][0][6]?[7][1].GetValue<int>() ?? 1 : 1;
             var lat = metadataResponse[1][0][5]?[0][1][0][2].GetValue<double>() ?? 0;
             var lng = metadataResponse[1][0][5]?[0][1][0][3].GetValue<double>() ?? 0;
             return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng);

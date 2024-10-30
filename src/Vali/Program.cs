@@ -139,6 +139,7 @@ generateMapCommand.SetHandler(async context =>
 #if DEBUG
     runMode = RunMode.Localhost;
 #endif
+
     await LocationLakeMapGenerator.Generate(validatedMapDefinition, fileOptionValue, runMode);
     context.ExitCode = 100;
 });

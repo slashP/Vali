@@ -94,6 +94,7 @@ public static class LocationLakeMapGenerator
                 descriptionLength = x.Google.DescriptionLength
             }
         }).ToArray();
+        Random.Shared.Shuffle(locations);
         var locationsById = locations.ToDictionary(x => x.Loc.NodeId.ToString());
         if (Enum.TryParse<GoogleApi.PanoStrategy>(mapDefinition.Output.PanoVerificationStrategy, out var panoStrategy) && panoStrategy != GoogleApi.PanoStrategy.None)
         {
