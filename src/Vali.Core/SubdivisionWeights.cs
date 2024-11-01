@@ -889,10 +889,14 @@ public class SubdivisionWeights
         { "IN-JH", (1244, "Jharkhand") },
         { "IN-KA", (3817, "Karnataka") },
         { "IN-KL", (777, "Kerala") },
+        { "IN-LA", (17, "Ladakh") },
+        { "IN-LD", (4, " Lakshadweep") },
         { "IN-MH", (5910, "Maharashtra") },
         { "IN-ML", (218, "Meghalaya") },
+        { "IN-MN", (30, "Manipur") },
         { "IN-MP", (4981, "Madhya Pradesh") },
         { "IN-MZ", (96, "Mizoram") },
+        { "IN-NL", (4, "Nāgāland") },
         { "IN-OR", (1746, "Odisha") },
         { "IN-PB", (900, "Punjab") },
         { "IN-PY", (26, "Puducherry") },
@@ -907,7 +911,6 @@ public class SubdivisionWeights
         { "IN-DH", (26, "Dadra and Nagar Haveli and Daman and Diu") },
         { "IN-JK", (52, "Jammu and Kashmir") },
         { "IN-AN", (33, "Andaman and Nicobar Islands") },
-        { "IN-LA", (17, "Ladakh") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> IS = new()
@@ -2763,6 +2766,453 @@ public class SubdivisionWeights
         { "ZA-WC", (6750, "Western Cape") },
     };
 
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> UZ = new()
+    {
+        { "UZ-AN", (10, "Andijan") },
+        { "UZ-BU", (10, "Bukhara") },
+        { "UZ-FA", (10, "Fergana") },
+        { "UZ-JI", (10, "Jizzakh") },
+        { "UZ-NG", (10, "Namangan") },
+        { "UZ-NW", (10, "Navoiy") },
+        { "UZ-QA", (10, "Qashqadaryo") },
+        { "UZ-QR", (10, "Karakalpakstan") },
+        { "UZ-SA", (10, "Samarqand") },
+        { "UZ-SI", (10, "Sirdaryo") },
+        { "UZ-SU", (10, "Surkhondaryo") },
+        { "UZ-TK", (10, "Tashkent City") },
+        { "UZ-TO", (10, "Tashkent") },
+        { "UZ-XO", (10, "Khorezm ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> TJ = new()
+    {
+        { "TJ-DU", (10, "Dushanbe") },
+        { "TJ-KT", (10, "Khatlon") },
+        { "TJ-GB", (10, "Gorno-Badakhshan") },
+        { "TJ-RA", (10, "Districts under government jurisdiction") },
+        { "TJ-SU", (10, "Sughd") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> SA = new()
+    {
+        { "SA-14", (10, "Asir") },
+        { "SA-11", (10, "Baha") },
+        { "SA-08", (10, "Northern Borders") },
+        { "SA-12", (10, "Jouf") },
+        { "SA-03", (10, "Medina") },
+        { "SA-05", (10, "Qassim") },
+        { "SA-01", (10, "Riyadh") },
+        { "SA-04", (10, "Eastern") },
+        { "SA-06", (10, "Ha’il") },
+        { "SA-09", (10, "Jizan") },
+        { "SA-02", (10, "Mecca") },
+        { "SA-10", (10, "Najran") },
+        { "SA-07", (10, "Tabuk ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> BH = new()
+    {
+        { "BH-13", (10, "Capital Governorate") },
+        { "BH-14", (10, "Southern Governorate") },
+        { "BH-15", (10, "Muharraq Governorate") },
+        { "BH-17", (10, "Northern Governorate ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> HN = new()
+    {
+        { "HN-AT", (10, "Atlántida") },
+        { "HN-CH", (10, "Choluteca") },
+        { "HN-CL", (10, "Colón") },
+        { "HN-CM", (10, "Comayagua") },
+        { "HN-CP", (10, "Copán") },
+        { "HN-CR", (10, "Cortés") },
+        { "HN-EP", (10, "El Paraíso") },
+        { "HN-FM", (10, "Francisco Morazán") },
+        { "HN-GD", (10, "Gracias a Dios") },
+        { "HN-IN", (10, "Intibucá") },
+        { "HN-IB", (10, "Islas de la Bahía") },
+        { "HN-LP", (10, "La Paz") },
+        { "HN-LE", (10, "Lempira") },
+        { "HN-OC", (10, "Ocotepeque") },
+        { "HN-OL", (10, "Olancho") },
+        { "HN-SB", (10, "Santa Bárbara") },
+        { "HN-VA", (10, "Valle") },
+        { "HN-YO", (10, "Yoro ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> MA = new()
+    {
+        { "MA-05", (10, "Béni Mellal-Khénifra") },
+        { "MA-06", (10, "Casablanca-Settat") },
+        { "MA-12", (10, "Dakhla-Oued Ed-Dahab") },
+        { "MA-08", (10, "Drâa-Tafilalet") },
+        { "MA-03", (10, "Fès-Meknès") },
+        { "MA-10", (10, "Guelmim-Oued Noun") },
+        { "MA-02", (10, "L'Oriental") },
+        { "MA-11", (10, "Laâyoune-Sakia El Hamra") },
+        { "MA-07", (10, "Marrakech-Safi") },
+        { "MA-04", (10, "Rabat-Salé-Kénitra") },
+        { "MA-09", (10, "Souss-Massa") },
+        { "MA-01", (10, "Tanger-Tétouan-Al Hoceïma ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> KW = new()
+    {
+        { "KW-AH", (10, "Ahmadi") },
+        { "KW-FA", (10, "Farwaniya") },
+        { "KW-JA", (10, "Jahra") },
+        { "KW-KU", (10, "Capital") },
+        { "KW-HA", (10, "Hawalli") },
+        { "KW-MU", (10, "Mubarak Al-Kabeer ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> SV = new()
+    {
+        { "SV-AH", (10, "Ahuachapán") },
+        { "SV-CA", (10, "Cabañas") },
+        { "SV-CH", (10, "Chalatenango") },
+        { "SV-CU", (10, "Cuscatlán") },
+        { "SV-LI", (10, "La Libertad") },
+        { "SV-PA", (10, "La Paz") },
+        { "SV-UN", (10, "La Unión") },
+        { "SV-MO", (10, "Morazán") },
+        { "SV-SM", (10, "San Miguel") },
+        { "SV-SS", (10, "San Salvador") },
+        { "SV-SV", (10, "San Vicente") },
+        { "SV-SA", (10, "Santa Ana") },
+        { "SV-SO", (10, "Sonsonate") },
+        { "SV-US", (10, "Usulután ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> NI = new()
+    {
+        { "NI-BO", (10, "Boaco") },
+        { "NI-CA", (10, "Carazo") },
+        { "NI-CI", (10, "Chinandega") },
+        { "NI-CO", (10, "Chontales") },
+        { "NI-AN", (10, "North Caribbean Coast") },
+        { "NI-AS", (10, "South Caribbean Coast") },
+        { "NI-ES", (10, "Estelí") },
+        { "NI-GR", (10, "Granada") },
+        { "NI-JI", (10, "Jinotega") },
+        { "NI-LE", (10, "León") },
+        { "NI-MD", (10, "Madriz") },
+        { "NI-MN", (10, "Managua") },
+        { "NI-MS", (10, "Masaya") },
+        { "NI-MT", (10, "Matagalpa") },
+        { "NI-NS", (10, "New Segovia") },
+        { "NI-SJ", (10, "Saint John River") },
+        { "NI-RI", (10, "Rivas ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> BZ = new()
+    {
+        { "BZ-BZ", (10, "Belize") },
+        { "BZ-CY", (10, "Cayo") },
+        { "BZ-CZL", (10, "Corozal") },
+        { "BZ-OW", (10, "Orange Walk") },
+        { "BZ-SC", (10, "Stann Creek") },
+        { "BZ-TOL", (10, "Toledo") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> JM = new()
+    {
+        { "JM-13", (10, "Clarendon") },
+        { "JM-09", (10, "Hanover") },
+        { "JM-01", (10, "Kingston") },
+        { "JM-12", (10, "Manchester") },
+        { "JM-04", (10, "Portland") },
+        { "JM-02", (10, "Saint Andrew") },
+        { "JM-06", (10, "Saint Ann") },
+        { "JM-14", (10, "Saint Catherine") },
+        { "JM-11", (10, "Saint Elizabeth") },
+        { "JM-08", (10, "Saint James") },
+        { "JM-05", (10, "Saint Mary") },
+        { "JM-03", (10, "Saint Thomas") },
+        { "JM-07", (10, "Trelawny") },
+        { "JM-10", (10, "Westmoreland") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> BS = new()
+    {
+        { "BS-AK", (10, "Acklins") },
+        { "BS-BY", (10, "Berry Islands") },
+        { "BS-BI", (10, "Bimini") },
+        { "BS-BP", (10, "Black Point") },
+        { "BS-CI", (10, "Cat Island") },
+        { "BS-CO", (10, "Central Abaco") },
+        { "BS-CS", (10, "Central Andros") },
+        { "BS-CE", (10, "Central Eleuthera") },
+        { "BS-FP", (10, "City of Freeport") },
+        { "BS-CK", (10, "Crooked Island and Long Cay") },
+        { "BS-EG", (10, "East Grand Bahama") },
+        { "BS-EX", (10, "Exuma") },
+        { "BS-GC", (10, "Grand Cay") },
+        { "BS-HI", (10, "Harbour Island") },
+        { "BS-HT", (10, "Hope Town") },
+        { "BS-IN", (10, "Inagua") },
+        { "BS-LI", (10, "Long Island") },
+        { "BS-MC", (10, "Mangrove Cay") },
+        { "BS-MG", (10, "Mayaguana") },
+        { "BS-MI", (10, "Moore's Island") },
+        { "BS-NP", (10, "New Providence") },
+        { "BS-NO", (10, "North Abaco") },
+        { "BS-NS", (10, "North Andros") },
+        { "BS-NE", (10, "North Eleuthera") },
+        { "BS-RI", (10, "Ragged Island") },
+        { "BS-RC", (10, "Rum Cay") },
+        { "BS-SS", (10, "San Salvador") },
+        { "BS-SO", (10, "South Abaco") },
+        { "BS-SA", (10, "South Andros") },
+        { "BS-SE", (10, "South Eleuthera") },
+        { "BS-SW", (10, "Spanish Wells") },
+        { "BS-WG", (10, "West Grand Bahama") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> BB = new()
+    {
+        { "BB-01", (10, "Christ Church") },
+        { "BB-02", (10, "Saint Andrew") },
+        { "BB-03", (10, "Saint George") },
+        { "BB-04", (10, "Saint James") },
+        { "BB-05", (10, "Saint John") },
+        { "BB-06", (10, "Saint Joseph") },
+        { "BB-07", (10, "Saint Lucy") },
+        { "BB-08", (10, "Saint Michael") },
+        { "BB-09", (10, "Saint Peter") },
+        { "BB-10", (10, "Saint Philip") },
+        { "BB-11", (10, "Saint Thomas") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> TT = new()
+    {
+        { "TT-ARI", (10, "Arima") },
+        { "TT-CHA", (10, "Chaguanas") },
+        { "TT-CTT", (10, "Couva-Tabaquite-Talparo") },
+        { "TT-DMN", (10, "Diego Martin") },
+        { "TT-MRC", (10, "Mayaro-Rio Claro") },
+        { "TT-PED", (10, "Penal-Debe") },
+        { "TT-POS", (10, "Port of Spain") },
+        { "TT-PRT", (10, "Princes Town") },
+        { "TT-PTF", (10, "Point Fortin") },
+        { "TT-SFO", (10, "San Fernando") },
+        { "TT-SGE", (10, "Sangre Grande") },
+        { "TT-SIP", (10, "Siparia") },
+        { "TT-SJL", (10, "San Juan-Laventille") },
+        { "TT-TOB", (10, "Tobago") },
+        { "TT-TUP", (10, "Tunapuna-Piarco") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> VC = new()
+    {
+        { "VC-01", (10, "Charlotte") },
+        { "VC-06", (10, "Grenadines") },
+        { "VC-02", (10, "Saint Andrew") },
+        { "VC-03", (10, "Saint David") },
+        { "VC-04", (10, "Saint George") },
+        { "VC-05", (10, "Saint Patrick") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> GD = new()
+    {
+        { "GD-01", (10, "Saint Andrew") },
+        { "GD-02", (10, "Saint David") },
+        { "GD-03", (10, "Saint George") },
+        { "GD-04", (10, "Saint John") },
+        { "GD-05", (10, "Saint Mark") },
+        { "GD-06", (10, "Saint Patrick") },
+        { "GD-10", (10, "Southern Grenadine Islands") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> DM = new()
+    {
+        { "DM-02", (10, "Saint Andrew") },
+        { "DM-03", (10, "Saint David") },
+        { "DM-04", (10, "Saint George") },
+        { "DM-05", (10, "Saint John") },
+        { "DM-06", (10, "Saint Joseph") },
+        { "DM-07", (10, "Saint Luke") },
+        { "DM-08", (10, "Saint Mark") },
+        { "DM-09", (10, "Saint Patrick") },
+        { "DM-10", (10, "Saint Paul") },
+        { "DM-11", (10, "Saint Peter") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> KN = new()
+    {
+        { "KN-K", (10, "Saint Kitts") },
+        { "KN-N", (10, "Nevis") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> SR = new()
+    {
+        { "SR-BR", (10, "Brokopondo") },
+        { "SR-CM", (10, "Commewijne") },
+        { "SR-CR", (10, "Coronie") },
+        { "SR-MA", (10, "Marowijne") },
+        { "SR-NI", (10, "Nickerie") },
+        { "SR-PR", (10, "Para") },
+        { "SR-PM", (10, "Paramaribo") },
+        { "SR-SA", (10, "Saramacca") },
+        { "SR-SI", (10, "Sipaliwini") },
+        { "SR-WA", (10, "Wanica") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> GY = new()
+    {
+        { "GY-BA", (10, "Barima-Waini") },
+        { "GY-CU", (10, "Cuyuni-Mazaruni") },
+        { "GY-DE", (10, "Demerara-Mahaica") },
+        { "GY-EB", (10, "East Berbice-Corentyne") },
+        { "GY-ES", (10, "Essequibo Islands-West Demerara") },
+        { "GY-MA", (10, "Mahaica-Berbice") },
+        { "GY-PM", (10, "Pomeroon-Supenaam") },
+        { "GY-PT", (10, "Potaro-Siparuni") },
+        { "GY-UD", (10, "Upper Demerara-Berbice") },
+        { "GY-UT", (10, "Upper Takutu-Upper Essequibo") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> VE = new()
+    {
+        { "VE-Z", (10, "Amazonia") },
+        { "VE-B", (10, "Anzoategui") },
+        { "VE-C", (10, "Apure") },
+        { "VE-D", (10, "Aragua") },
+        { "VE-E", (10, "Barinas") },
+        { "VE-F", (10, "Bolivar") },
+        { "VE-G", (10, "Carabobo") },
+        { "VE-H", (10, "Cojedes") },
+        { "VE-Y", (10, "Amacuro Delta") },
+        { "VE-W", (10, "Federal Dependencies") },
+        { "VE-A", (10, "Caracas") },
+        { "VE-I", (10, "Falcon") },
+        { "VE-J", (10, "Guarico") },
+        { "VE-X", (10, "La Guaira") },
+        { "VE-K", (10, "Lara") },
+        { "VE-L", (10, "Merida") },
+        { "VE-M", (10, "Miranda") },
+        { "VE-N", (10, "Monagas") },
+        { "VE-O", (10, "New Sparta") },
+        { "VE-P", (10, "Portuguesa") },
+        { "VE-R", (10, "Sucre") },
+        { "VE-S", (10, "Tachira") },
+        { "VE-T", (10, "Trujillo") },
+        { "VE-U", (10, "Yaracuy") },
+        { "VE-V", (10, "Zulia ") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> GE = new()
+    {
+        { "GE-AB", (10, "Abkhazia") },
+        { "GE-AJ", (10, "Ajaria") },
+        { "GE-GU", (10, "Guria") },
+        { "GE-IM", (10, "Imereti") },
+        { "GE-KA", (10, "K'akheti") },
+        { "GE-KK", (10, "Kvemo Kartli") },
+        { "GE-MM", (10, "Mtskheta-Mtianeti") },
+        { "GE-RL", (10, "Rach'a-Lechkhumi-Kvemo Svaneti") },
+        { "GE-SZ", (10, "Samegrelo-Zemo Svaneti") },
+        { "GE-SJ", (10, "Samtskhe-Javakheti") },
+        { "GE-SK", (10, "Shida Kartli") },
+        { "GE-TB", (10, "Tbilisi") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> AM = new()
+    {
+        { "AM-AG", (10, "Aragatsotn") },
+        { "AM-AR", (10, "Ararat") },
+        { "AM-AV", (10, "Armavir") },
+        { "AM-ER", (10, "Yerevan") },
+        { "AM-GR", (10, "Gegharkunik") },
+        { "AM-KT", (10, "Kotayk") },
+        { "AM-LO", (10, "Lori") },
+        { "AM-SH", (10, "Shirak") },
+        { "AM-SU", (10, "Syunik") },
+        { "AM-TV", (10, "Tavush") },
+        { "AM-VD", (10, "Vayots Dzor") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> AZ = new()
+    {
+        { "AZ-ABS", (10, "Absheron") },
+        { "AZ-AGC", (10, "Aghjabadi") },
+        { "AZ-AGM", (10, "Aghdam") },
+        { "AZ-AGS", (10, "Agdash") },
+        { "AZ-AGA", (10, "Aghstafa") },
+        { "AZ-AGU", (10, "Aghsu") },
+        { "AZ-AST", (10, "Astara") },
+        { "AZ-BAB", (10, "Babek") },
+        { "AZ-BA", (10, "Baku") },
+        { "AZ-BAL", (10, "Balakan") },
+        { "AZ-BAR", (10, "Barda") },
+        { "AZ-BEY", (10, "Beylagan") },
+        { "AZ-BIL", (10, "Bilasuvar") },
+        { "AZ-CAB", (10, "Jabrayil") },
+        { "AZ-CAL", (10, "Jalilabad") },
+        { "AZ-CUL", (10, "Julfa") },
+        { "AZ-DAS", (10, "Dashkasan") },
+        { "AZ-FUZ", (10, "Fuzuli") },
+        { "AZ-GAD", (10, "Gadabay") },
+        { "AZ-GA", (10, "Ganja") },
+        { "AZ-GOR", (10, "Goranboy") },
+        { "AZ-GOY", (10, "Goychay") },
+        { "AZ-GYG", (10, "Goygol") },
+        { "AZ-HAC", (10, "Hajigabul") },
+        { "AZ-IMI", (10, "Imishli") },
+        { "AZ-ISM", (10, "Ismayilli") },
+        { "AZ-KAL", (10, "Kalbajar") },
+        { "AZ-KAN", (10, "Kangarli") },
+        { "AZ-KUR", (10, "Kurdamir") },
+        { "AZ-LAC", (10, "Lachin") },
+        { "AZ-LA", (10, "Lankaran City") },
+        { "AZ-LAN", (10, "Lankaran") },
+        { "AZ-LER", (10, "Lerik") },
+        { "AZ-MAS", (10, "Masally") },
+        { "AZ-MI", (10, "Mingachevir") },
+        { "AZ-NA", (10, "Naftalan") },
+        { "AZ-NV", (10, "Nakhchivan City") },
+        { "AZ-NEF", (10, "Neftchala") },
+        { "AZ-OGU", (10, "Oghuz") },
+        { "AZ-ORD", (10, "Ordubad") },
+        { "AZ-QAX", (10, "Gakh") },
+        { "AZ-QAZ", (10, "Gazakh") },
+        { "AZ-QAB", (10, "Gabala") },
+        { "AZ-QOB", (10, "Gobustan") },
+        { "AZ-QBA", (10, "Guba") },
+        { "AZ-QBI", (10, "Gubadlı") },
+        { "AZ-QUS", (10, "Gusar") },
+        { "AZ-SAT", (10, "Saatly") },
+        { "AZ-SAB", (10, "Sabirabad") },
+        { "AZ-SBN", (10, "Shabran") },
+        { "AZ-SAH", (10, "Shahbuz") },
+        { "AZ-SAL", (10, "Salyan") },
+        { "AZ-SMI", (10, "Shamakhi") },
+        { "AZ-SMX", (10, "Samukh") },
+        { "AZ-SAD", (10, "Sadarak") },
+        { "AZ-SA", (10, "Shaki City") },
+        { "AZ-SAK", (10, "Shaki") },
+        { "AZ-SKR", (10, "Shamkir") },
+        { "AZ-SAR", (10, "Sharur") },
+        { "AZ-SR", (10, "Shirvan") },
+        { "AZ-SIY", (10, "Siyazan") },
+        { "AZ-SM", (10, "Sumgayit") },
+        { "AZ-SUS", (10, "Shusha") },
+        { "AZ-TAR", (10, "Tartar") },
+        { "AZ-TOV", (10, "Tovuz") },
+        { "AZ-UCA", (10, "Ujar") },
+        { "AZ-XAC", (10, "Khachmaz") },
+        { "AZ-XA", (10, "Khankendi") },
+        { "AZ-XIZ", (10, "Khizi") },
+        { "AZ-XCI", (10, "Khojaly") },
+        { "AZ-XVD", (10, "Khojavend") },
+        { "AZ-YAR", (10, "Yardimli") },
+        { "AZ-YE", (10, "Yevlakh City") },
+        { "AZ-YEV", (10, "Yevlakh") },
+        { "AZ-ZAQ", (10, "Zagatala") },
+        { "AZ-ZAN", (10, "Zangilan") },
+        { "AZ-ZAR", (10, "Zardab ") },
+    };
+
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> CountryToSubdivision =
         new()
         {
@@ -2895,6 +3345,30 @@ public class SubdivisionWeights
             { "BA", BA },
             { "VN", VN },
             { "NP", NP },
+            { "UZ", UZ },
+            { "TJ", TJ },
+            { "SA", SA },
+            { "BH", BH },
+            { "HN", HN },
+            { "MA", MA },
+            { "KW", KW },
+            { "SV", SV },
+            { "NI", NI },
+            { "BZ", BZ },
+            { "JM", JM },
+            { "BS", BS },
+            { "BB", BB },
+            { "TT", TT },
+            { "VC", VC },
+            { "GD", GD },
+            { "DM", DM },
+            { "KN", KN },
+            { "SR", SR },
+            { "GY", GY },
+            { "VE", VE },
+            { "GE", GE },
+            { "AM", AM },
+            { "AZ", AZ },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;
