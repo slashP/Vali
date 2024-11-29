@@ -1,6 +1,4 @@
-﻿using NetTopologySuite.Geometries;
-using Vali.Core.Google;
-using static Vali.Core.LocationLakeMapGenerator;
+﻿using static Vali.Core.LocationLakeMapGenerator;
 
 namespace Vali.Core;
 
@@ -31,7 +29,12 @@ public class LocationReader
                 lat = x.lat!.Value,
                 lng = x.lng!.Value,
                 panoId = x.panoId,
-                countryCode = x.countryCode
+                countryCode = x.countryCode,
+                subdivisionCode = x.subdivisionCode,
+                extra = x.extra,
+                heading = x.heading,
+                pitch = x.pitch,
+                zoom = x.zoom,
             }).ToArray();
         }
         else
@@ -42,7 +45,12 @@ public class LocationReader
                 lat = x.lat!.Value,
                 lng = x.lng!.Value,
                 panoId = x.panoId,
-                countryCode = x.countryCode
+                countryCode = x.countryCode,
+                subdivisionCode = x.subdivisionCode,
+                extra = x.extra,
+                heading = x.heading,
+                pitch = x.pitch,
+                zoom = x.zoom,
             }).ToArray();
         }
 

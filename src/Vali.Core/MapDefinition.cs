@@ -10,7 +10,9 @@ public record MapDefinition
     public DistributionStrategy DistributionStrategy { get; init; } = new();
     public string? GlobalLocationFilter { get; init; }
     public Dictionary<string, string> CountryLocationFilters { get; init; } = [];
+    public Dictionary<string, ProximityFilter> CountryProximityFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, string>> SubdivisionLocationFilters { get; init; } = [];
+    public Dictionary<string, Dictionary<string, ProximityFilter>> SubdivisionProximityFilters { get; init; } = [];
     public LocationPreferenceFilter[] GlobalLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, LocationPreferenceFilter[]> CountryLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
@@ -18,6 +20,7 @@ public record MapDefinition
     public ProximityFilter ProximityFilter { get; set; } = new();
     public NeighbourFilter NeighbourFilter { get; set; } = new();
     public Dictionary<string, string> NamedExpressions { get; set; } = new();
+    public string[] UsedLocationsPaths { get; set; } = [];
 }
 
 public record ProximityFilter
@@ -70,6 +73,7 @@ public record LocationPreferenceFilter
     public bool Fill { get; init; }
     public string? LocationTag { get; init; }
     public int? MinMinDistance { get; init; }
+    public ProximityFilter ProximityFilter { get; set; } = new();
 }
 
 public record LocationOutput
@@ -81,4 +85,6 @@ public record LocationOutput
     public double? GlobalZoom { get; set; }
     public double? GlobalPitch { get; set; }
     public string? PanoVerificationStrategy { get; set; }
+    public Dictionary<string, string?> CountryPanoVerificationPanning { get; set; } = new();
+    public string? PanoVerificationExpression { get; set; }
 }

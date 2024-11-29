@@ -20,7 +20,7 @@ public static class DistributionValidation
         if (inDistributionButNotInCountryCodes.Any())
         {
             ConsoleLogger.Error($"Countries in '{nameof(MapDefinition.CountryDistribution)}' are not in '{nameof(MapDefinition.CountryCodes)}':");
-            ConsoleLogger.Info($"{inCountryCodesButNotInWeights.Merge(", ")}");
+            ConsoleLogger.Info($"{inDistributionButNotInCountryCodes.Select(x => x.Key).Merge(", ")}");
             return null;
         }
 

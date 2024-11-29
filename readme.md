@@ -367,6 +367,7 @@ Default is acw. Possible values for distributionStrategy->countryDistributionFro
 
 ## Tagging locations
 You can tag locations in `output.locationTags`. Available tags:
+* CountryCode
 * SubdivisionCode
 * County
 * Surface

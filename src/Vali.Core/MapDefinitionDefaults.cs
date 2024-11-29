@@ -18,7 +18,8 @@ public static class MapDefinitionDefaults
             Output = definition.Output with
             {
                 PanoIdCountryCodes = MapCountryCodes(definition.Output.PanoIdCountryCodes, definition.DistributionStrategy).Concat(HardcodedPanoIdCountries).Distinct().ToArray(),
-                CountryHeadingExpressions = ExpandCountryDictionary(definition.Output.CountryHeadingExpressions)
+                CountryHeadingExpressions = ExpandCountryDictionary(definition.Output.CountryHeadingExpressions),
+                CountryPanoVerificationPanning = ExpandCountryDictionary(definition.Output.CountryPanoVerificationPanning)
             },
             SubdivisionInclusions = Inclusions(definition),
             SubdivisionExclusions = Exclusions(definition),

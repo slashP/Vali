@@ -163,7 +163,7 @@ public class LiveGenerate
                 };
             })
             .ToArray();
-            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: true, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
+            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: true, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest, countryPanning: null);
             var validForAdding = googleLocations
                 .Where(x => x.result == GoogleApi.LocationLookupResult.Valid)
                 .Select(x => x.location)

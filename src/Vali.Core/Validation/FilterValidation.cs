@@ -53,7 +53,7 @@ public static class FilterValidation
 
         static void DryRun(string filter)
         {
-            var expression = LocationLakeFilterer.CompileLocationExpression(filter, true);
+            var expression = LocationLakeFilterer.CompileExpression<Location, bool>(filter, true);
             var locations = EmptyLocationArray().Where(expression).ToArray();
         }
 

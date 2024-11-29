@@ -1,4 +1,5 @@
-﻿using Vali.Core.Google;
+﻿using System.Text.Json.Serialization;
+using Vali.Core.Google;
 
 namespace Vali.Core;
 
@@ -99,6 +100,7 @@ public static class LocationLakeMapGenerator
         if (Enum.TryParse<GoogleApi.PanoStrategy>(mapDefinition.Output.PanoVerificationStrategy, out var panoStrategy) && panoStrategy != GoogleApi.PanoStrategy.None)
         {
             var mapCheckrLocations = locations.Select(y => y.MapCheckrLoc).ToArray();
+            var countryPanning = mapDefinition.Output.CountryPanoVerificationPanning;
             var verifiedLocations = await GoogleApi.GetLocations(
                 mapCheckrLocations,
                 countryCode: null,
@@ -106,7 +108,14 @@ public static class LocationLakeMapGenerator
                 radius: 50,
                 rejectLocationsWithoutDescription: false,
                 silent: false,
-                selectionStrategy: panoStrategy);
+                selectionStrategy: panoStrategy,
+                countryPanning: countryPanning);
+            if (!string.IsNullOrEmpty(mapDefinition.Output.PanoVerificationExpression))
+            {
+                var userFilter = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(mapDefinition.Output.PanoVerificationExpression, true);
+                verifiedLocations = verifiedLocations.Where(x => userFilter(x.location)).ToArray();
+            }
+
             var percentUnsuccessful = verifiedLocations.Count != 0
                 ? verifiedLocations.Count(x => x.result != GoogleApi.LocationLookupResult.Valid) /
                   (decimal)verifiedLocations.Count
@@ -118,7 +127,7 @@ public static class LocationLakeMapGenerator
             }
 
             var unknownErrors = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.UnknownError).Select(x => x.location).ToArray();
-            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest);
+            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest, countryPanning: countryPanning);
             locations = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.Valid)
                 .Concat(retryUnknownErrors.Where(x => x.result is GoogleApi.LocationLookupResult.Valid))
                 .Select(x => new
@@ -217,7 +226,7 @@ public static class LocationLakeMapGenerator
         return mapDefinition.CountryDistribution;
     }
 
-    public record GeoMapLocation
+    public record GeoMapLocation : ILatLng
     {
         public double lat { get; set; }
         public double lng { get; set; }
@@ -228,6 +237,10 @@ public static class LocationLakeMapGenerator
         public string? panoId { get; set; }
         public string? countryCode { get; set; }
         public string? subdivisionCode { get; set; }
+        [JsonIgnore]
+        public double Lat => lat;
+        [JsonIgnore]
+        public double Lng => lng;
     }
 
     public record GeoMapLocationExtra

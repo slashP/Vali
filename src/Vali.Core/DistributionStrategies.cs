@@ -1,5 +1,6 @@
-﻿using Geohash;
+﻿using System.Diagnostics;
 using Spectre.Console;
+using Vali.Core.Data;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
@@ -68,8 +69,9 @@ public static class DistributionStrategies
         string subdivision,
         Loc[] deserializeFromFile)
     {
-        var locationFilters = LocationFilter(countryCode, mapDefinition, subdivision);
-        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, locationFilters, mapDefinition);
+        var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
+        var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
+        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition, proximityFilter);
         return filteredLocations;
     }
 
@@ -92,7 +94,6 @@ public static class DistributionStrategies
         }
 
         var minDistance = mapDefinition.DistributionStrategy.MinMinDistance;
-        var geoHasher = new Geohasher();
         var filteredLocations = locations
             .GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_1x1))
             .AsParallel()
@@ -122,10 +123,11 @@ public static class DistributionStrategies
             }
 
             var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
+            var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
 
             allAvailableLocations[subdivision] = availableSubdivisions.Contains(subdivision)
-                    ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition)
-                    : Array.Empty<Loc>();
+                    ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition, proximityFilter)
+                    : [];
         }
 
         var fixedMinDistance = mapDefinition.DistributionStrategy.FixedMinDistance;
@@ -219,10 +221,11 @@ public static class DistributionStrategies
             }
 
             var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
+            var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
 
             allAvailableLocations.AddRange(availableSubdivisions.Contains(subdivision)
-                ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition)
-                : Array.Empty<Loc>());
+                ? LocationLakeFilterer.Filter(deserializeFromFile, locationFilter, mapDefinition, proximityFilter)
+                : []);
         }
 
         var minDistanceBetweenLocations = mapDefinition.DistributionStrategy.FixedMinDistance;
@@ -238,6 +241,12 @@ public static class DistributionStrategies
         string countryCode,
         string subdivision)
     {
+        var usedLocations = mapDefinition.UsedLocationsPaths.Any()
+            ? mapDefinition.UsedLocationsPaths
+                .SelectMany(LocationReader.DeserializeLocationsFromFile)
+                .Where(x => x.extra != null && x.extra.tags.Any(t => countryCode == t))
+                .ToArray()
+            : [];
         var preferenceFilters = mapDefinition switch
         {
             _ when
@@ -252,14 +261,20 @@ public static class DistributionStrategies
             var lastMinMinDistance = minDistance;
             foreach (var locationPreferenceFilter in preferenceFilters)
             {
+                var proximityFilter = locationPreferenceFilter.ProximityFilter switch
+                {
+                    { LocationsPath.Length: > 0 } => locationPreferenceFilter.ProximityFilter,
+                    _ => new()
+                };
                 var filtered = locationPreferenceFilter.Expression == "*" ?
                     filteredLocations :
-                    LocationLakeFilterer.Filter(filteredLocations, locationPreferenceFilter.Expression, mapDefinition);
+                    LocationLakeFilterer.Filter(filteredLocations, locationPreferenceFilter.Expression, mapDefinition, proximityFilter);
                 var goalCount = locationPreferenceFilter.Fill || locationPreferenceFilter.Percentage is null
                     ? regionGoalCount - locations.Count
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();
                 var minMinDistance = locationPreferenceFilter.MinMinDistance ?? minDistance;
-                var withMaxMinDistance = LocationDistributor.WithMaxMinDistance<Loc, long>(filtered, goalCount, minMinDistance: minMinDistance, locationsAlreadyInMap: locations);
+                IReadOnlyCollection<ILatLng> locationsAlreadyInMap = usedLocations.Any() ? locations.Concat<ILatLng>(usedLocations).ToArray() : locations;
+                var withMaxMinDistance = LocationDistributor.WithMaxMinDistance<Loc, long>(filtered, goalCount, minMinDistance: minMinDistance, locationsAlreadyInMap: locationsAlreadyInMap);
                 lastMinMinDistance = withMaxMinDistance.minDistance;
                 IEnumerable<Loc> locationsFromPreference = withMaxMinDistance.locations;
                 if (!string.IsNullOrEmpty(locationPreferenceFilter.LocationTag))
@@ -275,7 +290,7 @@ public static class DistributionStrategies
             return (locations, lastMinMinDistance);
         }
 
-        return LocationDistributor.WithMaxMinDistance<Loc, long>(filteredLocations, regionGoalCount, minMinDistance: minDistance);
+        return LocationDistributor.WithMaxMinDistance<Loc, long>(filteredLocations, regionGoalCount, minMinDistance: minDistance, locationsAlreadyInMap: usedLocations);
     }
 
     private static string? LocationFilter(string countryCode, MapDefinition mapDefinition, string subdivision)
@@ -290,6 +305,16 @@ public static class DistributionStrategies
         };
         return locationFilter;
     }
+
+    private static ProximityFilter ProximityFilter(string countryCode, MapDefinition mapDefinition, string subdivision) =>
+        mapDefinition switch
+        {
+            _ when
+                mapDefinition.SubdivisionProximityFilters.TryGetValue(countryCode, out var countrySubdivisionProximityFilters) &&
+                countrySubdivisionProximityFilters.TryGetValue(subdivision, out var subdivisionProximityFilter) => subdivisionProximityFilter,
+            _ when mapDefinition.CountryProximityFilters.TryGetValue(countryCode, out var countryProximityFilter) => countryProximityFilter,
+            _ => mapDefinition.ProximityFilter
+        };
 
     private enum Status
     {

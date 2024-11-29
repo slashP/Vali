@@ -22,10 +22,8 @@ public record Location : IDistributionLocation<long>
     public string? Tag { get; init; }
 }
 
-public interface IDistributionLocation<T>
+public interface IDistributionLocation<T> : ILatLng
 {
-    public double Lat { get; }
-    public double Lng { get; }
     public T LocationId { get; }
 }
 
@@ -113,4 +111,10 @@ public record NominatimData
     public required string SubdivisionCode { get; set; }
     [ProtoMember(3)]
     public string? County { get; set; }
+}
+
+public interface ILatLng
+{
+    double Lat { get; }
+    double Lng { get; }
 }

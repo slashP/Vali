@@ -10,7 +10,7 @@ public static class LocationDistributor
     public static (IList<T> locations, int minDistance) WithMaxMinDistance<T, T2>(
         ICollection<T> locations,
         int goalCount,
-        IReadOnlyCollection<T>? locationsAlreadyInMap = null,
+        IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
         bool avoidShuffle = false,
         int? minMinDistance = null) where T : IDistributionLocation<T2>
     {
@@ -81,8 +81,8 @@ public static class LocationDistributor
         int minDistanceBetweenLocations,
         bool avoidShuffle = false,
         bool ensureNoNeighborSpill = true,
-        IReadOnlyCollection<T>? locationsAlreadyInMap = null,
-        bool silent = false) where T : IDistributionLocation<T2> where T2 : notnull
+        IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
+        bool silent = false) where T : IDistributionLocation<T2>, ILatLng where T2 : notnull
     {
         var list = new List<(T loc, string hash)>();
         var precision = HashPrecision.Size_km_39x20;
@@ -104,7 +104,7 @@ public static class LocationDistributor
             foreach (var group in groups)
             {
                 var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToArray();
-                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => x.loc).Concat(locationsAlreadyInMap ?? []).ToArray() : (locationsAlreadyInMap ?? []);
+                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => (ILatLng)x.loc).Concat(locationsAlreadyInMap ?? []).ToArray() : (locationsAlreadyInMap ?? []);
                 var distributionLocations = group.ToArray();
                 var selection = GetSome<T, T2>(distributionLocations, 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
                 list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));
@@ -118,7 +118,7 @@ public static class LocationDistributor
         ICollection<T> locations,
         int goalCount,
         int minDistanceBetweenLocations,
-        IReadOnlyCollection<T>? locationsAlreadyInMap = null,
+        IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
         bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : notnull
     {
         if (goalCount <= 0 || locations.Count == 0)

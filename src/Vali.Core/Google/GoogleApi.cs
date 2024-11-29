@@ -26,6 +26,7 @@ public class GoogleApi
         IReadOnlyCollection<MapCheckrLocation> locations,
         string countryCode,
         int chunkSize,
+        Dictionary<string, string?> countryPanning,
         bool silent = false,
         bool rejectLocationsWithoutDescription = true)
     {
@@ -34,7 +35,7 @@ public class GoogleApi
         var startTime = DateTime.UtcNow;
         foreach (var chunk in locations.Chunk(chunkSize))
         {
-            var locs = await Task.WhenAll(chunk.Select(x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: PanoStrategy.Newest)));
+            var locs = await Task.WhenAll(chunk.Select(x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: PanoStrategy.Newest, countryPanning: countryPanning)));
             result.AddRange(locs.Where(x => x is { location: not null, result: LocationLookupResult.Valid }).Select(x => x.location));
             counter += chunkSize;
             var locationsCount = counter * 100 / (decimal)locations.Count;
@@ -55,12 +56,13 @@ public class GoogleApi
             int radius,
             bool rejectLocationsWithoutDescription,
             bool silent,
-            PanoStrategy selectionStrategy) =>
+            PanoStrategy selectionStrategy,
+            Dictionary<string, string?>? countryPanning) =>
         silent
             ? await locations.RunLimitedNumberAtATime(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, radius: radius), chunkSize)
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius), chunkSize)
             : await locations.RunLimitedNumberAtATimeWithProgressBar(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, radius: radius),
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius),
                 chunkSize,
                 "Verifying locations by calling Google APIs.");
 
@@ -69,6 +71,7 @@ public class GoogleApi
         bool rejectLocationsWithoutDescription,
         string knownCountryCode,
         PanoStrategy selectionStrategy,
+        Dictionary<string, string?>? countryPanning,
         int radius = 5)
     {
         var body = $@"
@@ -165,18 +168,24 @@ public class GoogleApi
             var lng = baseInfoArray[1][0][3].GetValue<double>();
             var elevation = baseInfoArray[1].AsArray().Count > 1 && baseInfoArray[1][1] is not null ? (baseInfoArray[1][1][0]?.GetValueKind() == JsonValueKind.String ? -1 : baseInfoArray[1][1][0]?.GetValue<double>() ?? -1) : 0;
             var arrows = baseInfoArray.Count > 6 ? baseInfoArray[6]?.AsArray().DistinctBy(x => x[1][3].GetValue<double>()).ToArray() ?? [] : [];
-            var heading = arrows switch
-            {
-                { Length: > 2 } => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
-                { Length: > 0 } => arrows[Random.Shared.Next(0, arrows.Length)][1][3].GetValue<decimal>(),
-                _ => baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : 1000
-            };
             if (rejectLocationsWithoutDescription && string.IsNullOrEmpty(desc))
             {
                 return (location, LocationLookupResult.MissingDescription);
             }
 
             var defaultDrivingDirectionAngle = baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? (ushort)Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : (ushort)1000;
+
+            string? panning = null;
+            countryPanning?.TryGetValue(countryCode ?? "", out panning);
+            var heading = (arrows, panning?.ToLower()) switch
+            {
+                ({ Length: > 1 }, "indrivingdirection") => arrows.Select(e => e[1][3].GetValue<decimal>()).MinBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
+                ({ Length: > 1 }, "awayfromdrivingdirection") => arrows.Select(e => e[1][3].GetValue<decimal>()).MaxBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
+                ({ Length: > 2 }, _) => arrows.Select(e => e[1][3].GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180)).TakeRandom(1).Single(),
+                ({ Length: > 0 }, _) => arrows[Random.Shared.Next(0, arrows.Length)][1][3].GetValue<decimal>(),
+                _ => baseInfoArray[1].AsArray().Count >= 3 && baseInfoArray[1][2]?.AsArray().Count > 0 && baseInfoArray[1][2][0] != null ? Math.Round(baseInfoArray[1][2][0].GetValue<decimal>(), 0) : 1000
+            };
+
             var defaultArrowCount = (ushort)arrows.Length;
             var selected = selectionStrategy switch
             {

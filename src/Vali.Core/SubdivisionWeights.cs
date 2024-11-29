@@ -249,11 +249,6 @@ public class SubdivisionWeights
         { "BW-SO", (556, "Southern") },
     };
 
-    private static readonly Dictionary<string, (int weight, string subdivisionName)> BY = new()
-    {
-        { "BY-HM", (1, "Horad Minsk") },
-    };
-
     private static readonly Dictionary<string, (int weight, string subdivisionName)> CA = new()
     {
         { "CA-AB", (5366, "Alberta") },
@@ -2605,57 +2600,57 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> US = new()
     {
-        { "US-AL", (1800, "Alabama") },
-        { "US-AK", (1300, "Alaska") },
-        { "US-AZ", (2300, "Arizona") },
-        { "US-AR", (1750, "Arkansas") },
-        { "US-CA", (4500, "California") },
-        { "US-CO", (2500, "Colorado") },
-        { "US-CT", (860, "Connecticut") },
-        { "US-DE", (550, "Delaware") },
-        { "US-FL", (2400, "Florida") },
-        { "US-GA", (2300, "Georgia") },
-        { "US-HI", (1000, "Hawaii") },
-        { "US-ID", (2700, "Idaho") },
-        { "US-IL", (2400, "Illinois") },
-        { "US-IN", (1850, "Indiana") },
-        { "US-IA", (1800, "Iowa") },
-        { "US-KS", (1900, "Kansas") },
-        { "US-KY", (1800, "Kentucky") },
-        { "US-LA", (1700, "Louisiana") },
-        { "US-ME", (1750, "Maine") },
-        { "US-MD", (1100, "Maryland") },
-        { "US-MA", (1000, "Massachusetts") },
-        { "US-MI", (2050, "Michigan") },
-        { "US-MN", (2050, "Minnesota") },
-        { "US-MS", (1800, "Mississippi") },
-        { "US-MO", (1900, "Missouri") },
-        { "US-MT", (2900, "Montana") },
-        { "US-NE", (2100, "Nebraska") },
-        { "US-NV", (1900, "Nevada") },
-        { "US-NH", (900, "New Hampshire") },
-        { "US-NJ", (1100, "New Jersey") },
-        { "US-NM", (2250, "New Mexico") },
-        { "US-NY", (3100, "New York") },
-        { "US-NC", (2300, "North Carolina") },
-        { "US-ND", (2100, "North Dakota") },
-        { "US-OH", (2400, "Ohio") },
-        { "US-OK", (2100, "Oklahoma") },
-        { "US-OR", (2600, "Oregon") },
-        { "US-PA", (2800, "Pennsylvania") },
-        { "US-RI", (450, "Rhode Island") },
-        { "US-SC", (1600, "South Carolina") },
-        { "US-SD", (2200, "South Dakota") },
-        { "US-TN", (2200, "Tennessee") },
-        { "US-TX", (4000, "Texas") },
-        { "US-UT", (2300, "Utah") },
-        { "US-VT", (900, "Vermont") },
-        { "US-VA", (2500, "Virginia") },
-        { "US-WA", (2600, "Washington") },
-        { "US-WV", (1800, "West Virginia") },
-        { "US-WI", (2050, "Wisconsin") },
-        { "US-WY", (2500, "Wyoming") },
-        { "US-DC", (15, "District of Columbia") },
+        { "US-AL", (1950, "Alabama") },
+        { "US-AK", (1400, "Alaska") },
+        { "US-AZ", (2550, "Arizona") },
+        { "US-AR", (1950, "Arkansas") },
+        { "US-CA", (4750, "California") },
+        { "US-CO", (2750, "Colorado") },
+        { "US-CT", (925, "Connecticut") },
+        { "US-DE", (590, "Delaware") },
+        { "US-FL", (2525, "Florida") },
+        { "US-GA", (2525, "Georgia") },
+        { "US-HI", (1075, "Hawaii") },
+        { "US-ID", (3050, "Idaho") },
+        { "US-IL", (2600, "Illinois") },
+        { "US-IN", (1985, "Indiana") },
+        { "US-IA", (1950, "Iowa") },
+        { "US-KS", (2090, "Kansas") },
+        { "US-KY", (1950, "Kentucky") },
+        { "US-LA", (1850, "Louisiana") },
+        { "US-ME", (1900, "Maine") },
+        { "US-MD", (1175, "Maryland") },
+        { "US-MA", (1075, "Massachusetts") },
+        { "US-MI", (2250, "Michigan") },
+        { "US-MN", (2250, "Minnesota") },
+        { "US-MS", (1900, "Mississippi") },
+        { "US-MO", (1925, "Missouri") },
+        { "US-MT", (3200, "Montana") },
+        { "US-NE", (2300, "Nebraska") },
+        { "US-NV", (2300, "Nevada") },
+        { "US-NH", (965, "New Hampshire") },
+        { "US-NJ", (1180, "New Jersey") },
+        { "US-NM", (2470, "New Mexico") },
+        { "US-NY", (3325, "New York") },
+        { "US-NC", (2500, "North Carolina") },
+        { "US-ND", (2330, "North Dakota") },
+        { "US-OH", (2575, "Ohio") },
+        { "US-OK", (2280, "Oklahoma") },
+        { "US-OR", (2875, "Oregon") },
+        { "US-PA", (3030, "Pennsylvania") },
+        { "US-RI", (475, "Rhode Island") },
+        { "US-SC", (1675, "South Carolina") },
+        { "US-SD", (2260, "South Dakota") },
+        { "US-TN", (2390, "Tennessee") },
+        { "US-TX", (4290, "Texas") },
+        { "US-UT", (2680, "Utah") },
+        { "US-VT", (1000, "Vermont") },
+        { "US-VA", (2700, "Virginia") },
+        { "US-WA", (2815, "Washington") },
+        { "US-WV", (1930, "West Virginia") },
+        { "US-WI", (2225, "Wisconsin") },
+        { "US-WY", (2775, "Wyoming") },
+        { "US-DC", (100, "District of Columbia") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> UY = new()
@@ -3213,6 +3208,62 @@ public class SubdivisionWeights
         { "AZ-ZAR", (10, "Zardab ") },
     };
 
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> VU = new()
+    {
+        { "VU-MAP", (10, "Malampa") },
+        { "VU-PAM", (10, "Pénama") },
+        { "VU-SAM", (10, "Sanma") },
+        { "VU-SEE", (10, "Shéfa") },
+        { "VU-TAE", (10, "Taféa") },
+        { "VU-TOB", (10, "Torba") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> BY = new()
+    {
+        { "BY-BR", (0, "Brestskaja oblast'") },
+        { "BY-HO", (0, "Gomel'skaja oblast'") },
+        { "BY-HM", (1, "Gorod Minsk") },
+        { "BY-HR", (0, "Grodnenskaja oblast'") },
+        { "BY-MA", (0, "Mogilevskaja oblast'") },
+        { "BY-MI", (0, "Minskaja oblast'") },
+        { "BY-VI", (0, "Vitebskaja oblast'") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> FJ = new()
+    {
+        { "FJ-C", (10, "Central") },
+        { "FJ-E", (10, "Eastern") },
+        { "FJ-N", (10, "Northern") },
+        { "FJ-W", (10, "Western") },
+        { "FJ-R", (10, "Rotuma") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> NC = new()
+    {
+        { "NC-1", (10, "New Caledonia") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> TO = new()
+    {
+        { "TO-01", (10, "'Eua") },
+        { "TO-02", (10, "Ha'apai") },
+        { "TO-03", (10, "Niuas") },
+        { "TO-04", (10, "Tongatapu") },
+        { "TO-05", (10, "Vava'u") },
+    };
+
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> TV = new()
+    {
+        { "TV-FUN", (10, "Funafuti") },
+        { "TV-NMG", (10, "Nanumaga") },
+        { "TV-NMA", (10, "Nanumea") },
+        { "TV-NIT", (10, "Niutao") },
+        { "TV-NUI", (10, "Nui") },
+        { "TV-NKF", (10, "Nukufetau") },
+        { "TV-NKL", (10, "Nukulaelae") },
+        { "TV-VAI", (10, "Vaitupu") },
+    };
+
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> CountryToSubdivision =
         new()
         {
@@ -3369,6 +3420,11 @@ public class SubdivisionWeights
             { "GE", GE },
             { "AM", AM },
             { "AZ", AZ },
+            { "VU", VU },
+            { "FJ", FJ },
+            { "NC", NC },
+            { "TO", TO },
+            { "TV", TV },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;

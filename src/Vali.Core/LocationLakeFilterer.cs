@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using Vali.Core.Google;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
@@ -22,7 +23,8 @@ public static class LocationLakeFilterer
     public static Loc[] Filter(
         Loc[] locationsFromFile,
         string? locationFilterExpression,
-        MapDefinition mapDefinition)
+        MapDefinition mapDefinition,
+        ProximityFilter proximityFilter)
     {
         List<Func<Loc, bool>> defaultFilterSelectors =
         [
@@ -48,9 +50,10 @@ public static class LocationLakeFilterer
             locations = locations.Where(typedExpression);
         }
 
-        if (mapDefinition.ProximityFilter.Radius > 0 && File.Exists(mapDefinition.ProximityFilter.LocationsPath))
+        if (proximityFilter.Radius > 0 && File.Exists(proximityFilter.LocationsPath))
         {
-            locations = FilterByProximity(locations, mapDefinition.ProximityFilter);
+            var locs = locations.ToArray();
+            locations = FilterByProximity(locs, proximityFilter);
         }
 
         if (mapDefinition.NeighbourFilter.Radius > 0)
@@ -72,7 +75,7 @@ public static class LocationLakeFilterer
             return selector;
         }
 
-        var func = CompileLocationExpression(initialExpression, 0);
+        var func = CompileExpression<Loc, int>(initialExpression, 0);
         _cacheInt.TryAdd(initialExpression, func);
         return func;
     }
@@ -84,12 +87,12 @@ public static class LocationLakeFilterer
             return selector;
         }
 
-        var func = CompileLocationExpression(initialExpression, true);
+        var func = CompileExpression<Loc, bool>(initialExpression, true);
         _cacheBool.TryAdd(initialExpression, func);
         return func;
     }
 
-    public static Func<Loc, T> CompileLocationExpression<T>(string initialExpression, T fallback)
+    public static Func<TLoc, T> CompileExpression<TLoc, T>(string initialExpression, T fallback)
     {
         if (initialExpression == "*")
         {
@@ -102,9 +105,32 @@ public static class LocationLakeFilterer
             .RemoveParentheses()
             .Split(' ')
             .ToArray();
-        var totalExpression = ValidProperties()
+        var validProperties = typeof(TLoc).Name switch
+        {
+            nameof(Location) => ValidProperties(),
+            nameof(MapCheckrLocation) => new[]
+            {
+                nameof(MapCheckrLocation.lat),
+                nameof(MapCheckrLocation.lng),
+                nameof(MapCheckrLocation.countryCode),
+                nameof(MapCheckrLocation.arrowCount),
+                nameof(MapCheckrLocation.descriptionLength),
+                nameof(MapCheckrLocation.drivingDirectionAngle),
+                nameof(MapCheckrLocation.heading),
+                nameof(MapCheckrLocation.month),
+                nameof(MapCheckrLocation.year),
+            },
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        Func<string, string> lambdaExpressionFunc = typeof(TLoc).Name switch
+        {
+            nameof(Location) => LocationLambdaExpressionFromProperty,
+            nameof(MapCheckrLocation) => MapCheckrLocationLambdaExpressionFromProperty,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        var totalExpression = validProperties
             .Intersect(componentsInExpression.Select(x => x.Trim()))
-            .Aggregate(expressionWithPlaceholders.SpacePadParentheses().SpacePad(), (current, validProperty) => current.Replace(validProperty.SpacePad(), LambdaExpressionFromProperty(validProperty).SpacePad()));
+            .Aggregate(expressionWithPlaceholders.SpacePadParentheses().SpacePad(), (current, validProperty) => current.Replace(validProperty.SpacePad(), lambdaExpressionFunc(validProperty).SpacePad()));
         var validOperators = ValidOperators();
         totalExpression = validOperators
             .Intersect(componentsInExpression.Select(x => x.Trim()))
@@ -116,9 +142,9 @@ public static class LocationLakeFilterer
         }
 
         totalExpression = totalExpression.Replace("\\'", "'");
-        var parameter = Expression.Parameter(typeof(Loc), "x");
+        var parameter = Expression.Parameter(typeof(TLoc), "x");
         var expression = (Expression)DynamicExpressionParser.ParseLambda(new[] { parameter }, null, totalExpression);
-        var typedExpression = ((Expression<Func<Loc, T>>)expression).Compile();
+        var typedExpression = ((Expression<Func<TLoc, T>>)expression).Compile();
         return typedExpression;
     }
 
@@ -174,7 +200,7 @@ public static class LocationLakeFilterer
         "*",
     };
 
-    private static string LambdaExpressionFromProperty(string property) =>
+    private static string LocationLambdaExpressionFromProperty(string property) =>
         property switch
         {
             nameof(Loc.Osm.Surface) => $"x.Osm.{nameof(Loc.Osm.Surface)}",
@@ -212,6 +238,8 @@ public static class LocationLakeFilterer
             _ => throw new ArgumentOutOfRangeException(nameof(property), property, null)
         };
 
+    private static string MapCheckrLocationLambdaExpressionFromProperty(string property) => $"x.{property}";
+
     private static string CSharpOperatorFromOperator(string @operator) => @operator.ToLowerInvariant() switch
     {
         "eq" => "==",
@@ -229,10 +257,14 @@ public static class LocationLakeFilterer
         _ => throw new ArgumentOutOfRangeException(nameof(@operator), $"operator {@operator} not implemented.")
     };
 
-    private static IEnumerable<Loc> FilterByProximity(IEnumerable<Loc> locations, ProximityFilter proximityFilter)
+    private static IEnumerable<Loc> FilterByProximity(IReadOnlyCollection<Loc> locations, ProximityFilter proximityFilter)
     {
+        var nominatim = locations.FirstOrDefault()?.Nominatim;
+        var isSingleCountry = locations.GroupBy(x => x.Nominatim.CountryCode).Count() < 2;
+        var isSingleSubdivision = locations.GroupBy(x => x.Nominatim.SubdivisionCode).Count() < 2;
         var proximityLocations = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-            .Where(x => x.countryCode == locations.First().Nominatim.CountryCode)
+            .Where(x => !isSingleCountry || x.countryCode == nominatim?.CountryCode)
+            .Where(x => !isSingleSubdivision || x.subdivisionCode == nominatim?.SubdivisionCode)
             .ToArray();
         var proximityFilterRadius = proximityFilter.Radius;
         return locations.Where(l => proximityLocations.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius));
@@ -240,6 +272,8 @@ public static class LocationLakeFilterer
 
     private static IEnumerable<Loc> FilterByNeighbours(IEnumerable<Loc> locations, Loc[] allLocations, NeighbourFilter neighbourFilter)
     {
+        var allLocationsDictionary =
+            allLocations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_39x20)).ToDictionary(x => x.Key, x => x);
         var filterExpression = string.IsNullOrEmpty(neighbourFilter.Expression)
             ? _ => true
             : CompileBoolLocationExpression(neighbourFilter.Expression);
@@ -248,7 +282,7 @@ public static class LocationLakeFilterer
         {
             0 => locations
                 .AsParallel()
-                .Where(l => directions.Any(d => !allLocations.Any(l2 =>
+                .Where(l => directions.Any(d => !allLocationsDictionary[Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20)].Any(l2 =>
                     IsInDirection(d, l, l2) &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighbourFilter.Radius &&
                     filterExpression(l2)))),
@@ -269,7 +303,7 @@ public static class LocationLakeFilterer
             CardinalDirection.East => x1.Lng > x2.Lng,
             CardinalDirection.North => x1.Lat > x2.Lat,
             CardinalDirection.South => x1.Lat < x2.Lat,
-            _ => true
+            _ => false
         };
     }
 }

@@ -11,6 +11,7 @@ public static class TagsGenerator
     {
         var tags = mapDefinition.Output.LocationTags.SelectMany(e => e switch
         {
+            "CountryCode" => [mapCheckrLocation.countryCode ?? ""],
             "SubdivisionCode" => [SubdivisionCode(mapCheckrLocation) ?? ""],
             "County" => [County(l) ?? ""],
             "Surface" => [Surface(l) ?? ""],
