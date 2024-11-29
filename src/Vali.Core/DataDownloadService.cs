@@ -103,8 +103,9 @@ public class DataDownloadService
             return Path.Combine(applicationSettings.LocalhostDownloadDirectory!, countryCode);
         }
 
+        var defaultDownloadFolderEnvironment = ApplicationSettingsService.ReadDownloadFolderFromEnvironmentVariable();
         var defaultDownloadFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        var downloadFolder = applicationSettings.DownloadDirectory ?? defaultDownloadFolder;
+        var downloadFolder = defaultDownloadFolderEnvironment ?? applicationSettings.DownloadDirectory ?? defaultDownloadFolder;
         return Path.Combine(downloadFolder, "Vali", countryCode);
     }
 

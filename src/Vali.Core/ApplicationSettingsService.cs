@@ -2,6 +2,8 @@
 
 public static class ApplicationSettingsService
 {
+    public const string DownloadFolderEnvironmentVariableName = "VALI_DOWNLOAD_FOLDER";
+
     public static void SetDownloadFolder(string directory)
     {
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -13,6 +15,9 @@ public static class ApplicationSettingsService
         settings.DownloadDirectory = string.IsNullOrEmpty(directory) ? null : directory;
         WriteApplicationSettings(settings);
     }
+
+    public static string? ReadDownloadFolderFromEnvironmentVariable() =>
+        Environment.GetEnvironmentVariable(DownloadFolderEnvironmentVariableName);
 
     public static void UnsetDownloadFolder()
     {

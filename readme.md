@@ -27,7 +27,7 @@ Vali uses a massive pool of pre-generated Google street view locations combined 
 * `vali report --country "NO" --prop "County"` - Export counties/municipalities data for Norway.
 * `vali report --country "BE" --prop "Year"` - Export coverage year data for Belgium.
 * `vali download` - Download/update data. You will be asked which countries you want to download data for.
-* `vali set-download-folder "D:\vali-data"` - Change folder where data is downloaded to. Default location is C:\ProgramData
+* `vali set-download-folder "D:\vali-data"` - Change folder where data is downloaded to. Default location is C:\ProgramData. On Mac? Set environment variable `VALI_DOWNLOAD_FOLDER` to the folder you want data downloaded to.
 * `vali unset-download-folder` - Reset download folder to default.
 * `vali application-settings` - Read application settings.
 * `vali distribute-from-file --file ".\large-ES.json" --distance 250 --outputPath ".\large-ES-locations.json"` - Use vali's distribution algorithm to distribute locations from a file with lots of locations.

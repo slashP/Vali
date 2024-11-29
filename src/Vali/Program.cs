@@ -248,6 +248,11 @@ applicationSettingsCommand.SetHandler(context =>
 {
     var settings = ApplicationSettingsService.ReadApplicationSettings();
     ConsoleLogger.Info(Serializer.PrettySerialize(settings));
+    if (ApplicationSettingsService.ReadDownloadFolderFromEnvironmentVariable() != null)
+    {
+        ConsoleLogger.Info($"Vali environment variable {ApplicationSettingsService.DownloadFolderEnvironmentVariableName}: {ApplicationSettingsService.ReadDownloadFolderFromEnvironmentVariable()}");
+    }
+
     context.ExitCode = 100;
 });
 
