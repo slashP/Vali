@@ -24,6 +24,7 @@ public static class TagsGenerator
             _ when e.StartsWith(nameof(Location.Google.DrivingDirectionAngle)) => IntTag(mapCheckrLocation, nameof(l.Google.DrivingDirectionAngle), x => x.drivingDirectionAngle, e),
             _ when e.StartsWith(nameof(Location.Google.Heading)) => IntTag(mapCheckrLocation, nameof(l.Google.Heading), x => (int)x.heading, e),
             "DescriptionLength" => [$"DescriptionLength-{(mapCheckrLocation.descriptionLength != null ? mapCheckrLocation.descriptionLength.Value : "null")}"],
+            "IsScout" => [$"{nameof(Location.Google.IsScout)}-{(l.Google.IsScout ? "Yes" : "No")}"],
             "Season" => [Season(l.Nominatim.CountryCode, mapCheckrLocation.month)],
             "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()),
             nameof(Location.Osm.HighwayTypeCount) => [$"{nameof(Location.Osm.HighwayTypeCount)}-{l.Osm.HighwayTypeCount}"],

@@ -92,7 +92,8 @@ public static class LocationLakeMapGenerator
                 year = x.Google.Year,
                 month = x.Google.Month,
                 drivingDirectionAngle = (ushort)x.Google.DrivingDirectionAngle,
-                descriptionLength = x.Google.DescriptionLength
+                descriptionLength = x.Google.DescriptionLength,
+                isScout = x.Google.IsScout,
             }
         }).ToArray();
         Random.Shared.Shuffle(locations);

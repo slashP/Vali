@@ -18,7 +18,7 @@ public class SubdivisionSuggester
         var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Localhost);
         var files = allSubdivisions.Select(x => x.file).ToArray();
         await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
-        var subdivisions = SubdivisionWeights.GetSubdivisions()[countryCode];
+        var subdivisions = SubdivisionWeights.CountryToSubdivision[countryCode];
         var availableSubdivisions = files
             .Select(f =>
             {
@@ -27,20 +27,10 @@ public class SubdivisionSuggester
                 {
                     File = f,
                     SubdivisionCode = subdivisionCode,
-                    Subdivision = subdivisions.FirstOrDefault(y => subdivisionCode == y.SubdivisionCode)
+                    Subdivision = subdivisions.FirstOrDefault(y => subdivisionCode == y.Key)
                 };
             })
             .ToArray();
-
-        var missing = availableSubdivisions.Where(a => a.Subdivision == null).ToArray();
-        if (missing.Any() && lightWeight)
-        {
-            ConsoleLogger.Warn($"""
-                                Missing
-                                {missing.Select(x => x.SubdivisionCode).Merge(Environment.NewLine)}
-                                """);
-            return;
-        }
 
         var entries = new List<SubdivisionDistributionEntry>();
         var geoHasher = new Geohasher();
@@ -60,7 +50,7 @@ public class SubdivisionSuggester
                             {
                                 Code = "FIX",
                                 Weight = 0,
-                                Subdivision = subdivisions.FirstOrDefault(y => subDivision == y.SubdivisionCode)
+                                Name = "nope"
                             });
                             continue;
                         }
@@ -73,37 +63,13 @@ public class SubdivisionSuggester
                         {
                             Code = subDivision,
                             Weight = distribution.Count,
-                            Subdivision = subdivisions.FirstOrDefault(y => subDivision == y.SubdivisionCode)
+                            Name = subdivisions[subDivision].subdivisionName
                         });
                         task.Increment(1);
                     }
                 });
 
-            ConsoleLogger.Info(entries.Select(x => $"{{ \"{x.Code}\", {x.Weight} }}, // {x.Subdivision?.Name}").Merge(Environment.NewLine));
-        }
-        else
-        {
-            var f2 = availableSubdivisions
-                .Select(x => $"{{ \"{x.SubdivisionCode}\", {Weight(x.Subdivision!, x.File)} }}, // {x.Subdivision!.Name}").Merge(Environment.NewLine);
-            ConsoleLogger.Info(f2);
-        }
-
-        int Weight(SubdivisionWeights.SubdivisionInfo subdivision, string file)
-        {
-            decimal fileSize = new FileInfo(file).Length;
-            var totalFileSize = files.Sum(f => new FileInfo(f).Length);
-            decimal area = subdivision.Area;
-            var totalArea = subdivisions.Sum(s => s.Area);
-            decimal population = subdivision.Inhabitants;
-            var totalPopulation = subdivisions.Sum(s => s.Inhabitants);
-            var fileSizePercentage = fileSize / totalFileSize;
-            var areaPercentage = area / totalArea;
-            var populationPercentage = population / totalPopulation;
-            var res = (fileSizePercentage * .1m +
-                       areaPercentage * .8m +
-                       populationPercentage * .1m)
-                      * 1000 * files.Length;
-            return res.RoundToInt();
+            ConsoleLogger.Info(entries.Select(x => $"{{ \"{x.Code}\", ({x.Weight}, \"{x.Name}\") }},").Merge(Environment.NewLine));
         }
     }
 
@@ -111,6 +77,6 @@ public class SubdivisionSuggester
     {
         public required string Code { get; set; }
         public int Weight { get; set; }
-        public SubdivisionWeights.SubdivisionInfo? Subdivision { get; set; }
+        public required string Name { get; set; }
     }
 }

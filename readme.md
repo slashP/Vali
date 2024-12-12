@@ -155,6 +155,7 @@ Locations can be filtered globally, per country or per subdivision.
 | ArrowCount            | [Google] The number of arrows, mostly corresponds to the possible number of directions you can go in. Integer.
 | Elevation             | [Google] Meters above sea level.
 | DescriptionLength     | [Google] The length of the "description" field in Google's API. Used to distinguish (estimate) trekker coverage. If you want to include all coverage, add `DescriptionLength gt -1` to your respective location filter.
+| IsScout               | [Google] Whether the location is marked as "scout" in the Google API. This corresponds to meaning "gen3 trekker" if that term makes more sense to you.
 | CountryCode           | [Nominatim] Two character ISO 3166 country code.
 | SubdivisionCode       | [Nominatim] ISO 3166-2 code for the subdivision. Mostly corresponding to data available at [ISO_3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) (but with some exceptions.)
 | County                | [Nominatim] Municipality/county name where available.
@@ -377,6 +378,7 @@ You can tag locations in `output.locationTags`. Available tags:
 * Elevation
 * ArrowCount
 * DescriptionLength
+* IsScout
 * Season
 * HighwayType
 * IsResidential

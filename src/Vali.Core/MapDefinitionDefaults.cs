@@ -62,7 +62,7 @@ public static class MapDefinitionDefaults
         return definitionWithDefaults;
     }
 
-    private static Dictionary<string, T> ExpandCountryDictionary<T>(Dictionary<string, T> countryDictionary) =>
+    public static Dictionary<string, T> ExpandCountryDictionary<T>(Dictionary<string, T> countryDictionary) =>
         countryDictionary == null
             ? new()
             : countryDictionary

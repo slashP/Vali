@@ -35,9 +35,10 @@ public static class LocationLakeFilterer
             defaultFilterSelectors.Add(x => x.Osm.Tunnels10 == 0);
         }
 
-        if (string.IsNullOrEmpty(locationFilterExpression) || !locationFilterExpression.Contains(nameof(Loc.Google.DescriptionLength)))
+        if (string.IsNullOrEmpty(locationFilterExpression) || (!locationFilterExpression.Contains(nameof(Loc.Google.DescriptionLength)) && !locationFilterExpression.Contains(nameof(Loc.Google.IsScout))))
         {
-            defaultFilterSelectors.Add(x => x.Google.DescriptionLength is null or > 0 ||
+            defaultFilterSelectors.Add(x => (x.Google.DescriptionLength is null or > 0 &&
+                                            x.Google.IsScout == false) ||
                                             CountryCodesAcceptableWithoutDescription.Contains(x.Nominatim.CountryCode) ||
                                             SubdivisionCodesAcceptableWithoutDescription.Contains(x.Nominatim.SubdivisionCode));
         }
@@ -119,6 +120,7 @@ public static class LocationLakeFilterer
                 nameof(MapCheckrLocation.heading),
                 nameof(MapCheckrLocation.month),
                 nameof(MapCheckrLocation.year),
+                nameof(MapCheckrLocation.isScout),
             },
             _ => throw new ArgumentOutOfRangeException()
         };
@@ -179,6 +181,7 @@ public static class LocationLakeFilterer
         nameof(Loc.Google.ArrowCount),
         nameof(Loc.Google.Elevation),
         nameof(Loc.Google.DescriptionLength),
+        nameof(Loc.Google.IsScout),
         nameof(Loc.Nominatim.CountryCode),
         nameof(Loc.Nominatim.SubdivisionCode),
         nameof(Loc.Nominatim.County),
@@ -232,6 +235,7 @@ public static class LocationLakeFilterer
             nameof(Loc.Google.ArrowCount) => $"x.Google.{nameof(Loc.Google.ArrowCount)}",
             nameof(Loc.Google.Elevation) => $"x.Google.{nameof(Loc.Google.Elevation)}",
             nameof(Loc.Google.DescriptionLength) => $"x.Google.{nameof(Loc.Google.DescriptionLength)}",
+            nameof(Loc.Google.IsScout) => $"x.Google.{nameof(Loc.Google.IsScout)}",
             nameof(Loc.Nominatim.CountryCode) => $"x.Nominatim.{nameof(Loc.Nominatim.CountryCode)}",
             nameof(Loc.Nominatim.SubdivisionCode) => $"x.Nominatim.{nameof(Loc.Nominatim.SubdivisionCode)}",
             nameof(Loc.Nominatim.County) => $"x.Nominatim.{nameof(Loc.Nominatim.County)}",
@@ -278,9 +282,15 @@ public static class LocationLakeFilterer
             ? _ => true
             : CompileBoolLocationExpression(neighbourFilter.Expression);
         var directions = neighbourFilter.InEitherCardinalDirection ? Enum.GetValues<CardinalDirection>().Cast<CardinalDirection?>().ToArray() : [null];
-        return neighbourFilter.Limit switch
+        return neighbourFilter switch
         {
-            0 => locations
+            { IsLowerLimit: true } => locations
+                .AsParallel()
+                .Where(l => directions.Any(d => allLocations.Count(l2 =>
+                    IsInDirection(d, l, l2) &&
+                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighbourFilter.Radius &&
+                    filterExpression(l2)) >= neighbourFilter.Limit)),
+            { Limit: 0, IsLowerLimit: false } => locations
                 .AsParallel()
                 .Where(l => directions.Any(d => !allLocationsDictionary[Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20)].Any(l2 =>
                     IsInDirection(d, l, l2) &&

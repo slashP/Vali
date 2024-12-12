@@ -35,6 +35,7 @@ public record NeighbourFilter
     public int Radius { get; set; }
     public string Expression { get; set; } = "";
     public int Limit { get; set; }
+    public bool IsLowerLimit { get; set; }
 }
 
 public record LiveGenerateMapDefinition
