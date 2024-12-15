@@ -267,11 +267,16 @@ public static class LocationLakeFilterer
         var isSingleCountry = locations.GroupBy(x => x.Nominatim.CountryCode).Count() < 2;
         var isSingleSubdivision = locations.GroupBy(x => x.Nominatim.SubdivisionCode).Count() < 2;
         var proximityLocations = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-            .Where(x => !isSingleCountry || x.countryCode == nominatim?.CountryCode)
-            .Where(x => !isSingleSubdivision || x.subdivisionCode == nominatim?.SubdivisionCode)
-            .ToArray();
+            .Where(x => !isSingleCountry || x.countryCode is null || x.countryCode == nominatim?.CountryCode)
+            .Where(x => !isSingleSubdivision || x.subdivisionCode is null || x.subdivisionCode == nominatim?.SubdivisionCode)
+            .GroupBy(x => Hasher.Encode(x.lat, x.lng, HashPrecision.Size_km_39x20))
+            .ToDictionary(x => x.Key, x => x);
         var proximityFilterRadius = proximityFilter.Radius;
-        return locations.Where(l => proximityLocations.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius));
+        return locations.Where(l =>
+        {
+            var hash = Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20);
+            return proximityLocations.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius);
+        });
     }
 
     private static IEnumerable<Loc> FilterByNeighbours(IEnumerable<Loc> locations, Loc[] allLocations, NeighbourFilter neighbourFilter)

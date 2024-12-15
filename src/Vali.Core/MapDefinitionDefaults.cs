@@ -185,6 +185,7 @@ public static class MapDefinitionDefaults
         var defaultDistribution = DefaultDistribution(definition.DistributionStrategy);
         return definition.CountryCodes switch
         {
+            _ when definition.CountryDistribution.Any() => definition.CountryDistribution,
             ["*"] => Distribution(defaultDistribution, definition),
             ["europe"] => Distribution(Weights.Europe, definition),
             ["asia"] => Distribution(Weights.Asia, definition),
