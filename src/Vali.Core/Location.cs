@@ -57,6 +57,8 @@ public record GoogleData
     public int? DescriptionLength { get; set; }
     [ProtoMember(13)]
     public bool IsScout { get; set; }
+    [ProtoMember(14)]
+    public int ResolutionHeight { get; set; }
 }
 
 [ProtoContract]

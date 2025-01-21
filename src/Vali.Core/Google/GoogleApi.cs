@@ -122,6 +122,7 @@ public class GoogleApi
             var isScout = locationResponse[1][6].AsArray().Count >= 6 &&
                                 locationResponse[1][6][5].AsArray().Count >= 3 &&
                                 locationResponse[1][6][5][2].GetValue<string>() == "scout";
+            var resolutionHeight = locationResponse[1][2][2][0].GetValue<int>();
 
             var pano = locationResponse[1][1][1].GetValue<string>();
             var defaultImage = new AlternativePano
@@ -153,8 +154,7 @@ public class GoogleApi
                 return (location, LocationLookupResult.Ari);
             }
 
-            var isGen1Possible = IsGen1Possible(countryCode, year);
-            if (isGen1Possible && await IsGen1(pano) != false)
+            if (resolutionHeight <= Resolution.Gen1)
             {
                 return (location, LocationLookupResult.Gen1);
             }
@@ -247,6 +247,7 @@ public class GoogleApi
                 alternativePanos = alternativeImages.Where(a => a.PanoId != pano).ToArray(),
                 subdivision = subdivision,
                 isScout = isScout,
+                resolutionHeight = resolutionHeight
             }, LocationLookupResult.Valid);
         }
         catch (Exception e)
@@ -267,50 +268,6 @@ public class GoogleApi
             "US" or "JP" or "MX" => year < 2011,
             _ => false
         };
-    }
-
-    public static async Task<bool?> IsGen1(string panoId)
-    {
-        var body = $"""
-                    [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
-                    """;
-        string content;
-        try
-        {
-            var responseMessage = await _client.PostAsync("$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetMetadata", new StringContent(body, Encoding.UTF8, "application/json+protobuf"));
-            content = await responseMessage.Content.ReadAsStringAsync();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            await Task.Delay(TimeSpan.FromSeconds(5));
-            return null;
-        }
-
-        try
-        {
-            var metadataResponse = JsonNode.Parse(content);
-            if (metadataResponse.AsArray().Count == 2 && metadataResponse[1] is JsonValue &&
-                metadataResponse[1].GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
-            {
-                return null;
-            }
-
-            if (metadataResponse.AsArray().Count == 1 && metadataResponse.AsArray()[0]?.AsArray().Count == 1)
-            {
-                return null;
-            }
-
-            var imageSize = metadataResponse[1][0][2]?[2][0].GetValue<double>();
-            var isGen1 = imageSize < 2000;
-            return isGen1;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"Failed verifying IsGen1. {content}");
-            Console.WriteLine(e);
-            return null;
-        }
     }
 
     public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout)> DetailsFromPanoId(string panoId)
@@ -345,8 +302,8 @@ public class GoogleApi
                 return (null, 0, 0, 0, 0, 0, 0, 0, 0, false);
             }
 
-            var imageSize = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
-            var isGen1 = imageSize < 2000;
+            var resolutionHeight = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
+            var isGen1 = resolutionHeight <= Resolution.Gen1;
             var arrows = metadataResponse[1][0][5]?[0]?.AsArray().Count > 6 ? metadataResponse[1][0][5]?[0]?[6]?.AsArray() ?? []: [];
             var drivingDirectionAngle = metadataResponse[1][0][5]?[0][1].AsArray().Count > 2 ? (ushort)Math.Round(metadataResponse[1][0][5]?[0][1][2]?[0].GetValue<decimal>() ?? 0, 0) : (ushort)0;
             var elevation = metadataResponse[1][0][5]?[0][1][1]?[0]?.GetValue<double>() ?? -1;
@@ -492,6 +449,7 @@ public record MapCheckrLocation : IDistributionLocation<string>
     public AlternativePano[] alternativePanos { get; set; }
     public string? subdivision { get; set; }
     public bool isScout { get; set; }
+    public int resolutionHeight { get; set; }
 }
 
 public record AlternativePano
@@ -499,4 +457,10 @@ public record AlternativePano
     public int Year { get; set; }
     public int Month { get; set; }
     public string PanoId { get; set; }
+}
+
+public static class Resolution
+{
+    public const int Gen4 = 8192;
+    public const int Gen1 = 1664;
 }

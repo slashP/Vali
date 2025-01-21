@@ -171,6 +171,11 @@ public class SubdivisionWeights
         { "BM-1", (1, "Bermuda") },
     };
 
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> AX = new()
+    {
+        { "AX-1", (1, "Åland Islands") },
+    };
+
     private static readonly Dictionary<string, (int weight, string subdivisionName)> BO = new()
     {
         { "BO-C", (1288, "Departamento de Cochabamba") },
@@ -527,8 +532,7 @@ public class SubdivisionWeights
         { "FI-17", (566, "Satakunta") },
         { "FI-18", (1340, "Uusimaa") },
         { "FI-19", (999, "Varsinais-Suomi") },
-        { "Mainland Finland", (2200, "Lapland") },
-        { "Åland Islands", (500, "Åland Islands") },
+        { "FI-10", (2200, "Lapland") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> FO = new()
@@ -3375,6 +3379,7 @@ public class SubdivisionWeights
             { "KR", KR },
             { "SG", SG },
             { "TW", TW },
+            { "AX", AX },
             { "BM", BM },
             { "VI", VI },
             { "GL", GL },
@@ -3468,6 +3473,13 @@ public class SubdivisionWeights
         return subdivisions.TryGetValue(code, out var val)
             ? val.subdivisionName
             : "N/A";
+    }
+
+
+    public static string SubdivisionNameBySubdivisionCode(string code)
+    {
+        return SubdivisionWeights.CountryToSubdivision.FirstOrDefault(x => x.Value.Any(y => y.Key == code)).Value?
+            .First(x => x.Key == code).Value.subdivisionName ?? "N/A";
     }
 
     public static (string subdivisionCode, string file)[] AllSubdivisionFiles(string countryCode, RunMode runMode)

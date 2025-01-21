@@ -212,6 +212,7 @@ public static class MapDefinitionDefaults
             "rainboltworld" => Weights.RainboltWorld,
             "geotime" => Weights.GeoTime,
             "lerg" => Weights.LessExtremeRegionGuessing,
+            "amw" => Weights.MovingWorld,
             { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };

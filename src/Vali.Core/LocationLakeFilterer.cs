@@ -28,8 +28,16 @@ public static class LocationLakeFilterer
     {
         List<Func<Loc, bool>> defaultFilterSelectors =
         [
-            x => x.Google.PanoId.Length < 36
+            x => x.Google.PanoId.Length < 36,
+            x => x.Nominatim.CountryCode switch
+            {
+                "FI" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2022,
+                "EC" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2021,
+                "NG" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2021,
+                _ => true
+            }
         ];
+
         if (string.IsNullOrEmpty(locationFilterExpression) || !locationFilterExpression.Contains("Tunnels"))
         {
             defaultFilterSelectors.Add(x => x.Osm.Tunnels10 == 0);
@@ -266,15 +274,16 @@ public static class LocationLakeFilterer
         var nominatim = locations.FirstOrDefault()?.Nominatim;
         var isSingleCountry = locations.GroupBy(x => x.Nominatim.CountryCode).Count() < 2;
         var isSingleSubdivision = locations.GroupBy(x => x.Nominatim.SubdivisionCode).Count() < 2;
+        var precision = HashPrecision.Size_km_39x20;
         var proximityLocations = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
             .Where(x => !isSingleCountry || x.countryCode is null || x.countryCode == nominatim?.CountryCode)
             .Where(x => !isSingleSubdivision || x.subdivisionCode is null || x.subdivisionCode == nominatim?.SubdivisionCode)
-            .GroupBy(x => Hasher.Encode(x.lat, x.lng, HashPrecision.Size_km_39x20))
+            .GroupBy(x => Hasher.Encode(x.lat, x.lng, precision))
             .ToDictionary(x => x.Key, x => x);
         var proximityFilterRadius = proximityFilter.Radius;
         return locations.Where(l =>
         {
-            var hash = Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20);
+            var hash = Hasher.Encode(l.Lat, l.Lng, precision);
             return proximityLocations.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius);
         });
     }
