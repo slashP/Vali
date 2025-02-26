@@ -1,9 +1,8 @@
 ﻿using System.Text.Json.Nodes;
 using System.Text;
 using System.Text.Json.Serialization;
-using System;
-using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Vali.Core.Google;
 
@@ -108,6 +107,8 @@ public class GoogleApi
                 return (location, LocationLookupResult.NoImages);
             }
 
+            var copyright = locationResponse[1][4][0][0][0][0].GetValue<string>();
+
             var descriptionNode = locationResponse[1][3];
             var desc = descriptionNode.AsArray().Count >= 3 && descriptionNode[2] != null
                 ?
@@ -210,7 +211,7 @@ public class GoogleApi
 
             if (selected.PanoId != pano)
             {
-                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout) = await DetailsFromPanoId(selected.PanoId);
+                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, detailsCopyright) = await DetailsFromPanoId(selected.PanoId);
                 if (isGen1 != false)
                 {
                     return (location, LocationLookupResult.NoImages);
@@ -224,11 +225,17 @@ public class GoogleApi
                 heading = defaultHeading;
                 elevation = metersAboveSeaLevel;
                 isScout = scout;
+                copyright = detailsCopyright;
             }
 
             if (pano.Length >= 36 || defaultDrivingDirectionAngle > 360 || year < 2005)
             {
                 return (location, LocationLookupResult.NoImages);
+            }
+
+            if (!Regex.IsMatch(copyright, @"© \d{4} Google"))
+            {
+                return (location, LocationLookupResult.Ari);
             }
 
             return (location with
@@ -270,7 +277,7 @@ public class GoogleApi
         };
     }
 
-    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout)> DetailsFromPanoId(string panoId)
+    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, string copyright)> DetailsFromPanoId(string panoId)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -285,7 +292,7 @@ public class GoogleApi
         {
             Console.WriteLine(e);
             await Task.Delay(TimeSpan.FromSeconds(5));
-            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false);
+            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
         }
 
         try
@@ -294,12 +301,12 @@ public class GoogleApi
             if (metadataResponse.AsArray().Count == 2 && metadataResponse[1] is JsonValue &&
                 metadataResponse[1].GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false);
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
             }
 
             if (metadataResponse.AsArray().Count == 1)
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false);
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
             }
 
             var resolutionHeight = metadataResponse[1][0][2]?[2]?[0]?.GetValue<double>() ?? 0;
@@ -316,7 +323,7 @@ public class GoogleApi
             var year = metadataResponse[1][0][6]?.AsArray().Count >= 8 ? metadataResponse[1][0][6]?[7][0].GetValue<int>() ?? 2000 : 2000;
             if (year < 2001)
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false);
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
             }
 
             var month = metadataResponse[1][0][6].AsArray().Count >= 8 ? metadataResponse[1][0][6]?[7][1].GetValue<int>() ?? 1 : 1;
@@ -324,13 +331,14 @@ public class GoogleApi
             var lng = metadataResponse[1][0][5]?[0][1][0][3].GetValue<double>() ?? 0;
             var isScout = metadataResponse[1][0][6][5].AsArray().Count >= 3 &&
                                 metadataResponse[1][0][6][5][2].GetValue<string>() == "scout";
-            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng, isScout);
+            var copyright = metadataResponse[1][0][4][0][0][0][0].GetValue<string>();
+            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng, isScout, copyright);
         }
         catch (Exception e)
         {
             Console.WriteLine($"Failed verifying {nameof(DetailsFromPanoId)}. {content}");
             Console.WriteLine(e);
-            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false);
+            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
         }
     }
 

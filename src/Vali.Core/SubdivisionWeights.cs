@@ -328,7 +328,7 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> CO = new()
     {
-        { "CO-AMA", (0, "Amazonas") },
+        { "CO-AMA", (25, "Amazonas") },
         { "CO-ANT", (4335, "Antioquia") },
         { "CO-ARA", (1186, "Arauca") },
         { "CO-ATL", (1717, "Atlantico") },
@@ -355,7 +355,7 @@ public class SubdivisionWeights
         { "CO-QUI", (1186, "Quindio") },
         { "CO-RIS", (1610, "Risaralda") },
         { "CO-SAN", (3203, "Santander") },
-        { "CO-SAP", (0, "San Andrés") },
+        { "CO-SAP", (70, "San Andrés") },
         { "CO-SUC", (1710, "Sucre") },
         { "CO-TOL", (2673, "Tolima") },
         { "CO-VAC", (3226, "Valle del Cauca") },
@@ -1009,7 +1009,7 @@ public class SubdivisionWeights
         { "JP-39", (4353, "Kochi") },
         { "JP-40", (6178, "Fukuoka") },
         { "JP-41", (3207, "Saga") },
-        { "JP-42", (4668, "Nagasaki Prefecture") },
+        { "JP-42", (4668, "Nagasaki") },
         { "JP-43", (7029, "Kumamoto") },
         { "JP-44", (5975, "Oita") },
         { "JP-45", (5668, "Miyazaki") },
