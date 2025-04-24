@@ -90,7 +90,7 @@ public static class TagsGenerator
 
     public static string YearMonth(int year, int month) => $"{year}-{month.ToString().PadLeft(2, '0')}";
 
-    public static string Season(string countryCode, int month) =>
+    public static string Season(string? countryCode, int month) =>
         (CountryCodes.Hemisphere(countryCode), month) switch
         {
             (Hemisphere.Northern, 12) => "Winter",

@@ -326,7 +326,7 @@ public static class CountryCodes
 
     public static string Name(string countryCode) => Countries.TryGetValue(countryCode, out var name) ? name : string.Empty;
 
-    public static Hemisphere Hemisphere(string countryCode)
+    public static Hemisphere Hemisphere(string? countryCode)
     {
         return countryCode switch
         {

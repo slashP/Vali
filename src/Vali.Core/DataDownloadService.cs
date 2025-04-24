@@ -84,7 +84,7 @@ public class DataDownloadService
     private static BlobContainerClient CreateBlobServiceClient() =>
         new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient("countries-v1");
 
-    private static FileInfo[] ExistingFilesForCountry(string countryCode, RunMode runMode)
+    public static FileInfo[] ExistingFilesForCountry(string countryCode, RunMode runMode)
     {
         var folder = CountryFolder(countryCode, runMode);
         if (!Directory.Exists(folder))

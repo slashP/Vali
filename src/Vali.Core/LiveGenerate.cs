@@ -11,9 +11,9 @@ namespace Vali.Core;
 
 public class LiveGenerate
 {
-    private static readonly Dictionary<string, IReadOnlyCollection<(double lat, double lng)>> _roads = new();
-    private static readonly Dictionary<string, IList<MapCheckrLocation>> _countries = new();
-    private static HashSet<string> _panoIds = new();
+    private static readonly Dictionary<string, IReadOnlyCollection<(double lat, double lng)>> Roads = [];
+    private static readonly Dictionary<string, IList<MapCheckrLocation>> Countries = [];
+    private static HashSet<string> _panoIds = [];
 
     public static async Task Generate(LiveGenerateMapDefinition map, string definitionPath)
     {
@@ -22,22 +22,25 @@ public class LiveGenerate
             var existingLocations = await ReadExistingLocations(definitionPath);
             foreach (var locsByCountry in existingLocations.GroupBy(c => c.countryCode))
             {
-                _countries[locsByCountry.Key] = locsByCountry.ToList();
+                if (locsByCountry.Key != null)
+                {
+                    Countries[locsByCountry.Key] = locsByCountry.ToList();
+                }
             }
 
-            _panoIds = _countries.SelectMany(x => x.Value.Select(y => y.panoId)).ToHashSet();
+            _panoIds = Countries.SelectMany(x => x.Value.Select(y => y.panoId)).ToHashSet();
 
             await AnsiConsole.Progress()
                 .StartAsync(async ctx =>
                 {
-                    ProgressTask defaultTask = null;
+                    ProgressTask? defaultTask = null;
                     var overshootFactor = 4;
 
-                    while (map.Countries.Any(c => !_countries.TryGetValue(c.Key, out var locs) || locs.Count < c.Value))
+                    while (map.Countries.Any(c => !Countries.TryGetValue(c.Key, out var locs) || locs.Count < c.Value))
                     {
                         foreach (var (countryCode, locationCount) in map.Countries)
                         {
-                            if (_countries.TryGetValue(countryCode, out var locs) && locs.Count >= locationCount)
+                            if (Countries.TryGetValue(countryCode, out var locs) && locs.Count >= locationCount)
                             {
                                 continue;
                             }
@@ -78,7 +81,7 @@ public class LiveGenerate
         var definitionFilename = Path.GetFileNameWithoutExtension(definitionPath);
         var filename = definitionFilename + "-locations.json";
         var locationsPath = Path.Combine(outFolder, filename);
-        var geoMapLocations = _countries
+        var geoMapLocations = Countries
             .SelectMany(c => c.Value)
             .Select(l => new LocationLakeMapGenerator.GeoMapLocation
             {
@@ -129,12 +132,11 @@ public class LiveGenerate
         var boxPrecision = HashPrecision.Size_m_153x153;
         var radius = 100;
         var chunkSize = 100;
-        var roads = await Roads(countryCode);
-        var candidateLocations = _countries.TryGetValue(countryCode, out var locs)
+        var roads = await GetRoads(countryCode);
+        var candidateLocations = Countries.TryGetValue(countryCode, out var locs)
             ? locs
             : (await ReadExistingLocations(definitionPath)).Where(c => c.countryCode == countryCode).ToList();
         task.Value(candidateLocations.Count);
-        var counter = 0;
         var fromDate = !string.IsNullOrEmpty(mapFromDate)
             ? DateTime.ParseExact(mapFromDate, "yyyy-MM", CultureInfo.InvariantCulture)
             : (DateTime?)null;
@@ -143,7 +145,7 @@ public class LiveGenerate
             : (DateTime?)null;
         while (candidateLocations.Count < goalCount * overshootFactor)
         {
-            _countries[countryCode] = candidateLocations.Where(c => c.countryCode == countryCode).ToList();
+            Countries[countryCode] = candidateLocations.Where(c => c.countryCode == countryCode).ToList();
 
             var exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
             if (exitRequested)
@@ -184,13 +186,13 @@ public class LiveGenerate
 
         var undistributedLocations = candidateLocations.Where(c => c.countryCode == countryCode).ToList();
         var distributedLocations = LocationDistributor.GetSome<MapCheckrLocation, string>(undistributedLocations, minDistanceBetweenLocations: minMinDistance, goalCount: goalCount).ToList();
-        _countries[countryCode] = distributedLocations;
+        Countries[countryCode] = distributedLocations;
         return candidateLocations;
     }
 
-    private static async Task<IReadOnlyCollection<(double lat, double lng)>> Roads(string countryCode)
+    private static async Task<IReadOnlyCollection<(double lat, double lng)>> GetRoads(string countryCode)
     {
-        if (_roads.TryGetValue(countryCode, out var roads))
+        if (Roads.TryGetValue(countryCode, out var roads))
         {
             return roads;
         }
@@ -206,7 +208,7 @@ public class LiveGenerate
             }));
         }
 
-        _roads[countryCode] = result;
+        Roads[countryCode] = result;
         return result;
     }
 

@@ -163,12 +163,7 @@ public static class Extensions
         var assembly = typeof(Extensions).GetTypeInfo().Assembly;
         var resourceName = assembly.GetManifestResourceNames().First(s => s.EndsWith(embeddedFileName, StringComparison.CurrentCultureIgnoreCase));
 
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream == null)
-        {
-            throw new InvalidOperationException("Could not load manifest resource stream.");
-        }
-
+        using var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException("Could not load manifest resource stream.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
@@ -239,17 +234,17 @@ public static class Extensions
         return JsonSerializer.Deserialize<T>(fileStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
-    private static char[] invalids = Path.GetInvalidFileNameChars();
+    private static readonly char[] Invalids = Path.GetInvalidFileNameChars();
     public static string GetSafeFileName(string name, char replace = '_')
     {
-        return new string(name.Select(c => invalids.Contains(c) ? replace : c).ToArray());
+        return new string(name.Select(c => Invalids.Contains(c) ? replace : c).ToArray());
     }
 
     public static T[][] GetPermutations<T>(this IEnumerable<T> list, int length)
     {
         if (length == 1) return list.Select(t => new T[] { t }).ToArray();
         return GetPermutations(list, length - 1)
-            .SelectMany(t => list.Where(o => !t.Contains(o)), (t1, t2) => t1.Concat(new T[] { t2 }).ToArray()).ToArray();
+            .SelectMany(t => list.Where(o => !t.Contains(o)), (t1, t2) => t1.Concat([t2]).ToArray()).ToArray();
     }
 
     public static string AsCsvString(this IEnumerable<MapCheckrLocation> locations) =>

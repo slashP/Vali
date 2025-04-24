@@ -153,14 +153,14 @@ public static class LocationLakeMapGenerator
                 Google = new GoogleData
                 {
                     PanoId = "",
-                    CountryCode = loc.countryCode,
+                    CountryCode = loc.countryCode ?? "",
                     DefaultHeading = (double)loc.heading,
                     DrivingDirectionAngle = loc.drivingDirectionAngle,
                 },
                 Osm = new OsmData(),
                 Nominatim = new NominatimData
                 {
-                    CountryCode = loc.countryCode,
+                    CountryCode = loc.countryCode ?? "",
                     SubdivisionCode = loc.subdivisionCode ?? ""
                 }
             };

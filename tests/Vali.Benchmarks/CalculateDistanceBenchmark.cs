@@ -10,7 +10,8 @@ public class CalculateDistanceBenchmark
 
     public CalculateDistanceBenchmark()
     {
-        _definitionPath = @"C:\dev\priv\vali-maps\LU.json";
+        var countryCode = "LU";
+        _definitionPath = @$"C:\dev\priv\vali-maps\{countryCode}.json";
         _mapDefinition = Serializer.Deserialize<MapDefinition>(File.ReadAllText(_definitionPath))!.ApplyDefaults();
     }
 
