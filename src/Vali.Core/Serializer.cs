@@ -24,6 +24,8 @@ public static class Serializer
     };
 
     public static string Serialize<T>(T obj) => JsonSerializer.Serialize(obj, JsonSerializerOptions);
+    public static Task SerializeAsync<T>(Stream stream, T obj) => JsonSerializer.SerializeAsync(stream, obj, JsonSerializerOptions);
+    public static Task PrettySerializeAsync<T>(Stream stream, T obj) => JsonSerializer.SerializeAsync(stream, obj, PrettyPrintJsonSerializerOptions);
 
     public static string PrettySerialize<T>(T obj) => JsonSerializer.Serialize(obj, PrettyPrintJsonSerializerOptions);
 

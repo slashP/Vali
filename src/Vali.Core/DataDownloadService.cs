@@ -6,93 +6,223 @@ using Vali.Core.Data;
 
 namespace Vali.Core;
 
-public class DataDownloadService
+public static class DataDownloadService
 {
     private const string FileExtension = ".bin";
 
     public static async Task DownloadFiles(string? countryCode)
     {
-        var blobContainerClient = CreateBlobServiceClient();
+        var downloadOperations =
+            new (BlobContainerClient client,
+                Action<string, RunMode, DownloadMetadata.File> deleteAction,
+                Func<BlobContainerClient, string, string, RunMode, Task> downloadAction,
+                Action<string, RunMode> downloadedAction)[]
+                {
+                    (CreateBlobServiceClient(), DeleteDataFile, DownloadDataFile, (_, _) => {}),
+                    (CreateBlobServiceClientForUpdates(), (_, _, _) => {}, DownloadUpdateFile, DeleteUpdateFiles),
+                };
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
-            CountryCodes.Countries.Keys :
-            CountryCodes.Countries.Keys.Intersect(MapDefinitionDefaults.ExpandCountryCode(countryCode, new DistributionStrategy()));
-        AnsiConsole.MarkupLine("[yellow]Downloads starting.[/]");
+            CountryCodes.Countries.Keys.ToArray() :
+            CountryCodes.Countries.Keys.Intersect(MapDefinitionDefaults.ExpandCountryCode(countryCode, new DistributionStrategy())).ToArray();
+        var runMode = RunMode.Default;
+        foreach (var code in countryCodes)
+        {
+            await EnsureDownloadMetadataFileExists(code, runMode);
+        }
+
+        AnsiConsole.MarkupLine("[yellow]Downloads starting. Press s to stop.[/]");
+        var exitRequested = false;
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
-                foreach (var code in countryCodes)
+                foreach (var downloadOperation in downloadOperations)
                 {
-                    var filesFromBlob = await GetFilesFrom(code, blobContainerClient);
+                    foreach (var code in countryCodes)
+                    {
+                        var filesFromBlob = await GetFilesFrom(code, downloadOperation.client);
 
-                    var filesFromDisk = ExistingFilesForCountry(code, RunMode.Default);
-                    var filesToDownload = filesFromBlob.Where(blobFile =>
-                    {
-                        var matchingFileFromDisk = filesFromDisk.FirstOrDefault(diskFile => Path.GetFileNameWithoutExtension(diskFile.Name) == Path.GetFileNameWithoutExtension(blobFile.BlobName));
-                        return matchingFileFromDisk == null || matchingFileFromDisk.LastWriteTimeUtc < blobFile.LastModified || matchingFileFromDisk.Length < blobFile.ContentLength;
-                    }).ToArray();
-                    var filesToDelete = filesFromDisk.Where(diskFile =>
-                    {
-                        var matchingFileFromBlob = filesFromBlob.FirstOrDefault(blobFile => Path.GetFileNameWithoutExtension(blobFile.BlobName) == Path.GetFileNameWithoutExtension(diskFile.Name));
-                        return matchingFileFromBlob == null;
-                    }).ToArray();
-                    foreach (var diskFile in filesToDelete)
-                    {
-                        File.Delete(diskFile.FullName);
+                        var localFiles = ExistingFilesInMetadata(code, runMode);
+                        var filesToDownload = filesFromBlob.Where(blobFile =>
+                        {
+                            var localFile = localFiles.FirstOrDefault(file => Path.GetFileNameWithoutExtension(file.Name) == Path.GetFileNameWithoutExtension(blobFile.BlobName));
+                            return localFile == null || localFile.LastWriteTimeUtc < blobFile.LastModified;
+                        }).ToArray();
+                        var filesToDelete = localFiles.Where(diskFile =>
+                        {
+                            var matchingFileFromBlob = filesFromBlob.FirstOrDefault(blobFile => Path.GetFileNameWithoutExtension(blobFile.BlobName) == Path.GetFileNameWithoutExtension(diskFile.Name));
+                            return matchingFileFromBlob == null;
+                        }).ToArray();
+                        foreach (var diskFile in filesToDelete)
+                        {
+                            downloadOperation.deleteAction(code, runMode, diskFile);
+                        }
+
+                        if (!filesToDownload.Any())
+                        {
+                            continue;
+                        }
+
+                        var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}[/]", maxValue: filesToDownload.Sum(f => f.ContentLength ?? 0));
+                        await Task.Delay(5);
+                        var maxFileSize = filesToDownload.Any() ? filesToDownload.Max(x => x.ContentLength) : 0;
+                        var chunkSize = (maxFileSize / 1024 / 1024) switch
+                        {
+                            > 100 => 1,
+                            < 5 => 6,
+                            _ => 3
+                        };
+                        foreach (var blobFiles in filesToDownload.Chunk(chunkSize))
+                        {
+                            exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
+                            if (exitRequested)
+                            {
+                                task.StopTask();
+                                break;
+                            }
+
+                            await Task.WhenAll(blobFiles.Select(f => downloadOperation.downloadAction(downloadOperation.client, code, f.BlobName, runMode)));
+                            task.Increment(blobFiles.Sum(x => x.ContentLength ?? 0));
+                        }
+
+                        await SaveFilesDownloaded(code, runMode, filesToDownload);
+                        downloadOperation.downloadedAction(code, runMode);
+                        task.StopTask();
+                        if (exitRequested)
+                        {
+                            return;
+                        }
                     }
-
-                    if (!filesToDownload.Any())
-                    {
-                        continue;
-                    }
-
-                    var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}[/]", maxValue: filesToDownload.Sum(f => f.ContentLength ?? 0));
-                    await Task.Delay(5);
-                    var maxFileSize = filesToDownload.Any() ? filesToDownload.Max(x => x.ContentLength) : 0;
-                    var chunkSize = (maxFileSize / 1024 / 1024) switch
-                    {
-                        > 100 => 1,
-                        < 5 => 6,
-                        _ => 3
-                    };
-                    foreach (var blobFiles in filesToDownload.Chunk(chunkSize))
-                    {
-                        await Task.WhenAll(blobFiles.Select(file => DownloadFile(blobContainerClient, code, file.BlobName, RunMode.Default)));
-                        task.Increment(blobFiles.Sum(x => x.ContentLength ?? 0));
-                    }
-
-                    task.StopTask();
                 }
             });
         AnsiConsole.MarkupLine("[yellow]Downloads finished.[/]");
     }
 
-    private static async Task DownloadFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, RunMode runMode)
+    private static void DeleteUpdateFiles(string countryCode, RunMode runMode)
+    {
+        var updatesFolder = UpdatesFolder(countryCode, runMode);
+        Directory.Delete(updatesFolder, true);
+    }
+
+    private static async Task SaveFilesDownloaded(string countryCode, RunMode runMode, BlobFile[] files)
+    {
+        var metadataPath = DownloadMetadataPath(countryCode, runMode);
+        var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
+        var newFiles = files.Select(f => new DownloadMetadata.File
+            {
+                Name = Path.GetFileNameWithoutExtension(f.BlobName),
+                LastWriteTimeUtc = (f.LastModified ?? DateTimeOffset.UtcNow).UtcDateTime
+            })
+            .Concat(metadata.Files)
+            .DistinctBy(f => f.Name)
+            .ToArray();
+        metadata = metadata with
+        {
+            Files = newFiles
+        };
+        await Extensions.PrettyJsonSerializeToFile(metadataPath, metadata);
+    }
+
+    private static void DeleteDataFile(string countryCode, RunMode runMode, DownloadMetadata.File file)
+    {
+        var folder = CountryFolder(countryCode, runMode);
+        var fullPath = Directory.GetFiles(folder).FirstOrDefault(f => Path.GetFileNameWithoutExtension(f) == file.Name);
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+    }
+
+    private static async Task DownloadDataFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, RunMode runMode)
+    {
+        var folder = CountryFolder(countryCode, runMode);
+        await DownloadFile(blobContainerClient, blobName, folder);
+    }
+
+    private static async Task DownloadUpdateFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, RunMode runMode)
+    {
+        var updatesFolder = UpdatesFolder(countryCode, runMode);
+        var updateFilePath = await DownloadFile(blobContainerClient, blobName, updatesFolder);
+        var countryFolder = CountryFolder(countryCode, runMode);
+        var dataFilePath = Path.Combine(countryFolder, Path.GetFileName(updateFilePath).RemoveDatePrefix());
+        await ApplyUpdatesToDataFile(updateFilePath, dataFilePath);
+    }
+
+    private static async Task<string> DownloadFile(BlobContainerClient blobContainerClient, string blobName, string folder)
     {
         var blobClient = blobContainerClient.GetBlobClient(blobName);
-        var countryFolder = CountryFolder(countryCode, runMode);
-        Directory.CreateDirectory(countryFolder);
+        Directory.CreateDirectory(folder);
         var destinationFileName = Path.GetFileNameWithoutExtension(blobName) + FileExtension;
-        var filePath = Path.Combine(countryFolder, destinationFileName);
+        var filePath = Path.Combine(folder, destinationFileName);
         var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
         await using var fileOnDiskStream = new FileStream(filePath, fileMode);
         using var memoryStream = new MemoryStream();
         await blobClient.DownloadToAsync(memoryStream);
         memoryStream.Position = 0;
         BZip2.Decompress(memoryStream, fileOnDiskStream, true);
+        return filePath;
     }
 
-    private static BlobContainerClient CreateBlobServiceClient() =>
-        new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient("countries-v1");
-
-    public static FileInfo[] ExistingFilesForCountry(string countryCode, RunMode runMode)
+    private static async Task ApplyUpdatesToDataFile(string updateFilePath, string dataFilePath)
     {
-        var folder = CountryFolder(countryCode, runMode);
-        if (!Directory.Exists(folder))
+        var existingLocations = Extensions.ProtoDeserializeFromFile<Location[]>(dataFilePath);
+        var updatedLocations = Extensions.ProtoDeserializeFromFile<Location[]>(updateFilePath);
+        var newLocations = updatedLocations.Concat(existingLocations).DistinctBy(x => x.NodeId).ToArray();
+        await Extensions.ProtoSerializeToFile(dataFilePath, newLocations);
+    }
+
+    private static BlobContainerClient CreateBlobServiceClient() => GetBlobServiceClient("countries-v1");
+
+    private static BlobContainerClient CreateBlobServiceClientForUpdates() => GetBlobServiceClient("countries-updates-v1");
+
+    private static BlobContainerClient GetBlobServiceClient(string blobContainerName) => new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient(blobContainerName);
+
+    private static string RemoveDatePrefix(this string filename) =>
+        new string(filename.SkipWhile(c => char.IsNumber(c) || c == '-').ToArray());
+
+    private static async Task EnsureDownloadMetadataFileExists(string countryCode, RunMode runMode)
+    {
+        if (!Directory.Exists(CountryFolder(countryCode, runMode)))
         {
-            return Array.Empty<FileInfo>();
+            return;
         }
 
-        return Directory.GetFiles(folder, $"*{FileExtension}").Select(x => new FileInfo(x)).ToArray();
+        var metadataPath = DownloadMetadataPath(countryCode, runMode);
+        if (File.Exists(metadataPath))
+        {
+            return;
+        }
+
+        var files = ExistingDataFilesForCountryOnDisk(countryCode, runMode);
+        var data = new DownloadMetadata
+        {
+            Files = files.Select(f => new DownloadMetadata.File
+            {
+                Name = Path.GetFileNameWithoutExtension(f.Name),
+                LastWriteTimeUtc = f.LastWriteTimeUtc.AddTicks(-(f.LastWriteTimeUtc.Ticks % TimeSpan.TicksPerSecond))
+            }).ToArray()
+        };
+        await Extensions.PrettyJsonSerializeToFile(metadataPath, data);
+    }
+
+    private static FileInfo[] ExistingDataFilesForCountryOnDisk(string countryCode, RunMode runMode)
+    {
+        var folder = CountryFolder(countryCode, runMode);
+        return Directory.Exists(folder)
+            ? Directory.GetFiles(folder, $"*{FileExtension}").Select(x => new FileInfo(x)).ToArray()
+            : [];
+    }
+
+    private static DownloadMetadata.File[] ExistingFilesInMetadata(string countryCode, RunMode runMode)
+    {
+        var metadataPath = DownloadMetadataPath(countryCode, runMode);
+        var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
+        return metadata.Files;
+    }
+
+    private static string DownloadMetadataPath(string countryCode, RunMode runMode)
+    {
+        var folder = CountryFolder(countryCode, runMode);
+        return Path.Combine(folder, "downloads.json");
     }
 
     public static string CountryFolder(string countryCode, RunMode runMode)
@@ -107,6 +237,12 @@ public class DataDownloadService
         var defaultDownloadFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         var downloadFolder = defaultDownloadFolderEnvironment ?? applicationSettings.DownloadDirectory ?? defaultDownloadFolder;
         return Path.Combine(downloadFolder, "Vali", countryCode);
+    }
+
+    private static string UpdatesFolder(string countryCode, RunMode runMode)
+    {
+        var countryFolder = CountryFolder(countryCode, runMode);
+        return Path.Combine(countryFolder, "updates");
     }
 
     private static async Task<IReadOnlyCollection<BlobFile>> GetFilesFrom(string countryCode, BlobContainerClient blobContainerClient)
@@ -139,17 +275,28 @@ public class DataDownloadService
                 var blobFileName = Path.GetFileNameWithoutExtension(fileName) + ".zip";
                 var blobName = $"{countryCode}/{blobFileName}";
                 ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
-                await DownloadFile(blobContainerClient, countryCode, blobName, RunMode.Default);
+                await DownloadDataFile(blobContainerClient, countryCode, blobName, RunMode.Default);
             }
         }
     }
 }
 
+internal record DownloadMetadata
+{
+    public File[] Files { get; init; } = [];
+
+    internal record File
+    {
+        public required string Name { get; init; }
+        public required DateTime LastWriteTimeUtc { get; init; }
+    }
+}
+
 internal record BlobFile
 {
-    public required string BlobName { get; set; }
-    public required DateTimeOffset? LastModified { get; set; }
-    public long? ContentLength { get; set; }
+    public required string BlobName { get; init; }
+    public required DateTimeOffset? LastModified { get; init; }
+    public long? ContentLength { get; init; }
 }
 
 public enum RunMode

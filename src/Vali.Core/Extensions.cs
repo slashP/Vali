@@ -158,6 +158,24 @@ public static class Extensions
         return ProtoBuf.Serializer.Deserialize<T>(file);
     }
 
+    public static async ValueTask ProtoSerializeToFile<T>(string path, T data)
+    {
+        await using var file = !File.Exists(path) ? File.Create(path) : new FileStream(path, FileMode.Truncate);
+        ProtoBuf.Serializer.Serialize(file, data);
+    }
+
+    public static async ValueTask JsonSerializeToFile<T>(string path, T data)
+    {
+        await using var file = !File.Exists(path) ? File.Create(path) : new FileStream(path, FileMode.Truncate);
+        await Serializer.SerializeAsync(file, data);
+    }
+
+    public static async ValueTask PrettyJsonSerializeToFile<T>(string path, T data)
+    {
+        await using var file = !File.Exists(path) ? File.Create(path) : new FileStream(path, FileMode.Truncate);
+        await Serializer.PrettySerializeAsync(file, data);
+    }
+
     public static string ReadManifestData(string embeddedFileName)
     {
         var assembly = typeof(Extensions).GetTypeInfo().Assembly;
@@ -233,6 +251,9 @@ public static class Extensions
         using var fileStream = File.OpenRead(path);
         return JsonSerializer.Deserialize<T>(fileStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
+
+    public static T TryJsonDeserializeFromFile<T>(string path, T defaultValue) =>
+        File.Exists(path) ? DeserializeJsonFromFile<T>(path) ?? defaultValue : defaultValue;
 
     private static readonly char[] Invalids = Path.GetInvalidFileNameChars();
     public static string GetSafeFileName(string name, char replace = '_')
