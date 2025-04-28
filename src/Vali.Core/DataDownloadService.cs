@@ -66,6 +66,7 @@ public static class DataDownloadService
 
                         var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}{downloadOperation.downloadConsoleSuffix}[/]", maxValue: filesToDownload.Sum(f => f.ContentLength ?? 0));
                         await Task.Delay(5);
+                        var blobFilesDownloaded = new List<BlobFile>();
                         foreach (var blobFiles in filesToDownload.GroupBy(downloadOperation.groupBy))
                         {
                             exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
@@ -75,10 +76,12 @@ public static class DataDownloadService
                                 break;
                             }
 
-                            await downloadOperation.downloadAction(downloadOperation.client, code, blobFiles.ToArray(), runMode, task);
+                            var blobFilesToDownload = blobFiles.ToArray();
+                            await downloadOperation.downloadAction(downloadOperation.client, code, blobFilesToDownload, runMode, task);
+                            blobFilesDownloaded.AddRange(blobFilesToDownload);
                         }
 
-                        await SaveFilesDownloaded(code, runMode, filesToDownload);
+                        await SaveFilesDownloaded(code, runMode, blobFilesDownloaded);
                         downloadOperation.downloadedAction(code, runMode);
                         task.StopTask();
                         if (exitRequested)
@@ -97,7 +100,7 @@ public static class DataDownloadService
         Directory.Delete(updatesFolder, true);
     }
 
-    private static async Task SaveFilesDownloaded(string countryCode, RunMode runMode, BlobFile[] files)
+    private static async Task SaveFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<BlobFile> files)
     {
         var metadataPath = DownloadMetadataPath(countryCode, runMode);
         var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
