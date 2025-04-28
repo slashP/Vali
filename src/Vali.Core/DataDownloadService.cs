@@ -15,11 +15,13 @@ public static class DataDownloadService
         var downloadOperations =
             new (BlobContainerClient client,
                 Action<string, RunMode, DownloadMetadata.File> deleteAction,
-                Func<BlobContainerClient, string, string, RunMode, Task> downloadAction,
+                Func<BlobContainerClient, string, IReadOnlyCollection<BlobFile>, RunMode, ProgressTask, Task> downloadAction,
+                Func<BlobFile, string> groupBy,
+                string downloadConsoleSuffix,
                 Action<string, RunMode> downloadedAction)[]
                 {
-                    (CreateBlobServiceClient(), DeleteDataFile, DownloadDataFile, (_, _) => {}),
-                    (CreateBlobServiceClientForUpdates(), (_, _, _) => {}, DownloadUpdateFile, DeleteUpdateFiles),
+                    (CreateBlobServiceClient(), DeleteDataFile, DownloadDataFiles, _ => "", "", (_, _) => {}),
+                    (CreateBlobServiceClientForUpdates(), (_, _, _) => {}, DownloadUpdateFile, f => f.BlobName.RemoveDatePrefix(), " updates", DeleteUpdateFiles),
                 };
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
             CountryCodes.Countries.Keys.ToArray() :
@@ -62,16 +64,9 @@ public static class DataDownloadService
                             continue;
                         }
 
-                        var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}[/]", maxValue: filesToDownload.Sum(f => f.ContentLength ?? 0));
+                        var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}{downloadOperation.downloadConsoleSuffix}[/]", maxValue: filesToDownload.Sum(f => f.ContentLength ?? 0));
                         await Task.Delay(5);
-                        var maxFileSize = filesToDownload.Any() ? filesToDownload.Max(x => x.ContentLength) : 0;
-                        var chunkSize = (maxFileSize / 1024 / 1024) switch
-                        {
-                            > 100 => 1,
-                            < 5 => 6,
-                            _ => 3
-                        };
-                        foreach (var blobFiles in filesToDownload.Chunk(chunkSize))
+                        foreach (var blobFiles in filesToDownload.GroupBy(downloadOperation.groupBy))
                         {
                             exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
                             if (exitRequested)
@@ -80,8 +75,7 @@ public static class DataDownloadService
                                 break;
                             }
 
-                            await Task.WhenAll(blobFiles.Select(f => downloadOperation.downloadAction(downloadOperation.client, code, f.BlobName, runMode)));
-                            task.Increment(blobFiles.Sum(x => x.ContentLength ?? 0));
+                            await downloadOperation.downloadAction(downloadOperation.client, code, blobFiles.ToArray(), runMode, task);
                         }
 
                         await SaveFilesDownloaded(code, runMode, filesToDownload);
@@ -132,19 +126,39 @@ public static class DataDownloadService
         }
     }
 
-    private static async Task DownloadDataFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, RunMode runMode)
+    private static async Task DownloadDataFiles(BlobContainerClient blobContainerClient, string countryCode, IReadOnlyCollection<BlobFile> filesToDownload, RunMode runMode, ProgressTask? task)
     {
+        var maxFileSize = filesToDownload.Any() ? filesToDownload.Max(x => x.ContentLength) : 0;
+        var chunkSize = (maxFileSize / 1024 / 1024) switch
+        {
+            > 100 => 1,
+            < 5 => 6,
+            _ => 3
+        };
+
         var folder = CountryFolder(countryCode, runMode);
-        await DownloadFile(blobContainerClient, blobName, folder);
+        foreach (var fileGroup in filesToDownload.Chunk(chunkSize))
+        {
+            await Task.WhenAll(fileGroup.Select(file => DownloadFile(blobContainerClient, file.BlobName, folder)));
+            task?.Increment(fileGroup.Sum(x => x.ContentLength ?? 0));
+        }
     }
 
-    private static async Task DownloadUpdateFile(BlobContainerClient blobContainerClient, string countryCode, string blobName, RunMode runMode)
+    private static async Task DownloadUpdateFile(BlobContainerClient blobContainerClient, string countryCode, IReadOnlyCollection<BlobFile> blobFiles, RunMode runMode, ProgressTask task)
     {
         var updatesFolder = UpdatesFolder(countryCode, runMode);
-        var updateFilePath = await DownloadFile(blobContainerClient, blobName, updatesFolder);
+        var newLocations = new List<Location>();
+        var updateFilePath = "";
+        foreach (var file in blobFiles)
+        {
+            updateFilePath = await DownloadFile(blobContainerClient, file.BlobName, updatesFolder);
+            newLocations.AddRange(Extensions.ProtoDeserializeFromFile<Location[]>(updateFilePath));
+            task.Increment(file.ContentLength ?? 0);
+        }
+
         var countryFolder = CountryFolder(countryCode, runMode);
         var dataFilePath = Path.Combine(countryFolder, Path.GetFileName(updateFilePath).RemoveDatePrefix());
-        await ApplyUpdatesToDataFile(updateFilePath, dataFilePath);
+        await ApplyUpdatesToDataFile(dataFilePath, newLocations);
     }
 
     private static async Task<string> DownloadFile(BlobContainerClient blobContainerClient, string blobName, string folder)
@@ -162,11 +176,10 @@ public static class DataDownloadService
         return filePath;
     }
 
-    private static async Task ApplyUpdatesToDataFile(string updateFilePath, string dataFilePath)
+    private static async Task ApplyUpdatesToDataFile(string dataFilePath, IEnumerable<Location> updateLocations)
     {
         var existingLocations = Extensions.ProtoDeserializeFromFile<Location[]>(dataFilePath);
-        var updatedLocations = Extensions.ProtoDeserializeFromFile<Location[]>(updateFilePath);
-        var newLocations = updatedLocations.Concat(existingLocations).DistinctBy(x => x.NodeId).ToArray();
+        var newLocations = updateLocations.Concat(existingLocations).DistinctBy(x => x.NodeId).ToArray();
         await Extensions.ProtoSerializeToFile(dataFilePath, newLocations);
     }
 
@@ -228,7 +241,7 @@ public static class DataDownloadService
     public static string CountryFolder(string countryCode, RunMode runMode)
     {
         var applicationSettings = ApplicationSettingsService.ReadApplicationSettings();
-        if (runMode == RunMode.Localhost)
+        if (runMode == RunMode.Localhost && !string.IsNullOrEmpty(applicationSettings.LocalhostDownloadDirectory))
         {
             return Path.Combine(applicationSettings.LocalhostDownloadDirectory!, countryCode);
         }
@@ -275,7 +288,16 @@ public static class DataDownloadService
                 var blobFileName = Path.GetFileNameWithoutExtension(fileName) + ".zip";
                 var blobName = $"{countryCode}/{blobFileName}";
                 ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
-                await DownloadDataFile(blobContainerClient, countryCode, blobName, RunMode.Default);
+                var filesToDownload = new[]
+                {
+                    new BlobFile
+                    {
+                        BlobName = blobName,
+                        LastModified = DateTimeOffset.MinValue,
+                        ContentLength = 0
+                    }
+                };
+                await DownloadDataFiles(blobContainerClient, countryCode, filesToDownload, RunMode.Default, null);
             }
         }
     }
