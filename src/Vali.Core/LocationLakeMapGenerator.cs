@@ -1,12 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Diagnostics;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using Vali.Core.Google;
 
 namespace Vali.Core;
 
-public static class LocationLakeMapGenerator
+public class LocationLakeMapGenerator
 {
     public static async Task Generate(MapDefinition mapDefinition, string definitionPath, RunMode runMode, bool includeAdditionalLocationInfo = false)
     {
+        var sw = Stopwatch.StartNew();
+        var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
         var subdivisionGroups = new List<(IList<Location> locations, int regionGoalCount, int minDistance)>();
         foreach (var countryCode in mapDefinition.CountryCodes)
         {
@@ -52,6 +56,8 @@ public static class LocationLakeMapGenerator
             };
             subdivisionGroups.AddRange(locationChunks);
         }
+
+        logger.MapGenerated(subdivisionGroups.Sum(s => s.locations.Count), sw.Elapsed);
 
         if (subdivisionGroups.Any())
         {

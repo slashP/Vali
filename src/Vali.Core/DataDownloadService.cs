@@ -1,7 +1,9 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using ICSharpCode.SharpZipLib.BZip2;
+using Microsoft.Extensions.Logging;
 using Spectre.Console;
+using System.Diagnostics;
 using Vali.Core.Data;
 
 namespace Vali.Core;
@@ -12,6 +14,9 @@ public static class DataDownloadService
 
     public static async Task DownloadFiles(string? countryCode)
     {
+        var sw = Stopwatch.StartNew();
+        var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
+
         var downloadOperations =
             new (BlobContainerClient client,
                 Action<string, RunMode, DownloadMetadata.File> deleteAction,
@@ -92,6 +97,8 @@ public static class DataDownloadService
                 }
             });
         AnsiConsole.MarkupLine("[yellow]Downloads finished.[/]");
+
+        logger.FilesDownloaded(countryCode, sw.Elapsed, exitRequested);
     }
 
     private static void DeleteUpdateFiles(string countryCode, RunMode runMode)

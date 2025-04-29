@@ -16,6 +16,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Vali.Core\Vali.Core.csproj" />
-	  <None Include="readme.md" Pack="true" PackagePath="\"/>
+	  <None Include="readme.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 </Project>
