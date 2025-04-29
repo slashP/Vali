@@ -12,7 +12,7 @@ public static class DataDownloadService
 {
     private const string FileExtension = ".bin";
 
-    public static async Task DownloadFiles(string? countryCode)
+    public static async Task DownloadFiles(string? countryCode, bool full, bool updates)
     {
         var sw = Stopwatch.StartNew();
         var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
@@ -23,10 +23,11 @@ public static class DataDownloadService
                 Func<BlobContainerClient, string, IReadOnlyCollection<BlobFile>, RunMode, ProgressTask, Task> downloadAction,
                 Func<BlobFile, string> groupBy,
                 string downloadConsoleSuffix,
-                Action<string, RunMode> downloadedAction)[]
+                Func<string, RunMode, IReadOnlyCollection<BlobFile>, Task> downloadedAction,
+                bool force)[]
                 {
-                    (CreateBlobServiceClient(), DeleteDataFile, DownloadDataFiles, _ => "", "", (_, _) => {}),
-                    (CreateBlobServiceClientForUpdates(), (_, _, _) => {}, DownloadUpdateFile, f => f.BlobName.RemoveDatePrefix(), " updates", DeleteUpdateFiles),
+                    (CreateBlobServiceClient(), DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
+                    (CreateBlobServiceClientForUpdates(), (_, _, _) => {}, DownloadUpdateFile, f => f.BlobName.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
                 };
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
             CountryCodes.Countries.Keys.ToArray() :
@@ -52,7 +53,7 @@ public static class DataDownloadService
                         var filesToDownload = filesFromBlob.Where(blobFile =>
                         {
                             var localFile = localFiles.FirstOrDefault(file => Path.GetFileNameWithoutExtension(file.Name) == Path.GetFileNameWithoutExtension(blobFile.BlobName));
-                            return localFile == null || localFile.LastWriteTimeUtc < blobFile.LastModified;
+                            return localFile == null || localFile.LastWriteTimeUtc < blobFile.LastModified || downloadOperation.force;
                         }).ToArray();
                         var filesToDelete = localFiles.Where(diskFile =>
                         {
@@ -86,8 +87,7 @@ public static class DataDownloadService
                             blobFilesDownloaded.AddRange(blobFilesToDownload);
                         }
 
-                        await SaveFilesDownloaded(code, runMode, blobFilesDownloaded);
-                        downloadOperation.downloadedAction(code, runMode);
+                        await downloadOperation.downloadedAction(code, runMode, blobFilesDownloaded);
                         task.StopTask();
                         if (exitRequested)
                         {
@@ -101,13 +101,27 @@ public static class DataDownloadService
         logger.FilesDownloaded(countryCode, sw.Elapsed, exitRequested);
     }
 
-    private static void DeleteUpdateFiles(string countryCode, RunMode runMode)
+    private static async Task SaveDataFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<BlobFile> files)
     {
-        var updatesFolder = UpdatesFolder(countryCode, runMode);
-        Directory.Delete(updatesFolder, true);
+        var metadataPath = DownloadMetadataPath(countryCode, runMode);
+        var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
+        var newFiles = files.Select(f => new DownloadMetadata.File
+            {
+                Name = Path.GetFileNameWithoutExtension(f.BlobName),
+                LastWriteTimeUtc = (f.LastModified ?? DateTimeOffset.UtcNow).UtcDateTime
+            })
+            .Concat(metadata.Files
+                .Where(f => files.All(x => Path.GetFileNameWithoutExtension(x.BlobName) != Path.GetFileNameWithoutExtension(f.Name.RemoveDatePrefix()))))
+            .DistinctBy(f => f.Name)
+            .ToArray();
+        metadata = metadata with
+        {
+            Files = newFiles
+        };
+        await Extensions.PrettyJsonSerializeToFile(metadataPath, metadata);
     }
 
-    private static async Task SaveFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<BlobFile> files)
+    private static async Task SaveUpdateFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<BlobFile> files)
     {
         var metadataPath = DownloadMetadataPath(countryCode, runMode);
         var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
@@ -124,6 +138,11 @@ public static class DataDownloadService
             Files = newFiles
         };
         await Extensions.PrettyJsonSerializeToFile(metadataPath, metadata);
+        var updatesFolder = UpdatesFolder(countryCode, runMode);
+        if (Directory.Exists(updatesFolder))
+        {
+            Directory.Delete(updatesFolder, true);
+        }
     }
 
     private static void DeleteDataFile(string countryCode, RunMode runMode, DownloadMetadata.File file)

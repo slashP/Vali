@@ -32,6 +32,8 @@ try
     var distributionOption = new Option<string>("--distribution") { IsRequired = false };
     var requiredCountryOption = new Option<string>("--country") { IsRequired = true };
     var propertyOption = new Option<string>("--prop") { IsRequired = true };
+    Option<bool?> fullDownloadOption = new(name: "--full", description: "Force re-download of files.");
+    Option<bool?> updatesDownloadOption = new(name: "--updates", description: "Force re-download of update files.");
     var downloadCommand = new Command("download", "Download data.");
     var setDownloadFolderCommand = new Command("set-download-folder", @"Set folder/directory to download data to. Default is c:\ProgramData\Vali");
     setDownloadFolderCommand.AddArgument(directoryArgument);
@@ -42,6 +44,8 @@ try
     rootCommand.AddCommand(applicationSettingsCommand);
 
     downloadCommand.AddOption(countryOption);
+    downloadCommand.AddOption(fullDownloadOption);
+    downloadCommand.AddOption(updatesDownloadOption);
     rootCommand.Add(downloadCommand);
 
     var generateMapCommand = new Command("generate", "Generate a GeoGuessr map.");
@@ -94,7 +98,7 @@ try
 
     var liveGenerateMapCommand = new Command("live-generate", "Generate a GeoGuessr map by calling Google's API on the fly.");
     liveGenerateMapCommand.AddOption(fileOption);
-//rootCommand.Add(liveGenerateMapCommand);
+    //rootCommand.Add(liveGenerateMapCommand);
 
     downloadCommand.SetHandler(async context =>
     {
@@ -106,7 +110,10 @@ try
                     "What do you want to download? * for all, use two letter country code for single country (f.ex. US) or specify continent (europe, africa, asia, oceania, southamerica, northamerica).", "");
         }
 
-        await DataDownloadService.DownloadFiles(countryOptionValue);
+        var full = context.ParseResult.GetValueForOption(fullDownloadOption) == true;
+        var updates = context.ParseResult.GetValueForOption(updatesDownloadOption) == true;
+
+        await DataDownloadService.DownloadFiles(countryOptionValue, full, updates);
         context.ExitCode = 100;
     });
 
