@@ -108,8 +108,8 @@ public static class LocationDistributor
             var task = ctx?.AddTask($"[green]Distributing locations[/]", maxValue: groups.Count());
             foreach (var group in groups)
             {
-                var neighbours = Hasher.Neighbors(group.Key).Select(x => x.Value).ToArray();
-                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbours.Contains(x.hash)).Select(x => (ILatLng)x.loc).Concat(locationsAlreadyInMap ?? []).ToArray() : (locationsAlreadyInMap ?? []);
+                var neighbors = Hasher.Neighbors(group.Key).Select(x => x.Value).ToArray();
+                var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbors.Contains(x.hash)).Select(x => (ILatLng)x.loc).Concat(locationsAlreadyInMap ?? []).ToArray() : (locationsAlreadyInMap ?? []);
                 var distributionLocations = group.ToArray();
                 var selection = GetSome<T, T2>(distributionLocations, 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
                 list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));

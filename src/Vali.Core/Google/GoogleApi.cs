@@ -352,7 +352,7 @@ public class GoogleApi
         }
     }
 
-    public static async Task<(string panoId, double lat, double lng)[]> Neighbours(string panoId)
+    public static async Task<(string panoId, double lat, double lng)[]> Neighbors(string panoId)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -400,7 +400,7 @@ public class GoogleApi
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed verifying {nameof(Neighbours)}. {content}");
+            Console.WriteLine($"Failed verifying {nameof(Neighbors)}. {content}");
             Console.WriteLine(e);
             return [];
         }

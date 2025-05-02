@@ -13,6 +13,8 @@ public static class GenerateFileValidator
             ?.ValidateDistribution()
             ?.ValidateFilters()
             ?.ValidatePreferenceFilters()
+            ?.ValidateNeighborFilters()
+            ?.ValidateProximityFilters()
             ?.ValidateDistributionStrategy()
             ?.ValidateInclusions()
             ?.ValidateExclusions()

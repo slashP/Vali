@@ -33,7 +33,11 @@ public static class MapDefinitionDefaults
             CountryLocationPreferenceFilters = ExpandCountryDictionary(definition.CountryLocationPreferenceFilters)
                 .ToDictionary(x => x.Key, x => x.Value.Select(y => y with
                 {
-                    Expression = ExpressionDefaults.Expand(namedExpressions, y.Expression)
+                    Expression = ExpressionDefaults.Expand(namedExpressions, y.Expression),
+                    NeighborFilters = y.NeighborFilters.Select(f => f with
+                    {
+                        Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+                    }).ToArray()
                 }).ToArray()),
             GlobalLocationFilter = definition.GlobalLocationFilter switch
             {
@@ -42,12 +46,16 @@ public static class MapDefinitionDefaults
             },
             GlobalLocationPreferenceFilters = definition.GlobalLocationPreferenceFilters.Select(x => x with
             {
-                Expression = ExpressionDefaults.Expand(namedExpressions, x.Expression)
+                Expression = ExpressionDefaults.Expand(namedExpressions, x.Expression),
+                NeighborFilters = x.NeighborFilters.Select(f => f with
+                {
+                    Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+                }).ToArray()
             }).ToArray(),
-            NeighbourFilter = definition.NeighbourFilter with
+            NeighborFilters = definition.NeighborFilters.Select(f => f with
             {
-                Expression = ExpressionDefaults.Expand(namedExpressions, definition.NeighbourFilter.Expression)
-            },
+                Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+            }).ToArray(),
             SubdivisionLocationFilters = definition.SubdivisionLocationFilters
                 .ToDictionary(x => x.Key, x => x.Value
                     .ToDictionary(y => y.Key, y => ExpressionDefaults.Expand(namedExpressions, y.Value))),
@@ -55,7 +63,11 @@ public static class MapDefinitionDefaults
                 .ToDictionary(x => x.Key, x => x.Value
                     .ToDictionary(y => y.Key, y => y.Value.Select(z => z with
                     {
-                        Expression = ExpressionDefaults.Expand(namedExpressions, z.Expression)
+                        Expression = ExpressionDefaults.Expand(namedExpressions, z.Expression),
+                        NeighborFilters = z.NeighborFilters.Select(f => f with
+                        {
+                            Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+                        }).ToArray()
                     }).ToArray())),
         };
 

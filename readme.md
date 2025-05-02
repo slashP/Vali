@@ -291,6 +291,111 @@ Sometimes you want a certain percentage of your map to contain one type of locat
   }
 }
 ```
+## Named expressions
+Sometimes filter expressions can get complicated and it would be nice to have a way to split and be able to reuse them. Named expressions must start with `$$` and act as "variables" that can be referenced later in places where an expression is expected. Both inside other named expressions or in `globalLocationFilter` f.ex.
+```json
+{
+  "namedExpressions": {
+    "$$rural": "Buildings200 eq 0 and Roads100 eq 1",
+    "$$mainRoad": "HighwayType eq 'Motorway' or HighwayType eq 'Trunk' or HighwayType eq 'Primary'",
+    "$$ruralSmallerRoad": "$$rural and $$mainRoad eq false",
+    "$$residential": "IsResidential or Buildings100 gt 4",
+    "$$dirty": "Surface eq 'dirt' or Surface eq 'gravel' or Surface eq 'unpaved' or Surface eq 'ground' or Surface eq 'sand'"
+  }
+}
+```
+And later use the expressions:
+```json
+{
+  "globalLocationFilter": "$$ruralSmallerRoad or ($$residential and $$dirty)"
+}
+```
+## Proximity filters
+If you have a `.csv` or `.json` file with locations (standard formats, f.ex. export from map-making.app), you can let vali generate locations in a radius around *any* of the locations given in the file.
+```json
+{
+  "proximityFilter": {
+    "radius": 4000,
+    "locationsPath": "c:\\priv\\vali-maps\\city-centers.json"
+  }
+}
+```
+```json
+{
+  "countryProximityFilters": {
+    "AR": {
+      "radius": 2000,
+      "locationsPath": "c:\\priv\\vali-maps\\argentina-city-centers.json"
+    }
+  }
+}
+```
+```json
+{
+  "subdivisionProximityFilters": {
+    "AR": {
+      "AR-B": {
+        "radius": 500,
+        "locationsPath": "c:\\priv\\vali-maps\\buenos-aires.json"
+      }
+    }
+  }
+}
+```
+## Neighbor filters
+Vali can filter locations based on number of locations nearby (neighbors) that satisfy given requirements. Examples:
+* Must have at least 5 locations with surface 'gravel' within 500 meters.
+* Must have no locations with highway type 'Living_street' within 1000 meters.
+* Must have no locations either north/east/south/west within 300 meters.
+
+This can be practical for "amplifying" filter expressions by requiring the location itself to meet a certain criteria, but also no neighbors to fulfill the opposite criteria. Neighbor filters are also valid on location preference filters.
+
+NB: this feature is quite resource intensive and may take a long time depending on the location filtering you apply and which countries the map generation includes.
+"Some residential locations nearby":
+```json
+{
+  "neighborFilters": [{
+    "radius": 500,
+    "expression": "$$residential",
+    "limit": 10,
+    "bound": "lower"
+  }]
+}
+```
+"Only rural locations nearby":
+```json
+{
+  "neighborFilters": [{
+    "radius": 400,
+    "expression": "$$rural eq false",
+    "limit": 0,
+    "bound": "upper"
+  }]
+}
+```
+"Terminus in one of four directions"
+```json
+{
+  "neighborFilters": [{
+    "radius": 300,
+    "expression": "",
+    "limit": 0,
+    "bound": "upper",
+    "checkEachCardinalDirectionSeparately": true
+  }]
+}
+```
+"High number of locations nearby"
+```json
+{
+  "neighborFilters": [{
+    "radius": 500,
+    "expression": "",
+    "limit": 120,
+    "bound": "lower"
+  }]
+}
+```
 ## Location output adjustments
 You can adjust the zoom on locations with `globalZoom` (range 0-3.6) and set the pitch with `globalPitch` (range -90 to 90). Heading can be set with `globalHeadingExpression` or `countryHeadingExpressions`. Examples:
 ```json

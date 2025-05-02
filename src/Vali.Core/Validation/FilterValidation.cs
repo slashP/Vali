@@ -63,6 +63,7 @@ public static class FilterValidation
             .Concat(definition.GlobalLocationPreferenceFilters.Select(x => x.Expression))
             .Concat(definition.CountryLocationPreferenceFilters.SelectMany(x => x.Value.Select(y => y.Expression)))
             .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.Value.Select(z => z.Expression))))
+            .Concat(definition.NeighborFilters.Select(x => x.Expression))
             .Where(x => !string.IsNullOrEmpty(x))
             .Select(f => definition.ValidateExpression(f!, DryRun, $"Invalid filter {f}"))
             .Any(validated => validated == null)
@@ -115,6 +116,79 @@ public static class FilterValidation
         {
             ConsoleLogger.Error($"{nameof(definition.SubdivisionLocationPreferenceFilters)} {nameof(LocationPreferenceFilter.Fill)} can only be true for one entry.");
             return null;
+        }
+
+        return definition;
+    }
+
+    public static MapDefinition? ValidateNeighborFilters(this MapDefinition definition)
+    {
+        foreach (var neighborFilter in definition.NeighborFilters
+                     .Concat(definition.GlobalLocationPreferenceFilters.SelectMany(f => f.NeighborFilters))
+                     .Concat(definition.CountryLocationPreferenceFilters.SelectMany(f => f.Value).SelectMany(f => f.NeighborFilters))
+                     .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(f => f.Value.SelectMany(s => s.Value)).SelectMany(f => f.NeighborFilters)))
+        {
+            if (neighborFilter.Radius <= 0)
+            {
+                ConsoleLogger.Error($"All {nameof(definition.NeighborFilters)} must have radius lager than 0.");
+                return null;
+            }
+
+            const int maxRadius = 5000;
+            if (neighborFilter.Radius > maxRadius)
+            {
+                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with radius lager than {maxRadius} is not supported due to performance reasons.");
+                return null;
+            }
+
+            if (neighborFilter.Bound is not ("lower" or "upper"))
+            {
+                ConsoleLogger.Error($"{nameof(neighborFilter)} {nameof(neighborFilter.Bound).ToLower()} must be either 'lower' or 'upper'.");
+                return null;
+            }
+
+            if (neighborFilter.Limit < 0)
+            {
+                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit less than 0 is not supported.");
+                return null;
+            }
+
+            if (neighborFilter is { Limit: 0, Bound: "lower" })
+            {
+                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit 0 and bound 'lower' does not have any effect since there are always 0 locations meeting the requirements. Did you mean bound 'upper'?");
+                return null;
+            }
+        }
+
+        return definition;
+    }
+
+    public static MapDefinition? ValidateProximityFilters(this MapDefinition definition)
+    {
+        var proximityFilters = new[] { definition.ProximityFilter }
+            .Concat(definition.CountryProximityFilters.Select(f => f.Value))
+            .Concat(definition.SubdivisionProximityFilters.Select(s => s.Value).SelectMany(f => f.Values))
+            .ToArray();
+        foreach (var proximityFilter in proximityFilters)
+        {
+            if (proximityFilter.Radius <= 0 && !string.IsNullOrEmpty(proximityFilter.LocationsPath))
+            {
+                ConsoleLogger.Error($"Using {nameof(proximityFilter)} with radius less than 1 is not supported.");
+                return null;
+            }
+
+            const int maxRadius = 30_000;
+            if (proximityFilter.Radius > maxRadius)
+            {
+                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with radius lager than {maxRadius} is not supported due to performance reasons.");
+                return null;
+            }
+
+            if (!string.IsNullOrEmpty(proximityFilter.LocationsPath) && !File.Exists(proximityFilter.LocationsPath))
+            {
+                ConsoleLogger.Error($"File {proximityFilter.LocationsPath} used in a {nameof(proximityFilter)} does not exist.");
+                return null;
+            }
         }
 
         return definition;

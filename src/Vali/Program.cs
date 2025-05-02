@@ -19,7 +19,7 @@ AnsiConsole.MarkupLine(
   [/]
   """);
 
-//args = new[] { "generate", "--file", @"C:\dev\priv\map-definitions\pro\ASDF\map.json" };
+//args = new[] { "generate", "--file", @"C:\dev\priv\vali-maps\neighbours.json" };
 
 using var loggerFactory = ValiLogger.Initialize();
 

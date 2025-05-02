@@ -18,7 +18,7 @@ public record MapDefinition
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
     public LocationOutput Output { get; set; } = new();
     public ProximityFilter ProximityFilter { get; set; } = new();
-    public NeighbourFilter NeighbourFilter { get; set; } = new();
+    public NeighborFilter[] NeighborFilters { get; init; } = [];
     public Dictionary<string, string> NamedExpressions { get; set; } = new();
     public string[] UsedLocationsPaths { get; set; } = [];
 }
@@ -29,13 +29,13 @@ public record ProximityFilter
     public int Radius { get; set; }
 }
 
-public record NeighbourFilter
+public record NeighborFilter
 {
-    public bool InEitherCardinalDirection { get; set; }
+    public bool CheckEachCardinalDirectionSeparately { get; set; }
     public int Radius { get; set; }
     public string Expression { get; set; } = "";
     public int Limit { get; set; }
-    public bool IsLowerLimit { get; set; }
+    public string Bound { get; set; } = "";
 }
 
 public record LiveGenerateMapDefinition
@@ -75,6 +75,7 @@ public record LocationPreferenceFilter
     public string? LocationTag { get; init; }
     public int? MinMinDistance { get; init; }
     public ProximityFilter ProximityFilter { get; set; } = new();
+    public NeighborFilter[] NeighborFilters { get; init; } = [];
 }
 
 public record LocationOutput
