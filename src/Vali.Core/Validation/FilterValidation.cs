@@ -123,10 +123,7 @@ public static class FilterValidation
 
     public static MapDefinition? ValidateNeighborFilters(this MapDefinition definition)
     {
-        foreach (var neighborFilter in definition.NeighborFilters
-                     .Concat(definition.GlobalLocationPreferenceFilters.SelectMany(f => f.NeighborFilters))
-                     .Concat(definition.CountryLocationPreferenceFilters.SelectMany(f => f.Value).SelectMany(f => f.NeighborFilters))
-                     .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(f => f.Value.SelectMany(s => s.Value)).SelectMany(f => f.NeighborFilters)))
+        foreach (var neighborFilter in definition.AllNeighborFilters())
         {
             if (neighborFilter.Radius <= 0)
             {

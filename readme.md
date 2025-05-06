@@ -620,7 +620,19 @@ With all the building blocks described above we can start creating real, serious
     "locationCountGoal": 5000,
     "minMinDistance": 200
   },
-  "globalLocationFilter": "ArrowCount eq 1 and Buildings100 eq 0"
+  "globalLocationFilter": "ArrowCount eq 1 and Buildings100 eq 0",
+  "neighborFilters": [{
+    "radius": 200,
+    "expression": "",
+    "limit": 0,
+    "bound": "upper",
+    "checkEachCardinalDirectionSeparately": true
+  }],
+  "output": {
+    "panoVerificationStrategy": "Newest",
+    "panoVerificationExpression": "ArrowCount eq 1",
+    "globalHeadingExpression": "Heading + 180"
+  }
 }
 ```
 ### A Degenerated Oceania

@@ -1,4 +1,5 @@
-﻿using Spectre.Console;
+﻿using System.Collections.Concurrent;
+using Spectre.Console;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -332,6 +333,40 @@ public static class Extensions
 
                 progressTask.StopTask();
             });
+
+        return results;
+    }
+
+    public static async Task<IReadOnlyCollection<T1>> RunLimitedNumberAtATime<T1, T2>(
+        this IEnumerable<T2> inputList,
+        Func<T2, T1> func,
+        int numberOfTasksConcurrent)
+    {
+        var results = new List<T1>();
+        var inputQueue = new ConcurrentQueue<T2>(inputList);
+        var runningTasks = new List<Task<T1>>(numberOfTasksConcurrent);
+        for (var i = 0; i < numberOfTasksConcurrent && inputQueue.Count > 0; i++)
+        {
+            if (inputQueue.TryDequeue(out var queueItem))
+            {
+                runningTasks.Add(Task.Run(() => func(queueItem)));
+            }
+        }
+
+        while (inputQueue.Count > 0)
+        {
+            var task = await Task.WhenAny(runningTasks);
+            runningTasks.Remove(task);
+            if (inputQueue.TryDequeue(out var queueItem))
+            {
+                runningTasks.Add(Task.Run(() => func(queueItem)));
+            }
+
+            results.Add(task.Result);
+        }
+
+        await Task.WhenAll(runningTasks);
+        results.AddRange(runningTasks.Select(task => task.Result));
 
         return results;
     }

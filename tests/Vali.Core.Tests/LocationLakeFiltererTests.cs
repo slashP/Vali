@@ -21,7 +21,7 @@ public class LocationLakeFiltererTests
     public void Should_compile_expressions(string expression)
     {
         var locations = LocationArray();
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], expression, new(), []));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], expression, new(), [], new()));
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public class LocationLakeFiltererTests
 
         var orExpression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$rural or $$urban");
         var andExpression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$rural and $$urban");
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], orExpression, new(), []));
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], andExpression, new(), []));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], orExpression, new(), [], mapDefinition));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], andExpression, new(), [], mapDefinition));
     }
 
     private static Location[] LocationArray() =>

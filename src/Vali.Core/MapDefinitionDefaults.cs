@@ -1,4 +1,5 @@
 ﻿using Vali.Core.Data;
+using Vali.Core.Hash;
 
 namespace Vali.Core;
 
@@ -225,9 +226,23 @@ public static class MapDefinitionDefaults
             "geotime" => Weights.GeoTime,
             "lerg" => Weights.LessExtremeRegionGuessing,
             "amw" => Weights.MovingWorld,
+            "yellowbelly" => Weights.YellowBelly,
             { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };
+
+    public static IEnumerable<NeighborFilter> AllNeighborFilters(this MapDefinition definition) =>
+        definition.NeighborFilters
+            .Concat(definition.GlobalLocationPreferenceFilters.SelectMany(f => f.NeighborFilters))
+            .Concat(definition.CountryLocationPreferenceFilters.SelectMany(f => f.Value).SelectMany(f => f.NeighborFilters))
+            .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(f => f.Value.SelectMany(s => s.Value)).SelectMany(f => f.NeighborFilters));
+
+    public static HashPrecision? HashPrecisionFromNeighborFiltersRadius(this MapDefinition definition) =>
+        definition.AllNeighborFilters().Any()
+            ? definition.AllNeighborFilters().Max(x => x.Radius) > 500
+                ? HashPrecision.Size_km_5x5
+                : HashPrecision.Size_km_1x1
+            : null;
 
     private static Dictionary<string, int> Distribution((string, int)[] weights, MapDefinition mapDefinition) =>
         mapDefinition switch

@@ -1,60 +1,78 @@
-﻿using static Vali.Core.LocationLakeMapGenerator;
+﻿using System.Collections.Concurrent;
+using static Vali.Core.LocationLakeMapGenerator;
 
 namespace Vali.Core;
 
 public class LocationReader
 {
+    private static readonly ConcurrentDictionary<string, LocationLakeMapGenerator.GeoMapLocation[]> Locations = new();
+    private static readonly object LockObject = new object();
+
     public static LocationLakeMapGenerator.GeoMapLocation[] DeserializeLocationsFromFile(string path)
     {
-        var extension = Path.GetExtension(path);
-        if (extension == ".csv")
+        if (Locations.TryGetValue(path, out var cachedLocations))
         {
-            var lines = File.ReadAllLines(path);
-            return lines.Where(x => x.Length > 2).Select(x =>
-                    new LocationLakeMapGenerator.GeoMapLocation
-                    {
-                        lat = x.Split(',')[0].ParseAsDouble(),
-                        lng = x.Split(',')[1].ParseAsDouble(),
-                    })
-                .ToArray();
+            return cachedLocations;
         }
 
-        var firstChar = Extensions.ReadChars(path, 1);
-        LocationLakeMapGenerator.GeoMapLocation[] mapLocations;
-        if (firstChar[0] == '[')
+        lock (LockObject)
         {
-            var locations = Extensions.DeserializeJsonFromFile<GeoMapLocation[]>(path) ?? throw new InvalidOperationException("Invalid location json structure.");
-            mapLocations = locations.Where(x => x.lat is not null && x.lng is not null).Select(x => new LocationLakeMapGenerator.GeoMapLocation
+            if (Locations.TryGetValue(path, out cachedLocations))
             {
-                lat = x.lat!.Value,
-                lng = x.lng!.Value,
-                panoId = x.panoId,
-                countryCode = x.countryCode,
-                subdivisionCode = x.subdivisionCode,
-                extra = x.extra,
-                heading = x.heading,
-                pitch = x.pitch,
-                zoom = x.zoom,
-            }).ToArray();
-        }
-        else
-        {
-            var map = Extensions.DeserializeJsonFromFile<MapWithDistributionLocations>(path) ?? throw new InvalidOperationException("Invalid map json structure.");
-            mapLocations = map.customCoordinates.Where(x => x.lat is not null && x.lng is not null).Select(x => new LocationLakeMapGenerator.GeoMapLocation
-            {
-                lat = x.lat!.Value,
-                lng = x.lng!.Value,
-                panoId = x.panoId,
-                countryCode = x.countryCode,
-                subdivisionCode = x.subdivisionCode,
-                extra = x.extra,
-                heading = x.heading,
-                pitch = x.pitch,
-                zoom = x.zoom,
-            }).ToArray();
-        }
+                return cachedLocations;
+            }
 
-        return mapLocations;
+            var extension = Path.GetExtension(path);
+            if (extension == ".csv")
+            {
+                var lines = File.ReadAllLines(path);
+                return lines.Where(x => x.Length > 2).Select(x =>
+                        new LocationLakeMapGenerator.GeoMapLocation
+                        {
+                            lat = x.Split(',')[0].ParseAsDouble(),
+                            lng = x.Split(',')[1].ParseAsDouble(),
+                        })
+                    .ToArray();
+            }
+
+            var firstChar = Extensions.ReadChars(path, 1);
+            LocationLakeMapGenerator.GeoMapLocation[] mapLocations;
+            if (firstChar[0] == '[')
+            {
+                var locations = Extensions.DeserializeJsonFromFile<GeoMapLocation[]>(path) ?? throw new InvalidOperationException("Invalid location json structure.");
+                mapLocations = locations.Where(x => x.lat is not null && x.lng is not null).Select(x => new LocationLakeMapGenerator.GeoMapLocation
+                {
+                    lat = x.lat!.Value,
+                    lng = x.lng!.Value,
+                    panoId = x.panoId,
+                    countryCode = x.countryCode,
+                    subdivisionCode = x.subdivisionCode,
+                    extra = x.extra,
+                    heading = x.heading,
+                    pitch = x.pitch,
+                    zoom = x.zoom,
+                }).ToArray();
+            }
+            else
+            {
+                var map = Extensions.DeserializeJsonFromFile<MapWithDistributionLocations>(path) ?? throw new InvalidOperationException("Invalid map json structure.");
+                mapLocations = map.customCoordinates.Where(x => x.lat is not null && x.lng is not null).Select(x => new LocationLakeMapGenerator.GeoMapLocation
+                {
+                    lat = x.lat!.Value,
+                    lng = x.lng!.Value,
+                    panoId = x.panoId,
+                    countryCode = x.countryCode,
+                    subdivisionCode = x.subdivisionCode,
+                    extra = x.extra,
+                    heading = x.heading,
+                    pitch = x.pitch,
+                    zoom = x.zoom,
+                }).ToArray();
+            }
+
+            Locations.TryAdd(path, mapLocations);
+            return mapLocations;
+        }
     }
 
     record MapWithDistributionLocations

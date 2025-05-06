@@ -22,11 +22,12 @@ public static class LocationLakeFilterer
     ];
 
     public static Loc[] Filter(
-        Loc[] locationsFromFile,
-        IReadOnlyCollection<Loc> allLocations,
+        IReadOnlyCollection<Loc> locationsFromFile,
+        Dictionary<string, List<Loc>> allLocationsBuckets,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
-        NeighborFilter[] neighborFilters)
+        NeighborFilter[] neighborFilters,
+        MapDefinition mapDefinition)
     {
         List<Func<Loc, bool>> defaultFilterSelectors =
         [
@@ -69,7 +70,7 @@ public static class LocationLakeFilterer
 
         foreach (var neighborFilter in neighborFilters)
         {
-            locations = FilterByNeighbors(locations, allLocations, neighborFilter);
+            locations = FilterByNeighbors(locations, allLocationsBuckets, neighborFilter, mapDefinition);
         }
 
         return locations.ToArray();
@@ -289,10 +290,13 @@ public static class LocationLakeFilterer
         });
     }
 
-    private static IEnumerable<Loc> FilterByNeighbors(IEnumerable<Loc> locations, IReadOnlyCollection<Loc> allLocations, NeighborFilter neighborFilter)
+    private static IEnumerable<Loc> FilterByNeighbors(
+        IEnumerable<Loc> locations,
+        Dictionary<string, List<Loc>> allLocationsDictionary,
+        NeighborFilter neighborFilter,
+        MapDefinition mapDefinition)
     {
-        const HashPrecision precision = HashPrecision.Size_km_5x5;
-        var allLocationsDictionary = LocationLookupService.Bucketize(allLocations, precision);
+        var precision = mapDefinition.HashPrecisionFromNeighborFiltersRadius()!.Value;
         var filterExpression = string.IsNullOrEmpty(neighborFilter.Expression)
             ? _ => true
             : CompileBoolLocationExpression(neighborFilter.Expression);

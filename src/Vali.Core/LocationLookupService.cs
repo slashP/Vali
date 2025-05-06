@@ -4,12 +4,17 @@ namespace Vali.Core;
 
 public class LocationLookupService
 {
-    public static Dictionary<string, List<T>> Bucketize<T>(IEnumerable<T> allLocations, HashPrecision precision) where T : ILatLng
+    public static Dictionary<string, List<T>> Bucketize<T>(IEnumerable<T> allLocations, HashPrecision? precision) where T : ILatLng
     {
+        if (!precision.HasValue)
+        {
+            return [];
+        }
+
         var allLocationsDictionary = new Dictionary<string, List<T>>();
         foreach (var loc in allLocations)
         {
-            var hash = Hasher.Encode(loc.Lat, loc.Lng, precision);
+            var hash = Hasher.Encode(loc.Lat, loc.Lng, precision.Value);
             if (allLocationsDictionary.TryGetValue(hash, out var list))
             {
                 list.Add(loc);
