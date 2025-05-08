@@ -1,4 +1,5 @@
-﻿using Geohash;
+﻿using System.Collections.Concurrent;
+using Geohash;
 using Vali.Core.Hash;
 
 namespace Vali.Core;
@@ -13,7 +14,18 @@ public class Hasher
     public static string ParentOf(double latitude, double longitude, HashPrecision precision) =>
         GeoHasher.GetParent(GeoHasher.Encode(latitude, longitude, (int)precision));
 
-    public static Dictionary<Direction, string> Neighbors(string hash) => GeoHasher.GetNeighbors(hash);
+    private static readonly ConcurrentDictionary<string, Dictionary<Direction, string>> NeighborCache = new();
+    public static Dictionary<Direction, string> Neighbors(string hash)
+    {
+        if (NeighborCache.TryGetValue(hash, out var n))
+        {
+            return n;
+        }
+
+        var neighbors = GeoHasher.GetNeighbors(hash);
+        NeighborCache.TryAdd(hash, neighbors);
+        return neighbors;
+    }
 
     public static BoundingBox GetBoundingBox(string geohash) => GeoHasher.GetBoundingBox(geohash);
 }

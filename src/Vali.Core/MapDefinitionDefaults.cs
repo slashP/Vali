@@ -244,6 +244,16 @@ public static class MapDefinitionDefaults
                 : HashPrecision.Size_km_1x1
             : null;
 
+    public static HashPrecision? HashPrecisionFromProximityFilter(this ProximityFilter proximityFilter) =>
+        proximityFilter.Radius > 0 && !string.IsNullOrEmpty(proximityFilter.LocationsPath)
+            ? proximityFilter.Radius switch
+            {
+                < 500 => HashPrecision.Size_km_1x1,
+                < 3000 => HashPrecision.Size_km_5x5,
+                _ => HashPrecision.Size_km_39x20
+            }
+            : null;
+
     private static Dictionary<string, int> Distribution((string, int)[] weights, MapDefinition mapDefinition) =>
         mapDefinition switch
         {

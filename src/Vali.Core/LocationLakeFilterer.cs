@@ -23,7 +23,8 @@ public static class LocationLakeFilterer
 
     public static Loc[] Filter(
         IReadOnlyCollection<Loc> locationsFromFile,
-        Dictionary<string, List<Loc>> allLocationsBuckets,
+        Dictionary<string, List<Loc>> neighborLocationBuckets,
+        Dictionary<string, List<ILatLng>> proximityLocationBuckets,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
         NeighborFilter[] neighborFilters,
@@ -65,12 +66,12 @@ public static class LocationLakeFilterer
         if (proximityFilter.Radius > 0 && File.Exists(proximityFilter.LocationsPath))
         {
             var locs = locations.ToArray();
-            locations = FilterByProximity(locs, proximityFilter);
+            locations = FilterByProximity(locs, proximityFilter, proximityLocationBuckets);
         }
 
         foreach (var neighborFilter in neighborFilters)
         {
-            locations = FilterByNeighbors(locations, allLocationsBuckets, neighborFilter, mapDefinition);
+            locations = FilterByNeighbors(locations, neighborLocationBuckets, neighborFilter, mapDefinition);
         }
 
         return locations.ToArray();
@@ -272,27 +273,23 @@ public static class LocationLakeFilterer
         _ => throw new ArgumentOutOfRangeException(nameof(@operator), $"operator {@operator} not implemented.")
     };
 
-    private static IEnumerable<Loc> FilterByProximity(IReadOnlyCollection<Loc> locations, ProximityFilter proximityFilter)
+    private static IEnumerable<Loc> FilterByProximity(
+        IReadOnlyCollection<Loc> locations,
+        ProximityFilter proximityFilter,
+        Dictionary<string, List<ILatLng>> proximityLocationBuckets)
     {
-        var nominatim = locations.FirstOrDefault()?.Nominatim;
-        var isSingleCountry = locations.GroupBy(x => x.Nominatim.CountryCode).Count() < 2;
-        var isSingleSubdivision = locations.GroupBy(x => x.Nominatim.SubdivisionCode).Count() < 2;
-        var precision = HashPrecision.Size_km_39x20;
-        var locationsFromFile = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-            .Where(x => !isSingleCountry || x.countryCode is null || x.countryCode == nominatim?.CountryCode)
-            .Where(x => !isSingleSubdivision || x.subdivisionCode is null || x.subdivisionCode == nominatim?.SubdivisionCode);
-        var proximityLocations = LocationLookupService.Bucketize(locationsFromFile, precision);
+        var precision = proximityFilter.HashPrecisionFromProximityFilter()!.Value;
         var proximityFilterRadius = proximityFilter.Radius;
         return locations.Where(l =>
         {
             var hash = Hasher.Encode(l.Lat, l.Lng, precision);
-            return proximityLocations.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.lat, x.lng) < proximityFilterRadius);
+            return proximityLocationBuckets.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.Lat, x.Lng) < proximityFilterRadius);
         });
     }
 
     private static IEnumerable<Loc> FilterByNeighbors(
         IEnumerable<Loc> locations,
-        Dictionary<string, List<Loc>> allLocationsDictionary,
+        Dictionary<string, List<Loc>> neighborLocationBuckets,
         NeighborFilter neighborFilter,
         MapDefinition mapDefinition)
     {
@@ -304,35 +301,35 @@ public static class LocationLakeFilterer
         return neighborFilter switch
         {
             { Bound: "lower", CheckEachCardinalDirectionSeparately: true } => locations
-                .Where(l => directions.Any(d => LocationsFromDictionary(allLocationsDictionary, l, precision).Count(l2 =>
+                .Where(l => directions.Any(d => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
                     filterExpression(l2)) >= neighborFilter.Limit)),
             { Bound: "lower", CheckEachCardinalDirectionSeparately: false } => locations
-                .Where(l => LocationsFromDictionary(allLocationsDictionary, l, precision).Count(l2 =>
+                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
                     filterExpression(l2)) >= neighborFilter.Limit),
             { Limit: 0, Bound: "upper", CheckEachCardinalDirectionSeparately: true } => locations
-                .Where(l => directions.Any(d => !LocationsFromDictionary(allLocationsDictionary, l, precision).Any(l2 =>
+                .Where(l => directions.Any(d => !LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
                     filterExpression(l2)))),
             { Limit: 0, Bound: "upper", CheckEachCardinalDirectionSeparately: false } => locations
-                .Where(l => !LocationsFromDictionary(allLocationsDictionary, l, precision).Any(l2 =>
+                .Where(l => !LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
                     filterExpression(l2))),
             { Limit: > 0, Bound: "upper", CheckEachCardinalDirectionSeparately: true } => locations
-                .Where(l => directions.Any(d => allLocationsDictionary[Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20)].Count(l2 =>
+                .Where(l => directions.Any(d => neighborLocationBuckets[Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20)].Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
                     filterExpression(l2)) <= neighborFilter.Limit)),
             { Bound: "upper", CheckEachCardinalDirectionSeparately: false } => locations
-                .Where(l => LocationsFromDictionary(allLocationsDictionary, l, precision).Count(l2 =>
+                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
                     filterExpression(l2)) <= neighborFilter.Limit),
@@ -340,8 +337,8 @@ public static class LocationLakeFilterer
         };
     }
 
-    private static IEnumerable<Loc> LocationsFromDictionary(Dictionary<string, List<Loc>> allLocationsDictionary, Loc l, HashPrecision precision) =>
-        allLocationsDictionary.TryGetValue(Hasher.Encode(l.Lat, l.Lng, precision), out var locations)
+    private static IEnumerable<Loc> LocationsFromDictionary(Dictionary<string, List<Loc>> neighborLocationBuckets, Loc l, HashPrecision precision) =>
+        neighborLocationBuckets.TryGetValue(Hasher.Encode(l.Lat, l.Lng, precision), out var locations)
             ? locations
             : [];
 
