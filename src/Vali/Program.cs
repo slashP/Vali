@@ -1,5 +1,4 @@
 ﻿using System.CommandLine;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Vali.Core;
@@ -18,6 +17,11 @@ AnsiConsole.MarkupLine(
     Y88P   "Y888888 888 888
   [/]
   """);
+var currentDownloadFolder = DataDownloadService.CurrentDownloadFolder();
+if (!string.IsNullOrEmpty(currentDownloadFolder))
+{
+    ConsoleLogger.Success($"Download/data folder: {currentDownloadFolder}");
+}
 
 //args = new[] { "generate", "--file", @"C:\dev\priv\vali-maps\neighbours.json" };
 

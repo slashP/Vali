@@ -306,6 +306,28 @@ public static class DataDownloadService
 
     public static async Task EnsureFilesDownloaded(string countryCode, string[] subdivisionFiles)
     {
+        var currentDownloadFolder = CurrentDownloadFolder();
+
+        if (!Extensions.IsDirectoryWritable(currentDownloadFolder))
+        {
+            var downloadFolder = AnsiConsole.Ask("Please specify a folder where vali should store downloaded files.", "");
+            if (!Directory.Exists(downloadFolder))
+            {
+                ConsoleLogger.Error($"Folder '{downloadFolder}' does not exist.");
+                return;
+            }
+
+            if (!Extensions.IsDirectoryWritable(downloadFolder))
+            {
+                ConsoleLogger.Error($"Vali does not have access to write files to '{downloadFolder}'");
+                return;
+            }
+
+            var fullDownloadPath = Path.GetFullPath(downloadFolder);
+            ApplicationSettingsService.SetDownloadFolder(fullDownloadPath);
+            ConsoleLogger.Success($"'{fullDownloadPath}' set as download folder. Use 'vali set-download-folder' if you want to change it.");
+        }
+
         BlobContainerClient? blobContainerClient = null;
 
         foreach (var subdivisionFile in subdivisionFiles)
@@ -329,6 +351,12 @@ public static class DataDownloadService
                 await DownloadDataFiles(blobContainerClient, countryCode, filesToDownload, RunMode.Default, null);
             }
         }
+    }
+
+    public static string? CurrentDownloadFolder()
+    {
+        var countryFolder = CountryFolder("XX", RunMode.Default);
+        return !string.IsNullOrEmpty(countryFolder) ? new DirectoryInfo(countryFolder).Parent?.Parent?.FullName : null;
     }
 }
 

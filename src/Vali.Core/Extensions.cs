@@ -370,4 +370,25 @@ public static class Extensions
 
         return results;
     }
+
+    public static bool IsDirectoryWritable(string? dirPath)
+    {
+        if (!Directory.Exists(dirPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using (var fs = File.Create(Path.Combine(dirPath, Path.GetRandomFileName()), 1, FileOptions.DeleteOnClose))
+            {
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
