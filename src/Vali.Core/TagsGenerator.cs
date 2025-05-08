@@ -25,6 +25,7 @@ public static class TagsGenerator
             _ when e.StartsWith(nameof(Location.Google.Heading)) => IntTag(mapCheckrLocation, nameof(l.Google.Heading), x => (int)x.heading, e),
             "DescriptionLength" => [$"DescriptionLength-{(mapCheckrLocation.descriptionLength != null ? mapCheckrLocation.descriptionLength.Value : "null")}"],
             "IsScout" => [$"{nameof(Location.Google.IsScout)}-{(l.Google.IsScout ? "Yes" : "No")}"],
+            "ResolutionHeight" => [$"ResolutionHeight-{mapCheckrLocation.resolutionHeight}"],
             "Season" => [Season(l.Nominatim.CountryCode, mapCheckrLocation.month)],
             "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()),
             nameof(Location.Osm.HighwayTypeCount) => [$"{nameof(Location.Osm.HighwayTypeCount)}-{l.Osm.HighwayTypeCount}"],
@@ -55,15 +56,11 @@ public static class TagsGenerator
             : null;
     }
 
-    private static IEnumerable<string> IntTag(Location l, string name, Func<Location, int> func, string e)
-    {
-        return e.Contains("-") ? [Range(name, func(l), e.Replace($"{name}-", ""), "") ?? ""] : [$"{name}-{func(l)}"];
-    }
+    private static IEnumerable<string> IntTag(Location l, string name, Func<Location, int> func, string e) =>
+        e.Contains("-") ? [Range(name, func(l), e.Replace($"{name}-", ""), "") ?? ""] : [$"{name}-{func(l)}"];
 
-    private static IEnumerable<string> IntTag(MapCheckrLocation l, string name, Func<MapCheckrLocation, int> func, string e)
-    {
-        return e.Contains("-") ? [Range(name, func(l), e.Replace($"{name}-", ""), "") ?? ""] : [$"{name}-{func(l)}"];
-    }
+    private static IEnumerable<string> IntTag(MapCheckrLocation l, string name, Func<MapCheckrLocation, int> func, string e) =>
+        e.Contains("-") ? [Range(name, func(l), e.Replace($"{name}-", ""), "") ?? ""] : [$"{name}-{func(l)}"];
 
     private static string? Range(string prefix, int number, string bucketString, string suffix)
     {

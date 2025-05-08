@@ -102,6 +102,7 @@ public class LocationLakeMapGenerator
                 drivingDirectionAngle = (ushort)x.Google.DrivingDirectionAngle,
                 descriptionLength = x.Google.DescriptionLength,
                 isScout = x.Google.IsScout,
+                resolutionHeight = x.Google.ResolutionHeight,
             }
         }).ToArray();
         Random.Shared.Shuffle(locations);

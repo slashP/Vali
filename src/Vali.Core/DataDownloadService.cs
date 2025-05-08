@@ -14,6 +14,11 @@ public static class DataDownloadService
 
     public static async Task DownloadFiles(string? countryCode, bool full, bool updates)
     {
+        if (!EnsureDownloadFolderIsWritable())
+        {
+            return;
+        }
+
         var sw = Stopwatch.StartNew();
         var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
 
@@ -306,26 +311,9 @@ public static class DataDownloadService
 
     public static async Task EnsureFilesDownloaded(string countryCode, string[] subdivisionFiles)
     {
-        var currentDownloadFolder = CurrentDownloadFolder();
-
-        if (!Extensions.IsDirectoryWritable(currentDownloadFolder))
+        if (!EnsureDownloadFolderIsWritable())
         {
-            var downloadFolder = AnsiConsole.Ask("Please specify a folder where vali should store downloaded files.", "");
-            if (!Directory.Exists(downloadFolder))
-            {
-                ConsoleLogger.Error($"Folder '{downloadFolder}' does not exist.");
-                return;
-            }
-
-            if (!Extensions.IsDirectoryWritable(downloadFolder))
-            {
-                ConsoleLogger.Error($"Vali does not have access to write files to '{downloadFolder}'");
-                return;
-            }
-
-            var fullDownloadPath = Path.GetFullPath(downloadFolder);
-            ApplicationSettingsService.SetDownloadFolder(fullDownloadPath);
-            ConsoleLogger.Success($"'{fullDownloadPath}' set as download folder. Use 'vali set-download-folder' if you want to change it.");
+            return;
         }
 
         BlobContainerClient? blobContainerClient = null;
@@ -351,6 +339,33 @@ public static class DataDownloadService
                 await DownloadDataFiles(blobContainerClient, countryCode, filesToDownload, RunMode.Default, null);
             }
         }
+    }
+
+    private static bool EnsureDownloadFolderIsWritable()
+    {
+        var currentDownloadFolder = CurrentDownloadFolder();
+
+        if (!Extensions.IsDirectoryWritable(currentDownloadFolder))
+        {
+            var downloadFolder = AnsiConsole.Ask("Please specify a folder where vali should store downloaded files.", "");
+            if (!Directory.Exists(downloadFolder))
+            {
+                ConsoleLogger.Error($"Folder '{downloadFolder}' does not exist.");
+                return false;
+            }
+
+            if (!Extensions.IsDirectoryWritable(downloadFolder))
+            {
+                ConsoleLogger.Error($"Vali does not have access to write files to '{downloadFolder}'");
+                return false;
+            }
+
+            var fullDownloadPath = Path.GetFullPath(downloadFolder);
+            ApplicationSettingsService.SetDownloadFolder(fullDownloadPath);
+            ConsoleLogger.Success($"'{fullDownloadPath}' set as download folder. Use 'vali set-download-folder' if you want to change it.");
+        }
+
+        return true;
     }
 
     public static string? CurrentDownloadFolder()

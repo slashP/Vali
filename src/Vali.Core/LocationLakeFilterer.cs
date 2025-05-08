@@ -121,8 +121,8 @@ public static class LocationLakeFilterer
         var validProperties = typeof(TLoc).Name switch
         {
             nameof(Location) => ValidProperties(),
-            nameof(MapCheckrLocation) => new[]
-            {
+            nameof(MapCheckrLocation) =>
+            [
                 nameof(MapCheckrLocation.lat),
                 nameof(MapCheckrLocation.lng),
                 nameof(MapCheckrLocation.countryCode),
@@ -132,8 +132,8 @@ public static class LocationLakeFilterer
                 nameof(MapCheckrLocation.heading),
                 nameof(MapCheckrLocation.month),
                 nameof(MapCheckrLocation.year),
-                nameof(MapCheckrLocation.isScout),
-            },
+                nameof(MapCheckrLocation.isScout)
+            ],
             _ => throw new ArgumentOutOfRangeException()
         };
         Func<string, string> lambdaExpressionFunc = typeof(TLoc).Name switch
@@ -157,13 +157,13 @@ public static class LocationLakeFilterer
 
         totalExpression = totalExpression.Replace("\\'", "'");
         var parameter = Expression.Parameter(typeof(TLoc), "x");
-        var expression = (Expression)DynamicExpressionParser.ParseLambda(new[] { parameter }, null, totalExpression);
+        var expression = (Expression)DynamicExpressionParser.ParseLambda([parameter], null, totalExpression);
         var typedExpression = ((Expression<Func<TLoc, T>>)expression).Compile();
         return typedExpression;
     }
 
-    public static IEnumerable<string> ValidProperties() => new[]
-    {
+    public static IEnumerable<string> ValidProperties() =>
+    [
         nameof(Loc.Osm.Surface),
         nameof(Loc.Osm.Buildings10),
         nameof(Loc.Osm.Buildings25),
@@ -194,13 +194,14 @@ public static class LocationLakeFilterer
         nameof(Loc.Google.Elevation),
         nameof(Loc.Google.DescriptionLength),
         nameof(Loc.Google.IsScout),
+        nameof(Loc.Google.ResolutionHeight),
         nameof(Loc.Nominatim.CountryCode),
         nameof(Loc.Nominatim.SubdivisionCode),
-        nameof(Loc.Nominatim.County),
-    };
+        nameof(Loc.Nominatim.County)
+    ];
 
-    public static IEnumerable<string> ValidOperators() => new[]
-    {
+    public static IEnumerable<string> ValidOperators() =>
+    [
         "eq",
         "neq",
         "lt",
@@ -212,8 +213,8 @@ public static class LocationLakeFilterer
         "+",
         "-",
         "/",
-        "*",
-    };
+        "*"
+    ];
 
     private static string LocationLambdaExpressionFromProperty(string property) =>
         property switch
@@ -248,6 +249,7 @@ public static class LocationLakeFilterer
             nameof(Loc.Google.Elevation) => $"x.Google.{nameof(Loc.Google.Elevation)}",
             nameof(Loc.Google.DescriptionLength) => $"x.Google.{nameof(Loc.Google.DescriptionLength)}",
             nameof(Loc.Google.IsScout) => $"x.Google.{nameof(Loc.Google.IsScout)}",
+            nameof(Loc.Google.ResolutionHeight) => $"x.Google.{nameof(Loc.Google.ResolutionHeight)}",
             nameof(Loc.Nominatim.CountryCode) => $"x.Nominatim.{nameof(Loc.Nominatim.CountryCode)}",
             nameof(Loc.Nominatim.SubdivisionCode) => $"x.Nominatim.{nameof(Loc.Nominatim.SubdivisionCode)}",
             nameof(Loc.Nominatim.County) => $"x.Nominatim.{nameof(Loc.Nominatim.County)}",
