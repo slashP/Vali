@@ -29,6 +29,8 @@ public static class ApplicationSettingsService
     private static void WriteApplicationSettings(ApplicationSettings settings)
     {
         var path = ApplicationSettingsPath();
+        var fullName = new DirectoryInfo(path).Parent!.FullName;
+        Directory.CreateDirectory(fullName);
         var json = Serializer.PrettySerialize(settings);
         File.WriteAllText(path, json);
     }
@@ -45,8 +47,18 @@ public static class ApplicationSettingsService
         return Serializer.Deserialize<ApplicationSettings>(json) ?? throw new InvalidOperationException($"Application setting file in {path} is incorrect. Try deleting it and retry.");
     }
 
-    private static string ApplicationSettingsPath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Vali", "application-settings.json");
+    private static string ApplicationSettingsPath()
+    {
+        const string valiFolderName = "Vali";
+        var applicationCommonDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), valiFolderName);
+        const string applicationSettingsFilename = "application-settings.json";
+        if (Directory.Exists(applicationCommonDataFolder))
+        {
+            return Path.Combine(applicationCommonDataFolder, applicationSettingsFilename);
+        }
+
+        return Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), valiFolderName), applicationSettingsFilename);
+    }
 }
 
 public record ApplicationSettings

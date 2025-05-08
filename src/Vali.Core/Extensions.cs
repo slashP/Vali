@@ -391,4 +391,21 @@ public static class Extensions
             return false;
         }
     }
+
+    public static void TryCreateDirectory(string? directory)
+    {
+        if (directory == null)
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+        }
+        catch (Exception)
+        {
+            // Handled at caller.
+        }
+    }
 }

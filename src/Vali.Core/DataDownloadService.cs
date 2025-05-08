@@ -4,6 +4,7 @@ using ICSharpCode.SharpZipLib.BZip2;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Diagnostics;
+using System.IO.Compression;
 using Vali.Core.Data;
 
 namespace Vali.Core;
@@ -24,6 +25,7 @@ public static class DataDownloadService
 
         var downloadOperations =
             new (BlobContainerClient client,
+                Action<string, RunMode> preDownloadAction,
                 Action<string, RunMode, DownloadMetadata.File> deleteAction,
                 Func<BlobContainerClient, string, IReadOnlyCollection<BlobFile>, RunMode, ProgressTask, Task> downloadAction,
                 Func<BlobFile, string> groupBy,
@@ -31,8 +33,8 @@ public static class DataDownloadService
                 Func<string, RunMode, IReadOnlyCollection<BlobFile>, Task> downloadedAction,
                 bool force)[]
                 {
-                    (CreateBlobServiceClient(), DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
-                    (CreateBlobServiceClientForUpdates(), (_, _, _) => {}, DownloadUpdateFile, f => f.BlobName.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
+                    (CreateBlobServiceClient(), (_, _) => {}, DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
+                    (CreateBlobServiceClientForUpdates(), RemoveUpdateFiles, (_, _, _) => {}, DownloadUpdateFile, f => f.BlobName.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
                 };
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
             CountryCodes.Countries.Keys.ToArray() :
@@ -52,6 +54,7 @@ public static class DataDownloadService
                 {
                     foreach (var code in countryCodes)
                     {
+                        downloadOperation.preDownloadAction(code, runMode);
                         var filesFromBlob = await GetFilesFrom(code, downloadOperation.client);
 
                         var localFiles = ExistingFilesInMetadata(code, runMode);
@@ -150,6 +153,15 @@ public static class DataDownloadService
         }
     }
 
+    private static void RemoveUpdateFiles(string countryCode, RunMode runMode)
+    {
+        var updatesFolder = UpdatesFolder(countryCode, runMode);
+        if (Directory.Exists(updatesFolder))
+        {
+            Directory.Delete(updatesFolder, true);
+        }
+    }
+
     private static void DeleteDataFile(string countryCode, RunMode runMode, DownloadMetadata.File file)
     {
         var folder = CountryFolder(countryCode, runMode);
@@ -221,6 +233,8 @@ public static class DataDownloadService
 
     private static BlobContainerClient CreateBlobServiceClientForUpdates() => GetBlobServiceClient("countries-updates-v1");
 
+    private static BlobContainerClient CreateBlobServiceClientForRoadData() => GetBlobServiceClient("roads-v1");
+
     private static BlobContainerClient GetBlobServiceClient(string blobContainerName) => new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient(blobContainerName);
 
     private static string RemoveDatePrefix(this string filename) =>
@@ -274,16 +288,22 @@ public static class DataDownloadService
 
     public static string CountryFolder(string countryCode, RunMode runMode)
     {
+        var downloadFolder = DownloadFolder(runMode);
+        return Path.Combine(downloadFolder, countryCode);
+    }
+
+    public static string DownloadFolder(RunMode runMode)
+    {
         var applicationSettings = ApplicationSettingsService.ReadApplicationSettings();
         if (runMode == RunMode.Localhost && !string.IsNullOrEmpty(applicationSettings.LocalhostDownloadDirectory))
         {
-            return Path.Combine(applicationSettings.LocalhostDownloadDirectory!, countryCode);
+            return applicationSettings.LocalhostDownloadDirectory!;
         }
 
         var defaultDownloadFolderEnvironment = ApplicationSettingsService.ReadDownloadFolderFromEnvironmentVariable();
         var defaultDownloadFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         var downloadFolder = defaultDownloadFolderEnvironment ?? applicationSettings.DownloadDirectory ?? defaultDownloadFolder;
-        return Path.Combine(downloadFolder, "Vali", countryCode);
+        return Path.Combine(downloadFolder, "Vali");
     }
 
     private static string UpdatesFolder(string countryCode, RunMode runMode)
@@ -343,8 +363,8 @@ public static class DataDownloadService
 
     private static bool EnsureDownloadFolderIsWritable()
     {
-        var currentDownloadFolder = CurrentDownloadFolder();
-
+        var currentDownloadFolder = DownloadFolder(RunMode.Default);
+        Extensions.TryCreateDirectory(currentDownloadFolder);
         if (!Extensions.IsDirectoryWritable(currentDownloadFolder))
         {
             var downloadFolder = AnsiConsole.Ask("Please specify a folder where vali should store downloaded files.", "");
@@ -354,24 +374,20 @@ public static class DataDownloadService
                 return false;
             }
 
-            if (!Extensions.IsDirectoryWritable(downloadFolder))
+            var generalDownloadFolder = Path.GetFullPath(downloadFolder);
+            var fullDownloadPath = Path.Combine(generalDownloadFolder, "Vali");
+            Extensions.TryCreateDirectory(fullDownloadPath);
+            if (!Extensions.IsDirectoryWritable(fullDownloadPath))
             {
-                ConsoleLogger.Error($"Vali does not have access to write files to '{downloadFolder}'");
+                ConsoleLogger.Error($"Vali does not have access to write files to '{fullDownloadPath}'");
                 return false;
             }
 
-            var fullDownloadPath = Path.GetFullPath(downloadFolder);
-            ApplicationSettingsService.SetDownloadFolder(fullDownloadPath);
-            ConsoleLogger.Success($"'{fullDownloadPath}' set as download folder. Use 'vali set-download-folder' if you want to change it.");
+            ApplicationSettingsService.SetDownloadFolder(generalDownloadFolder);
+            ConsoleLogger.Success($"'{DownloadFolder(RunMode.Default)}' set as download folder. Use 'vali set-download-folder' if you want to change it.");
         }
 
         return true;
-    }
-
-    public static string? CurrentDownloadFolder()
-    {
-        var countryFolder = CountryFolder("XX", RunMode.Default);
-        return !string.IsNullOrEmpty(countryFolder) ? new DirectoryInfo(countryFolder).Parent?.Parent?.FullName : null;
     }
 }
 

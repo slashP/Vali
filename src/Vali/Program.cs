@@ -17,7 +17,8 @@ AnsiConsole.MarkupLine(
     Y88P   "Y888888 888 888
   [/]
   """);
-var currentDownloadFolder = DataDownloadService.CurrentDownloadFolder();
+
+var currentDownloadFolder = DataDownloadService.DownloadFolder(RunMode.Default);
 if (!string.IsNullOrEmpty(currentDownloadFolder))
 {
     ConsoleLogger.Success($"Download/data folder: {currentDownloadFolder}");
