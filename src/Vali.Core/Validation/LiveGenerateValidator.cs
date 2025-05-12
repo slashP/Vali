@@ -37,10 +37,12 @@ public static class LiveGenerateValidator
             return null;
         }
 
-        var countriesWithRoadData = Directory.GetDirectories(DataDownloadService.RoadsFolder())
-            .Select(x => new DirectoryInfo(x).Name).ToArray();
+        var roadsFolder = DataDownloadService.RoadsFolder();
+        var countriesWithRoadData = Directory.Exists(roadsFolder)
+            ? Directory.GetDirectories(roadsFolder).Select(x => new DirectoryInfo(x).Name).ToArray()
+            : [];
         var unsupportedCountryCodes = definition.Countries.Keys.Where(x => !countriesWithRoadData.Contains(x)).ToArray();
-        if (unsupportedCountryCodes.Length != 0)
+        if (countriesWithRoadData.Length > 0 && unsupportedCountryCodes.Length != 0)
         {
             ConsoleLogger.Error($"Country code(s) do not have road data available and are not supported: {unsupportedCountryCodes.Merge(", ")}");
             ConsoleLogger.Warn($"Must be one of: {countriesWithRoadData.Merge(", ")}");

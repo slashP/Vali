@@ -104,6 +104,8 @@ public record OsmData
     public int? ClosestRiver { get; set; }
     [ProtoMember(19)]
     public int? ClosestRailway { get; set; }
+    [ProtoMember(20)]
+    public long[] WayIds { get; set; } = [];
 }
 
 [ProtoContract]

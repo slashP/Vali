@@ -102,16 +102,20 @@ public class LiveGenerate
             // User wanted to stop.
         }
 
-        await StoreMap(definitionPath, map, true);
+        var (path, count) = await StoreMap(definitionPath, map, true);
+        if (path != null)
+        {
+            ConsoleLogger.Success($"{count} locations saved to {path}");
+        }
     }
 
-    private static async Task StoreMap(string? definitionPath, LiveGenerateMapDefinition mapDefinition, bool finalIteration)
+    private static async Task<(string? path, int locationCount)> StoreMap(string? definitionPath, LiveGenerateMapDefinition mapDefinition, bool finalIteration)
     {
         var outFolder = Path.GetDirectoryName(definitionPath);
         if (outFolder is null)
         {
             ConsoleLogger.Error($"Can't get correct folder from path {definitionPath}");
-            return;
+            return (null, 0);
         }
 
         var definitionFilename = Path.GetFileNameWithoutExtension(definitionPath);
@@ -127,7 +131,7 @@ public class LiveGenerate
             await File.WriteAllTextAsync(distributedLocationsPath, Serializer.Serialize(distributed));
         }
 
-        return;
+        return (undistributedLocationsPath, Countries.Sum(x => x.Value.Count));
 
         LocationLakeMapGenerator.GeoMapLocation Map(MapCheckrLocation l)
         {
