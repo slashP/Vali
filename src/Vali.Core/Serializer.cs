@@ -30,4 +30,5 @@ public static class Serializer
     public static string PrettySerialize<T>(T obj) => JsonSerializer.Serialize(obj, PrettyPrintJsonSerializerOptions);
 
     public static T? Deserialize<T>(string res) => JsonSerializer.Deserialize<T>(res, JsonSerializerOptions);
+    public static ValueTask<T?> DeserializeAsync<T>(Stream stream) => JsonSerializer.DeserializeAsync<T>(stream, JsonSerializerOptions);
 }

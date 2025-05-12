@@ -24,7 +24,7 @@ if (!string.IsNullOrEmpty(currentDownloadFolder))
     ConsoleLogger.Success($"Download/data folder: {currentDownloadFolder}");
 }
 
-//args = new[] { "generate", "--file", @"C:\dev\priv\vali-maps\neighbours.json" };
+// args = ["live-generate", "--file", @"C:\dev\priv\vali-maps\live.json"];
 
 using var loggerFactory = ValiLogger.Initialize();
 
@@ -103,7 +103,7 @@ try
 
     var liveGenerateMapCommand = new Command("live-generate", "Generate a GeoGuessr map by calling Google's API on the fly.");
     liveGenerateMapCommand.AddOption(fileOption);
-    //rootCommand.Add(liveGenerateMapCommand);
+    rootCommand.Add(liveGenerateMapCommand);
 
     downloadCommand.SetHandler(async context =>
     {
@@ -304,6 +304,13 @@ try
 
         var mapDefinition = LiveGenerateValidator.TryDeserialize(mapJson);
         if (mapDefinition == null)
+        {
+            context.ExitCode = -1;
+            return;
+        }
+
+        var validatedMapDefinition = mapDefinition.Validate();
+        if (validatedMapDefinition == null)
         {
             context.ExitCode = -1;
             return;

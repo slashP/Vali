@@ -121,19 +121,7 @@ public static class LocationLakeFilterer
         var validProperties = typeof(TLoc).Name switch
         {
             nameof(Location) => ValidProperties(),
-            nameof(MapCheckrLocation) =>
-            [
-                nameof(MapCheckrLocation.lat),
-                nameof(MapCheckrLocation.lng),
-                nameof(MapCheckrLocation.countryCode),
-                nameof(MapCheckrLocation.arrowCount),
-                nameof(MapCheckrLocation.descriptionLength),
-                nameof(MapCheckrLocation.drivingDirectionAngle),
-                nameof(MapCheckrLocation.heading),
-                nameof(MapCheckrLocation.month),
-                nameof(MapCheckrLocation.year),
-                nameof(MapCheckrLocation.isScout)
-            ],
+            nameof(MapCheckrLocation) => ValidMapCheckrLocationProperties(),
             _ => throw new ArgumentOutOfRangeException()
         };
         Func<string, string> lambdaExpressionFunc = typeof(TLoc).Name switch
@@ -162,7 +150,7 @@ public static class LocationLakeFilterer
         return typedExpression;
     }
 
-    public static IEnumerable<string> ValidProperties() =>
+    public static IReadOnlyCollection<string> ValidProperties() =>
     [
         nameof(Loc.Osm.Surface),
         nameof(Loc.Osm.Buildings10),
@@ -198,6 +186,24 @@ public static class LocationLakeFilterer
         nameof(Loc.Nominatim.CountryCode),
         nameof(Loc.Nominatim.SubdivisionCode),
         nameof(Loc.Nominatim.County)
+    ];
+
+    public static IReadOnlyCollection<string> ValidMapCheckrLocationProperties() =>
+    [
+        nameof(MapCheckrLocation.lat),
+        nameof(MapCheckrLocation.lng),
+        nameof(MapCheckrLocation.countryCode),
+        nameof(MapCheckrLocation.arrowCount),
+        nameof(MapCheckrLocation.descriptionLength),
+        nameof(MapCheckrLocation.drivingDirectionAngle),
+        nameof(MapCheckrLocation.heading),
+        nameof(MapCheckrLocation.month),
+        nameof(MapCheckrLocation.year),
+        nameof(MapCheckrLocation.isScout),
+        nameof(MapCheckrLocation.resolutionHeight),
+        nameof(MapCheckrLocation.subdivision),
+        nameof(MapCheckrLocation.panoramaCount),
+        nameof(MapCheckrLocation.elevation),
     ];
 
     public static IEnumerable<string> ValidOperators() =>

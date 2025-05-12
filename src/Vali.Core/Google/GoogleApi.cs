@@ -149,16 +149,11 @@ public class GoogleApi
                     };
                 })).ToArray()
                 : [defaultImage])
-                .Where(x => x.PanoId.Length < 36)
                 .Where(x => x.Year > 2000)
                 .DistinctBy(x => x.PanoId)
                 .OrderByDescending(x => x.Year)
                 .ThenByDescending(x => x.Month)
                 .ToArray();
-            if (!alternativeImages.Any()) // all Ari
-            {
-                return (location, LocationLookupResult.Ari);
-            }
 
             if (resolutionHeight <= Resolution.Gen1)
             {
@@ -233,16 +228,14 @@ public class GoogleApi
                 copyright = detailsCopyright;
             }
 
-            if (pano.Length >= 36 || defaultDrivingDirectionAngle > 360 || year < 2005)
+            if (defaultDrivingDirectionAngle > 360 || year < 2005)
             {
                 return (location, LocationLookupResult.NoImages);
             }
 
-            if (!Regex.IsMatch(copyright, @"© \d{4} Google"))
-            {
-                return (location, LocationLookupResult.Ari);
-            }
-
+            var result = Regex.IsMatch(copyright, @"© \d{4} Google")
+                ? LocationLookupResult.Valid
+                : LocationLookupResult.Ari;
             return (location with
             {
                 heading = Math.Round(heading, 2),
@@ -260,7 +253,7 @@ public class GoogleApi
                 subdivision = subdivision,
                 isScout = isScout,
                 resolutionHeight = resolutionHeight
-            }, LocationLookupResult.Valid);
+            }, result);
         }
         catch (Exception e)
         {
@@ -470,6 +463,7 @@ public record MapCheckrLocation : IDistributionLocation<string>
     public int? elevation { get; set; }
     public int? descriptionLength { get; set; }
     public AlternativePano[] alternativePanos { get; set; } = [];
+    public int panoramaCount => alternativePanos.Length + 1;
     public string? subdivision { get; set; }
     public bool isScout { get; set; }
     public int resolutionHeight { get; set; }

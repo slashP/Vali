@@ -16,7 +16,7 @@ public static class OutputValidation
                 var locations = FilterValidation.EmptyLocationArray().Select(selector).ToArray();
             }
 
-            var validatedDefinition = definition.ValidateExpression(headingExpression!, DryRun, $"Invalid heading expression {headingExpression}");
+            var validatedDefinition = definition.ValidateExpression(headingExpression!, DryRun, $"Invalid heading expression {headingExpression}", LocationLakeFilterer.ValidProperties());
             if (validatedDefinition == null)
             {
                 return null;

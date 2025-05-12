@@ -389,6 +389,36 @@ public static class DataDownloadService
 
         return true;
     }
+
+    public static async Task EnsureRoadFilesDownloaded()
+    {
+        if (!EnsureDownloadFolderIsWritable())
+        {
+            return;
+        }
+
+        var roadsFolder = RoadsFolder();
+        if (Directory.Exists(roadsFolder) && Directory.GetDirectories(roadsFolder).Length != 0)
+        {
+            return;
+        }
+
+        ConsoleLogger.Info("Downloading roads data.");
+        var blobClient = CreateBlobServiceClientForRoadData().GetBlobClient("roads.zip");
+        Directory.CreateDirectory(roadsFolder);
+        using var memoryStream = new MemoryStream();
+        await blobClient.DownloadToAsync(memoryStream);
+        memoryStream.Position = 0;
+        ZipFile.ExtractToDirectory(memoryStream, roadsFolder);
+        ConsoleLogger.Info("Downloaded roads data.");
+    }
+
+    public static string RoadsFolder()
+    {
+        var currentDownloadFolder = DownloadFolder(RunMode.Default);
+        var roadsFolder = Path.Combine(currentDownloadFolder, "roads-v1");
+        return roadsFolder;
+    }
 }
 
 internal record DownloadMetadata

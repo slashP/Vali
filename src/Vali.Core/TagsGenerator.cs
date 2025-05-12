@@ -7,12 +7,13 @@ namespace Vali.Core;
 
 public static class TagsGenerator
 {
-    public static GeoMapLocationExtra? Tags(MapDefinition mapDefinition, Location l, MapCheckrLocation mapCheckrLocation)
+    public static GeoMapLocationExtra? Tags(Location l, MapCheckrLocation mapCheckrLocation, string[] locationTags)
     {
-        var tags = mapDefinition.Output.LocationTags.SelectMany(e => e switch
+        var tags = locationTags.SelectMany(e => e switch
         {
             "CountryCode" => [mapCheckrLocation.countryCode ?? ""],
             "SubdivisionCode" => [SubdivisionCode(mapCheckrLocation) ?? ""],
+            "Subdivision" => [Subdivision(mapCheckrLocation) ?? ""],
             "County" => [County(l) ?? ""],
             "Surface" => [Surface(l) ?? ""],
             "Year" => [mapCheckrLocation.year.ToString()],
@@ -26,6 +27,7 @@ public static class TagsGenerator
             "DescriptionLength" => [$"DescriptionLength-{(mapCheckrLocation.descriptionLength != null ? mapCheckrLocation.descriptionLength.Value : "null")}"],
             "IsScout" => [$"{nameof(Location.Google.IsScout)}-{(l.Google.IsScout ? "Yes" : "No")}"],
             "ResolutionHeight" => [$"ResolutionHeight-{mapCheckrLocation.resolutionHeight}"],
+            "PanoramaCount" => [$"PanoramaCount-{mapCheckrLocation.panoramaCount}"],
             "Season" => [Season(l.Nominatim.CountryCode, mapCheckrLocation.month)],
             "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()),
             nameof(Location.Osm.HighwayTypeCount) => [$"{nameof(Location.Osm.HighwayTypeCount)}-{l.Osm.HighwayTypeCount}"],
@@ -76,6 +78,7 @@ public static class TagsGenerator
 
     public static string SubdivisionCode(Location l) => l.Nominatim.SubdivisionCode;
     public static string? SubdivisionCode(MapCheckrLocation l) => l.subdivisionCode;
+    public static string? Subdivision(MapCheckrLocation l) => l.subdivision;
 
     public static string? County(Location l) => l.Nominatim.County;
 

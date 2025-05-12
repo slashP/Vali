@@ -1,5 +1,4 @@
 ﻿using System.Globalization;
-using System.Text.RegularExpressions;
 using Vali.Core.Data;
 
 namespace Vali.Core.Validation;
@@ -65,7 +64,7 @@ public static class FilterValidation
             .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.Value.Select(z => z.Expression))))
             .Concat(definition.NeighborFilters.Select(x => x.Expression))
             .Where(x => !string.IsNullOrEmpty(x))
-            .Select(f => definition.ValidateExpression(f!, DryRun, $"Invalid filter {f}"))
+            .Select(f => definition.ValidateExpression(f!, DryRun, $"Invalid filter {f}", LocationLakeFilterer.ValidProperties()))
             .Any(validated => validated == null)
             ? null
             : definition;
@@ -191,12 +190,12 @@ public static class FilterValidation
         return definition;
     }
 
-    public static MapDefinition? ValidateExpression(this MapDefinition definition, string filter, Action<string> dryRun, string dryRunExceptionMessage)
+    public static T? ValidateExpression<T>(this T definition, string filter, Action<string> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties)
     {
         if (filter == "")
         {
             ConsoleLogger.Error("Expressions/filters cannot be empty.");
-            return null;
+            return default;
         }
 
         if (filter == "*")
@@ -209,7 +208,7 @@ public static class FilterValidation
             if (dotIndex == 0 || dotIndex == filter.Length - 1 || !char.IsNumber(filter[dotIndex - 1]) || !char.IsNumber(filter[dotIndex + 1]))
             {
                 ConsoleLogger.Error($"Only numbers can have the character '.': {filter}");
-                return null;
+                return default;
             }
         }
 
@@ -217,7 +216,7 @@ public static class FilterValidation
         foreach (var expressionValue in removeStringsInSingleQuotes.RemoveMultipleSpaces().RemoveParentheses().Split(' '))
         {
             var operators = LocationLakeFilterer.ValidOperators().Select(x => x.Trim()).ToArray();
-            var properties = LocationLakeFilterer.ValidProperties().Select(x => x.Trim()).ToArray();
+            var properties = validProperties.Select(x => x.Trim()).ToArray();
             if (!operators.Contains(expressionValue.Trim(), StringComparer.InvariantCultureIgnoreCase) &&
                 !properties.Contains(expressionValue.Trim()) &&
                 !double.TryParse(expressionValue, NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
@@ -228,7 +227,7 @@ public static class FilterValidation
                 if (expressionValue.Contains("'"))
                 {
                     ConsoleLogger.Error("Using single quotes inside single quotes requires escaping by putting a backslash (\\) in front of it");
-                    return null;
+                    return default;
                 }
 
                 ConsoleLogger.Error($"""
@@ -239,7 +238,7 @@ public static class FilterValidation
                                      * One of the properties [{properties.Merge(", ")}]
                                      * null
                                      """);
-                return null;
+                return default;
             }
         }
 
@@ -250,7 +249,7 @@ public static class FilterValidation
         catch (Exception)
         {
             ConsoleLogger.Error(dryRunExceptionMessage);
-            return null;
+            return default;
         }
 
         return definition;

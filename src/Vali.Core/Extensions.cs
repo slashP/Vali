@@ -256,6 +256,15 @@ public static class Extensions
     public static T TryJsonDeserializeFromFile<T>(string path, T defaultValue) =>
         File.Exists(path) ? DeserializeJsonFromFile<T>(path) ?? defaultValue : defaultValue;
 
+    public static async ValueTask<T?> DeserializeJsonFromFileAsync<T>(string path)
+    {
+        await using var fileStream = File.OpenRead(path);
+        return await Serializer.DeserializeAsync<T>(fileStream);
+    }
+
+    public static async Task<T> TryJsonDeserializeFromFileAsync<T>(string path, T defaultValue) =>
+        File.Exists(path) ? await DeserializeJsonFromFileAsync<T>(path) ?? defaultValue : defaultValue;
+
     private static readonly char[] Invalids = Path.GetInvalidFileNameChars();
     public static string GetSafeFileName(string name, char replace = '_')
     {

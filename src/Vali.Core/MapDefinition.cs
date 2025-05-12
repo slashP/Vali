@@ -41,12 +41,12 @@ public record NeighborFilter
 public record LiveGenerateMapDefinition
 {
     public Dictionary<string, int> Countries { get; init; } = [];
-    public int MinMinDistance { get; init; }
+    public LocationDistribution? Distribution { get; set; }
     public string[] LocationTags { get; init; } = [];
     public string? FromDate { get; set; }
     public string? ToDate { get; set; }
     public string? HeadingMode { get; set; }
-    public int HeadingDelta { get; set; }
+    public int? HeadingDelta { get; set; }
     public string? PitchMode { get; set; }
     public int? Pitch { get; set; }
     public int? RandomPitchMin { get; set; }
@@ -55,6 +55,20 @@ public record LiveGenerateMapDefinition
     public int? Zoom { get; set; }
     public double? RandomZoomMin { get; set; }
     public double? RandomZoomMax { get; set; }
+    public int BoxPrecision { get; set; } = 4;
+    public int ParallelRequests { get; set; } = 100;
+    public int Radius { get; set; } = 100;
+    public string LocationFilter { get; set; } = "";
+    public string? PanoSelectionStrategy { get; set; }
+    public string[] GeoJsonFiles { get; set; } = [];
+    public bool RejectLocationsWithoutDescription { get; set; } = true;
+    public string? AcceptedCoverage { get; set; }
+
+    public record LocationDistribution
+    {
+        public int MinMinDistance { get; init; }
+        public int OvershootFactor { get; set; } = 1;
+    }
 }
 
 public record DistributionStrategy

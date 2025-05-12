@@ -192,7 +192,7 @@ public class LocationLakeMapGenerator
                 heading = HeadingSelector(l.MapCheckrLoc) % 360,
                 zoom = output.GlobalZoom,
                 pitch = output.GlobalPitch,
-                extra = TagsGenerator.Tags(mapDefinition, l.Loc, l.MapCheckrLoc),
+                extra = TagsGenerator.Tags(l.Loc, l.MapCheckrLoc, mapDefinition.Output.LocationTags),
                 panoId = output.PanoIdCountryCodes.Contains(l.Loc.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") || isPanoSpecificCheckActive ? l.MapCheckrLoc.panoId : null,
                 countryCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.CountryCode : null,
                 subdivisionCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.SubdivisionCode : null,
