@@ -19,7 +19,7 @@
 | panoramaCount         | The number of images available at this location.
 
 ### Structure
-```json
+```
 {
   "countries": {
    "US": 2000
@@ -44,6 +44,7 @@
   "PanoSelectionStrategy": "", // empty or "Newest" / "Random" / "RandomNotNewest" / "RandomAvoidNewest" / "RandomNotOldest" / "RandomAvoidOldest" / "SecondNewest" / "Oldest" / "SecondOldest"
   "acceptedCoverage": "", // empty or "Official" / "Unofficial" / "All"
   "rejectLocationsWithoutDescription": true, // whether to reject locations with no description. Defaults to true.
+  "batchSize": 10000, // number of requests done between each filtering/updating of progress bar. Defaults to 10000.
   "geoJsonFiles": [], // list of files specifying area to search within. example: ["c:\\priv\\vali-maps\\florida.geojson"]
   "distribution": { // will generate two files, one with all locations and one with a distributed subset of locations.
     "minMinDistance": 5000, // minimum distance between locations in meters.

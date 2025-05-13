@@ -21,6 +21,7 @@ public record MapDefinition
     public NeighborFilter[] NeighborFilters { get; init; } = [];
     public Dictionary<string, string> NamedExpressions { get; set; } = new();
     public string[] UsedLocationsPaths { get; set; } = [];
+    public bool EnableDefaultLocationFilters { get; set; }
 }
 
 public record ProximityFilter
@@ -63,6 +64,7 @@ public record LiveGenerateMapDefinition
     public string[] GeoJsonFiles { get; set; } = [];
     public bool RejectLocationsWithoutDescription { get; set; } = true;
     public string? AcceptedCoverage { get; set; }
+    public int BatchSize { get; set; } = 10_000;
 
     public record LocationDistribution
     {

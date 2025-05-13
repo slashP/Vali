@@ -30,17 +30,18 @@ public static class LocationLakeFilterer
         NeighborFilter[] neighborFilters,
         MapDefinition mapDefinition)
     {
-        List<Func<Loc, bool>> defaultFilterSelectors =
-        [
-            x => x.Google.PanoId.Length < 36,
-            x => x.Nominatim.CountryCode switch
-            {
-                "FI" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2022,
-                "EC" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2021,
-                "NG" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2021,
-                _ => true
-            }
-        ];
+        List<Func<Loc, bool>> defaultFilterSelectors = mapDefinition.EnableDefaultLocationFilters
+            ?
+            [
+                x => x.Nominatim.CountryCode switch
+                {
+                    "FI" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2022,
+                    "EC" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2021,
+                    "NG" => x.Google.ResolutionHeight >= Resolution.Gen4 || x.Google.Year < 2021,
+                    _ => true
+                }
+            ]
+            : [];
 
         if (string.IsNullOrEmpty(locationFilterExpression) || !locationFilterExpression.Contains("Tunnels"))
         {
