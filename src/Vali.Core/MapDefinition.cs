@@ -61,10 +61,13 @@ public record LiveGenerateMapDefinition
     public int Radius { get; set; } = 100;
     public string LocationFilter { get; set; } = "";
     public string? PanoSelectionStrategy { get; set; }
+    public DateOnly? PanoVerificationStart { get; set; }
+    public DateOnly? PanoVerificationEnd { get; set; }
     public string[] GeoJsonFiles { get; set; } = [];
     public bool RejectLocationsWithoutDescription { get; set; } = true;
     public string? AcceptedCoverage { get; set; }
     public int BatchSize { get; set; } = 10_000;
+    public bool CheckLinkedPanoramas { get; set; }
 
     public record LocationDistribution
     {
@@ -105,4 +108,6 @@ public record LocationOutput
     public string? PanoVerificationStrategy { get; set; }
     public Dictionary<string, string?> CountryPanoVerificationPanning { get; set; } = new();
     public string? PanoVerificationExpression { get; set; }
+    public DateOnly? PanoVerificationStart { get; set; }
+    public DateOnly? PanoVerificationEnd { get; set; }
 }

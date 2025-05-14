@@ -1,4 +1,6 @@
-﻿using Vali.Core.Data;
+﻿using System.Globalization;
+using Vali.Core.Data;
+using Vali.Core.Google;
 using Vali.Core.Hash;
 
 namespace Vali.Core;
@@ -13,6 +15,8 @@ public static class MapDefinitionDefaults
         var countryDistribution = CountryDistribution(definition);
         var namedExpressions = definition.NamedExpressions
             .ToDictionary(x => x.Key, x => ExpressionDefaults.Expand(definition.NamedExpressions, x.Value));
+        var isYearMonthPanoVerificationStrategy = definition.Output.PanoVerificationStrategy?.StartsWith(GoogleApi.PanoStrategy.YearMonthPeriod.ToString()) == true;
+        var yearMonthStrategy = ExtractYearMonthPanoStrategy(definition.Output.PanoVerificationStrategy);
         var definitionWithDefaults = definition with
         {
             CountryCodes = countryCodes,
@@ -20,7 +24,12 @@ public static class MapDefinitionDefaults
             {
                 PanoIdCountryCodes = MapCountryCodes(definition.Output.PanoIdCountryCodes, definition.DistributionStrategy).Concat(HardcodedPanoIdCountries).Distinct().ToArray(),
                 CountryHeadingExpressions = ExpandCountryDictionary(definition.Output.CountryHeadingExpressions),
-                CountryPanoVerificationPanning = ExpandCountryDictionary(definition.Output.CountryPanoVerificationPanning)
+                CountryPanoVerificationPanning = ExpandCountryDictionary(definition.Output.CountryPanoVerificationPanning),
+                PanoVerificationStrategy = isYearMonthPanoVerificationStrategy
+                    ? GoogleApi.PanoStrategy.YearMonthPeriod.ToString()
+                    : definition.Output.PanoVerificationStrategy,
+                PanoVerificationStart = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearStart, yearMonthStrategy.monthStart, 1) : null,
+                PanoVerificationEnd = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearEnd, yearMonthStrategy.monthEnd, 1) : null,
             },
             SubdivisionInclusions = Inclusions(definition),
             SubdivisionExclusions = Exclusions(definition),
@@ -253,6 +262,45 @@ public static class MapDefinitionDefaults
                 _ => HashPrecision.Size_km_39x20
             }
             : null;
+
+    public static (GoogleApi.PanoStrategy? panoStrategy, int yearStart, int monthStart, int yearEnd, int monthEnd) ExtractYearMonthPanoStrategy(string? strategyString)
+    {
+        if (string.IsNullOrEmpty(strategyString) ||
+            !strategyString.StartsWith(GoogleApi.PanoStrategy.YearMonthPeriod.ToString()))
+        {
+            return default;
+        }
+
+        var yearMonthPart = strategyString[GoogleApi.PanoStrategy.YearMonthPeriod.ToString().Length..];
+        if (yearMonthPart.Length is not 12 || yearMonthPart.Any(c => !char.IsNumber(c)))
+        {
+            return default;
+        }
+
+        return yearMonthPart switch
+        {
+            { Length: 12 } => (YearMonth: GoogleApi.PanoStrategy.YearMonthPeriod, ParseNum(yearMonthPart[..4]), ParseNum(yearMonthPart.Substring(4, 2)), ParseNum(yearMonthPart.Substring(6, 4)), ParseNum(yearMonthPart.Substring(10, 2))),
+            _ => (YearMonth: GoogleApi.PanoStrategy.YearMonthPeriod, 0, 0, 0, 0)
+        };
+
+        int ParseNum(string num) =>
+            int.Parse(num, CultureInfo.InvariantCulture);
+    }
+
+    public static LiveGenerateMapDefinition ApplyDefaults(this LiveGenerateMapDefinition definition)
+    {
+        var isYearMonthPanoVerificationStrategy = definition.PanoSelectionStrategy?.StartsWith(GoogleApi.PanoStrategy.YearMonthPeriod.ToString()) == true;
+        var yearMonthStrategy = ExtractYearMonthPanoStrategy(definition.PanoSelectionStrategy);
+
+        return definition with
+        {
+            PanoSelectionStrategy = isYearMonthPanoVerificationStrategy
+                ? GoogleApi.PanoStrategy.YearMonthPeriod.ToString()
+                : definition.PanoSelectionStrategy,
+            PanoVerificationStart = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearStart, yearMonthStrategy.monthStart, 1) : null,
+            PanoVerificationEnd = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearEnd, yearMonthStrategy.monthEnd, 1) : null,
+        };
+    }
 
     private static Dictionary<string, int> Distribution((string, int)[] weights, MapDefinition mapDefinition) =>
         mapDefinition switch

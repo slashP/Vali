@@ -181,11 +181,29 @@ public static class LiveGenerateValidator
             return null;
         }
 
-        if (!string.IsNullOrEmpty(definition.PanoSelectionStrategy))
+        if (!string.IsNullOrEmpty(definition.PanoSelectionStrategy) && !definition.PanoSelectionStrategy.StartsWith(GoogleApi.PanoStrategy.YearMonthPeriod.ToString()))
         {
             if (!Enum.TryParse<GoogleApi.PanoStrategy>(definition.PanoSelectionStrategy, out var strategy))
             {
                 ConsoleLogger.Error($"panoSelectionStrategy must be empty or one of {Enum.GetValues<GoogleApi.PanoStrategy>().Select(x => x.ToString()).Merge(", ")}");
+                return null;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(definition.PanoSelectionStrategy) && definition.PanoSelectionStrategy.StartsWith(GoogleApi.PanoStrategy.YearMonthPeriod.ToString()))
+        {
+            var strategy = MapDefinitionDefaults.ExtractYearMonthPanoStrategy(definition.PanoSelectionStrategy);
+            if (strategy.panoStrategy == null)
+            {
+                ConsoleLogger.Error("panoSelectionStrategy 'YearMonth' must be followed by exactly 6 or 12 numbers, correctly assigning year and month. yyyymmyyyymm");
+                return null;
+            }
+
+            if (strategy.yearStart > DateTime.Now.Year || strategy.yearStart < 2000 ||
+                strategy.yearEnd > DateTime.Now.Year || strategy.yearEnd < 2000 ||
+                strategy.monthStart < 1 || strategy.monthStart > 12 || strategy.monthEnd < 1 || strategy.monthEnd > 12)
+            {
+                ConsoleLogger.Error("You must use reasonable values for year and month in panoSelectionStrategy 'YearMonth'");
                 return null;
             }
         }

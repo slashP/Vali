@@ -41,7 +41,7 @@
   "boxPrecision": 4, // number from 0-9 specifying how wide search should be from known points on roads in the world. Higher number is wider. Defaults to 4.
   "radius": 200, // radius in meters to search for panoramas within. Defaults to 100.
   "locationFilter": "resolutionHeight eq 8192" // vali expression to filter locations. See available 'properties' above and syntax/operators on the main vali documentation page.
-  "PanoSelectionStrategy": "", // empty or "Newest" / "Random" / "RandomNotNewest" / "RandomAvoidNewest" / "RandomNotOldest" / "RandomAvoidOldest" / "SecondNewest" / "Oldest" / "SecondOldest"
+  "PanoSelectionStrategy": "", // empty or "Newest" / "Random" / "RandomNotNewest" / "RandomAvoidNewest" / "RandomNotOldest" / "RandomAvoidOldest" / "SecondNewest" / "Oldest" / "SecondOldest" / "YearMonthPeriod200901201012"
   "acceptedCoverage": "", // empty or "Official" / "Unofficial" / "All"
   "rejectLocationsWithoutDescription": true, // whether to reject locations with no description. Defaults to true.
   "batchSize": 10000, // number of requests done between each filtering/updating of progress bar. Defaults to 10000.
@@ -170,5 +170,25 @@ GeoTime Nordics.
     "minMinDistance": 10000,
     "overshootFactor": 4
   }
+}
+```
+Gen2 Brazil.
+```json
+{
+  "countries": {
+    "BR": 1000
+  },
+  "parallelRequests": 600,
+  "panoSelectionStrategy": "YearMonth200801201009"
+}
+```
+Exhaustive Oman.
+```json
+{
+  "countries": {
+    "OM": 10000000
+  },
+  "parallelRequests": 600,
+  "checkLinkedPanoramas": true
 }
 ```

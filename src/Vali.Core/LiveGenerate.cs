@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using Geohash;
 using Spectre.Console;
 using Vali.Core.Data;
@@ -80,11 +81,8 @@ public class LiveGenerate
 
                             var task = map.Countries switch
                             {
-                                { Count: 1 } => defaultTask ??=
-                                    ctx.AddTask(
-                                        $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations.[/]", maxValue: locationCount),
-                                _ => ctx.AddTask(
-                                    $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations.[/]", maxValue: locationCount)
+                                { Count: 1 } => defaultTask ??= ctx.AddTask(TaskDescription(countryCode, locationCount, 0), maxValue: locationCount),
+                                _ => ctx.AddTask(TaskDescription(countryCode, locationCount, 0), maxValue: locationCount)
                             };
                             await Task.Delay(5);
                             var boxPrecision = (HashPrecision)(10 - map.BoxPrecision);
@@ -93,7 +91,8 @@ public class LiveGenerate
                             var rejectLocationsWithoutDescription = map.RejectLocationsWithoutDescription && !LocationLakeFilterer.CountryCodesAcceptableWithoutDescription.Contains(countryCode);
                             var acceptedCoverage = map.AcceptedCoverage;
                             var batchSize = map.BatchSize;
-                            await LocationsInCountry(countryCode, locationCount, task, map.FromDate, map.ToDate, boxPrecision, radius, chunkSize, locationFilterFunc, map.PanoSelectionStrategy, geoJsons, rejectLocationsWithoutDescription, acceptedCoverage, batchSize);
+                            var includeLinked = map.CheckLinkedPanoramas;
+                            await LocationsInCountry(countryCode, locationCount, task, map.FromDate, map.ToDate, boxPrecision, radius, chunkSize, locationFilterFunc, map.PanoSelectionStrategy, map.PanoVerificationStart, map.PanoVerificationEnd, geoJsons, rejectLocationsWithoutDescription, acceptedCoverage, batchSize, includeLinked);
                             await StoreMap(map, false);
                             task.StopTask();
                         }
@@ -116,14 +115,15 @@ public class LiveGenerate
         LiveGenerateMapDefinition mapDefinition,
         bool finalIteration)
     {
-        var locationsPath = await SaveLocations(mapDefinition, "-locations.json", _locations);
+        var locationsPath = await SaveLocations(mapDefinition, "-locations", _locations);
         if (mapDefinition.Distribution != null && finalIteration)
         {
             ConsoleLogger.Info("Distributing locations");
             var distributed = mapDefinition.Countries
                 .Select(c => LocationDistributor.DistributeEvenly<MapCheckrLocation, string>(_locations.Where(l => l.countryCode == c.Key).ToArray(), minDistanceBetweenLocations: mapDefinition.Distribution.MinMinDistance, silent: true).TakeRandom(c.Value).ToList())
-                .SelectMany(x => x);
-            await SaveLocations(mapDefinition, "-locations-distributed.json", distributed);
+                .SelectMany(x => x)
+                .ToArray();
+            await SaveLocations(mapDefinition, "-locations-distributed", distributed);
         }
 
         return (locationsPath, _locations.Count);
@@ -162,10 +162,13 @@ public class LiveGenerate
         int chunkSize,
         Func<MapCheckrLocation, bool> locationFilterFunc,
         string? selectionStrategy,
+        DateOnly? panoVerificationStart,
+        DateOnly? panoVerificationEnd,
         IReadOnlyCollection<Geometry> geoJsons,
         bool rejectLocationsWithoutDescription,
         string? acceptedCoverage,
-        int batchSize)
+        int batchSize,
+        bool includeLinked)
     {
         var roads = await GetRoads(countryCode, geoJsons);
         var candidateLocationsCount = Countries.TryGetValue(countryCode, out var locCount)
@@ -191,6 +194,8 @@ public class LiveGenerate
 
         while (candidateLocationsCount < goalCount)
         {
+            var stopwatchStartLocationCount = candidateLocationsCount;
+            var stopwatch = Stopwatch.StartNew();
             var exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
             if (exitRequested)
             {
@@ -214,8 +219,12 @@ public class LiveGenerate
             var panoStrategy = Enum.TryParse<GoogleApi.PanoStrategy>(selectionStrategy, true, out var s)
                 ? s
                 : GoogleApi.PanoStrategy.Newest;
-            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null);
+            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: includeLinked, panoVerificationStart, panoVerificationEnd);
+            var allLinked = includeLinked
+                ? await GetLinked(googleLocations, 0, countryCode, panoStrategy, panoVerificationStart, panoVerificationEnd, chunkSize, rejectLocationsWithoutDescription, new())
+                : [];
             var validForAdding = googleLocations
+                .Concat(allLinked)
                 .Where(x => acceptedLookupResults.Contains(x.result))
                 .Select(x => x.location)
                 .Where(x => x.countryCode == countryCode)
@@ -235,7 +244,46 @@ public class LiveGenerate
             }
 
             task.Value(candidateLocationsCount);
+            var speed = (candidateLocationsCount - stopwatchStartLocationCount) * 1000d / stopwatch.ElapsedMilliseconds;
+            task.Description = TaskDescription(countryCode, goalCount, speed);
         }
+    }
+
+    private static async Task<IEnumerable<(MapCheckrLocation location, GoogleApi.LocationLookupResult result)>> GetLinked(
+        IReadOnlyCollection<(MapCheckrLocation location, GoogleApi.LocationLookupResult result)> googleLocations,
+        int depth,
+        string countryCode,
+        GoogleApi.PanoStrategy panoStrategy,
+        DateOnly? panoVerificationStart,
+        DateOnly? panoVerificationEnd,
+        int chunkSize,
+        bool rejectLocationsWithoutDescription,
+        HashSet<string> tempPanoIdsChecked)
+    {
+        if (depth > 5)
+        {
+            return [];
+        }
+
+        var linked = googleLocations
+            .Where(x => x.result == GoogleApi.LocationLookupResult.Valid)
+            .SelectMany(x => x.location.linkedPanos)
+            .DistinctBy(x => x.pano)
+            .Where(x => !_panoIds.Contains(x.pano) && !tempPanoIdsChecked.Contains(x.pano))
+            .Select(x => new MapCheckrLocation
+            {
+                lat = x.lat,
+                lng = x.lng,
+                locationId = x.pano
+            })
+            .ToArray();
+        foreach (var linkedPano in linked)
+        {
+            tempPanoIdsChecked.Add(linkedPano.locationId);
+        }
+
+        var panoCheckedLocations = await GoogleApi.GetLocations(linked, countryCode, chunkSize: chunkSize, radius: 100, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: true, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd);
+        return panoCheckedLocations.Concat(await GetLinked(panoCheckedLocations, depth + 1, countryCode, panoStrategy, panoVerificationStart, panoVerificationEnd, chunkSize, rejectLocationsWithoutDescription, tempPanoIdsChecked));
     }
 
     private static MapCheckrLocation[] RandomLocationsFromGeoJsons(IReadOnlyCollection<Geometry> geoJsons, int batchSize)
@@ -352,7 +400,7 @@ public class LiveGenerate
     {
         var outFolder = Path.GetDirectoryName(_definitionPath) ?? throw new Exception($"Can't get correct folder from path {_definitionPath}");
         var definitionFilename = Path.GetFileNameWithoutExtension(_definitionPath);
-        var locationsPath = Path.Combine(outFolder, definitionFilename + filenameSuffix);
+        var locationsPath = Path.Combine(outFolder, definitionFilename + filenameSuffix + ".json");
         await Extensions.JsonSerializeToFile(locationsPath, locations.Select(l => Map(l, definition)));
         return locationsPath;
     }
@@ -371,6 +419,9 @@ public class LiveGenerate
             countryCode = l.countryCode
         };
     }
+
+    private static string TaskDescription(string countryCode, int locationCount, double? speed) =>
+        $"[green]{CountryCodes.Name(countryCode)} {locationCount} locations. {(int)Math.Round(speed ?? 0, 0),5}/s.[/]";
 }
 
 public class PleaseStopException : Exception

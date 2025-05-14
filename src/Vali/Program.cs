@@ -316,7 +316,7 @@ try
             return;
         }
 
-        await LiveGenerate.Generate(mapDefinition, fileOptionValue);
+        await LiveGenerate.Generate(mapDefinition.ApplyDefaults(), fileOptionValue);
     });
 
     await rootCommand.InvokeAsync(args);

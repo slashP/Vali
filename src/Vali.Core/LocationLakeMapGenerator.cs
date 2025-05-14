@@ -119,7 +119,10 @@ public class LocationLakeMapGenerator
                 rejectLocationsWithoutDescription: false,
                 silent: false,
                 selectionStrategy: panoStrategy,
-                countryPanning: countryPanning);
+                countryPanning: countryPanning,
+                includeLinked: false,
+                panoVerificationStart: mapDefinition.Output.PanoVerificationStart,
+                panoVerificationEnd: mapDefinition.Output.PanoVerificationEnd);
             if (!string.IsNullOrEmpty(mapDefinition.Output.PanoVerificationExpression))
             {
                 var userFilter = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(mapDefinition.Output.PanoVerificationExpression, true);
@@ -137,7 +140,7 @@ public class LocationLakeMapGenerator
             }
 
             var unknownErrors = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.UnknownError).Select(x => x.location).ToArray();
-            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest, countryPanning: countryPanning);
+            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest, countryPanning: countryPanning, includeLinked: false, panoVerificationStart: mapDefinition.Output.PanoVerificationStart, mapDefinition.Output.PanoVerificationEnd);
             locations = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.Valid)
                 .Concat(retryUnknownErrors.Where(x => x.result is GoogleApi.LocationLookupResult.Valid))
                 .Select(x => new

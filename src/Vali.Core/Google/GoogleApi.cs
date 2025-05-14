@@ -34,7 +34,7 @@ public class GoogleApi
         var startTime = DateTime.UtcNow;
         foreach (var chunk in locations.Chunk(chunkSize))
         {
-            var locs = await Task.WhenAll(chunk.Select(x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: PanoStrategy.Newest, countryPanning: countryPanning)));
+            var locs = await Task.WhenAll(chunk.Select(x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: PanoStrategy.Newest, countryPanning: countryPanning, includeLinked: false, panoVerificationStart: null, panoVerificationEnd: null)));
             result.AddRange(locs.Where(x => x is { location: not null, result: LocationLookupResult.Valid }).Select(x => x.location));
             counter += chunkSize;
             var locationsCount = counter * 100 / (decimal)locations.Count;
@@ -56,12 +56,15 @@ public class GoogleApi
             bool rejectLocationsWithoutDescription,
             bool silent,
             PanoStrategy selectionStrategy,
-            Dictionary<string, string?>? countryPanning) =>
+            Dictionary<string, string?>? countryPanning,
+            bool includeLinked,
+            DateOnly? panoVerificationStart,
+            DateOnly? panoVerificationEnd) =>
         silent
             ? await locations.RunLimitedNumberAtATime(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius), chunkSize)
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd), chunkSize)
             : await locations.RunLimitedNumberAtATimeWithProgressBar(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius),
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd),
                 chunkSize,
                 "Verifying locations by calling Google APIs.");
 
@@ -71,6 +74,9 @@ public class GoogleApi
         string? knownCountryCode,
         PanoStrategy selectionStrategy,
         Dictionary<string, string?>? countryPanning,
+        bool includeLinked,
+        DateOnly? panoVerificationStart,
+        DateOnly? panoVerificationEnd,
         int radius = 5)
     {
         var body = $@"
@@ -155,6 +161,12 @@ public class GoogleApi
                 .ThenByDescending(x => x.Month)
                 .ToArray();
 
+            var linked = includeLinked && baseInfoArray.Count >= 4
+                ? (baseInfoArray[3]!.AsArray().FirstOrDefault()?.AsArray() ?? [])
+                    .Select(x => (x![0]![1]!.GetValue<string>(), x[2]![0]![2]!.GetValue<double>(), x[2]![0]![3]!.GetValue<double>()))
+                    .Where(x => alternativeImages.All(a => a.PanoId != x.Item1))
+                    .ToArray()
+                : [];
             if (resolutionHeight <= Resolution.Gen1)
             {
                 return (location, LocationLookupResult.Gen1);
@@ -202,6 +214,11 @@ public class GoogleApi
                 PanoStrategy.SecondNewest => alternativeImages.Where(x => !IsGen1Possible(countryCode, x.Year)).Skip(1).FirstOrDefault(),
                 PanoStrategy.Oldest => alternativeImages.Where(x => !IsGen1Possible(countryCode, x.Year)).Reverse().FirstOrDefault(),
                 PanoStrategy.SecondOldest => alternativeImages.Where(x => !IsGen1Possible(countryCode, x.Year)).Reverse().Skip(1).FirstOrDefault(),
+                PanoStrategy.YearMonthPeriod => alternativeImages
+                    .Where(x => x.Year == panoVerificationStart!.Value.Year && x.Month >= panoVerificationStart.Value.Month || x.Year > panoVerificationStart.Value.Year)
+                    .Where(x => x.Year == panoVerificationEnd!.Value.Year && x.Month <= panoVerificationEnd.Value.Month || x.Year < panoVerificationEnd.Value.Year)
+                    .TakeRandom(1)
+                    .FirstOrDefault(),
                 _ => throw new ArgumentOutOfRangeException(nameof(selectionStrategy), selectionStrategy, null)
             };
             if (selected == null)
@@ -250,6 +267,7 @@ public class GoogleApi
                 elevation = (int)Math.Round(elevation, 0),
                 descriptionLength = desc?.Length ?? 0,
                 alternativePanos = alternativeImages.Where(a => a.PanoId != pano).ToArray(),
+                linkedPanos = linked,
                 subdivision = subdivision,
                 isScout = isScout,
                 resolutionHeight = resolutionHeight
@@ -430,7 +448,8 @@ public class GoogleApi
         RandomAvoidOldest,
         SecondNewest,
         Oldest,
-        SecondOldest
+        SecondOldest,
+        YearMonthPeriod
     }
 }
 
@@ -464,6 +483,7 @@ public record MapCheckrLocation : IDistributionLocation<string>
     public int? descriptionLength { get; set; }
     public AlternativePano[] alternativePanos { get; set; } = [];
     public int panoramaCount => alternativePanos.Length + 1;
+    public (string pano, double lat, double lng)[] linkedPanos { get; set; } = [];
     public string? subdivision { get; set; }
     public bool isScout { get; set; }
     public int resolutionHeight { get; set; }
