@@ -89,7 +89,8 @@ public static class LocationDistributor
         {
             <= 200 => HashPrecision.Size_km_1x1,
             <= 1000 => HashPrecision.Size_km_5x5,
-            _ => HashPrecision.Size_km_39x20
+            <= 15000 => HashPrecision.Size_km_39x20,
+            _ => HashPrecision.Size_km_156x156
         };
         if (silent)
         {

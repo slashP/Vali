@@ -222,6 +222,11 @@ public static class LiveGenerateValidator
                 ConsoleLogger.Error($"File {geoJsonFile} does not exist.");
                 return null;
             }
+
+            if (definition.Countries.Count > 1)
+            {
+                ConsoleLogger.Warn("Combining the use of geo json file(s) with multiple countries is probably not a good idea. Use with caution.");
+            }
         }
 
         return definition;
