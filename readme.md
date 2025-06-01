@@ -176,6 +176,7 @@ Locations can be filtered globally, per country or per subdivision.
 | +               | Plus
 | /               | Divide
 | *               | Multiply
+| modulo          | Modulo
 
 ## Road types
 * Motorway

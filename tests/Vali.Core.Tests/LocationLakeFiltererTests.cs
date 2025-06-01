@@ -45,10 +45,12 @@ public class LocationLakeFiltererTests
 
     [Theory]
     [InlineData("current:Buildings100 gt Buildings100")]
+    [InlineData("(current:DrivingDirectionAngle + 360 - DrivingDirectionAngle) modulo 360 eq 0")]
     public void Should_compile_parent_expressions(string expression)
     {
         var parentLocations = LocationArray();
         var locations = LocationArray();
+        locations.Single().Google.DrivingDirectionAngle = 200;
         var ex = LocationLakeFilterer.CompileExpressionWithParent<Location, bool>(expression, false);
         var j = parentLocations.Where(p => locations.Any(l => ex(l, p))).ToArray();
         NeighborFilter[] neighborFilters = [new NeighborFilter

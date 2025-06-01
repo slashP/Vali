@@ -288,7 +288,8 @@ public static class LocationLakeFilterer
         "+",
         "-",
         "/",
-        "*"
+        "*",
+        "modulo"
     ];
 
     private static string LocationLambdaExpressionFromProperty(string property, string lambdaParameterName)
@@ -355,6 +356,7 @@ public static class LocationLakeFilterer
         "-" => "-",
         "/" => "/",
         "*" => "*",
+        "modulo" => "%",
         _ => throw new ArgumentOutOfRangeException(nameof(@operator), $"operator {@operator} not implemented.")
     };
 
