@@ -31,6 +31,7 @@ public static class TagsGenerator
             "Season" => [Season(l.Nominatim.CountryCode, mapCheckrLocation.month)],
             "HighwayType" => Enum.GetValues<RoadType>().Where(r => r != RoadType.Unknown && l.Osm.RoadType.HasFlag(r)).Select(r => r.ToString()),
             nameof(Location.Osm.HighwayTypeCount) => [$"{nameof(Location.Osm.HighwayTypeCount)}-{l.Osm.HighwayTypeCount}"],
+            nameof(Location.Osm.WayId) => [$"{nameof(Location.Osm.WayId)}-{l.Osm.WayId}"],
             _ when e.StartsWith(nameof(Location.Osm.Buildings200)) => IntTag(l, nameof(l.Osm.Buildings200), x => x.Osm.Buildings200, e),
             _ when e.StartsWith(nameof(Location.Osm.Buildings100)) => IntTag(l, nameof(l.Osm.Buildings100), x => x.Osm.Buildings100, e),
             _ when e.StartsWith(nameof(Location.Osm.Buildings25)) => IntTag(l, nameof(l.Osm.Buildings25), x => x.Osm.Buildings25, e),

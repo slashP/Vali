@@ -239,8 +239,12 @@ public static class LiveGenerateValidator
             return definition;
         }
 
-        if (definition.ValidateExpression(definition.LocationFilter, DryRun,
-                $"Invalid filter {definition.LocationFilter}", LocationLakeFilterer.ValidMapCheckrLocationProperties()) == null)
+        if (definition.ValidateExpression(
+                definition.LocationFilter,
+                DryRun,
+                $"Invalid filter {definition.LocationFilter}",
+                LocationLakeFilterer.ValidMapCheckrLocationProperties(),
+                LocationLakeFilterer.ValidMapCheckrLocationProperties()) == null)
         {
             return null;
         }

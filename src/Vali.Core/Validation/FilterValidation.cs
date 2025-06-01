@@ -56,15 +56,37 @@ public static class FilterValidation
             var locations = EmptyLocationArray().Where(expression).ToArray();
         }
 
-        return new[] { definition.GlobalLocationFilter }
+        static void DryRunNeighborFilter(string filter)
+        {
+            var expression = LocationLakeFilterer.CompileParentBoolLocationExpression(filter);
+            var locations = EmptyLocationArray().Where(l => EmptyLocationArray().Any(l2 => expression(l2, l))).ToArray();
+        }
+
+        var neighborFilterValidProperties = LocationLakeFilterer.ValidProperties()
+            .SelectMany(x => new[]
+            {
+                x,
+                $"current:{x}"
+            })
+            .ToArray();
+        var def = new[] { definition.GlobalLocationFilter }
             .Concat(definition.CountryLocationFilters.Select(x => x.Value))
             .Concat(definition.SubdivisionLocationFilters.SelectMany(x => x.Value.Select(y => y.Value)))
             .Concat(definition.GlobalLocationPreferenceFilters.Select(x => x.Expression))
             .Concat(definition.CountryLocationPreferenceFilters.SelectMany(x => x.Value.Select(y => y.Expression)))
             .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.Value.Select(z => z.Expression))))
-            .Concat(definition.NeighborFilters.Select(x => x.Expression))
             .Where(x => !string.IsNullOrEmpty(x))
-            .Select(f => definition.ValidateExpression(f!, DryRun, $"Invalid filter {f}", LocationLakeFilterer.ValidProperties()))
+            .Select(f => definition.ValidateExpression(f!, DryRun, $"Invalid filter {f}", LocationLakeFilterer.ValidProperties(), LocationLakeFilterer.ValidProperties()))
+            .Any(validated => validated == null)
+            ? null
+            : definition;
+        return def == null || definition.NeighborFilters
+            .Concat(definition.GlobalLocationPreferenceFilters.SelectMany(x => x.NeighborFilters))
+            .Concat(definition.CountryLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.NeighborFilters)))
+            .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.Value.SelectMany(z => z.NeighborFilters))))
+            .Select(n => n.Expression)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Select(f => definition.ValidateExpression(f!, DryRunNeighborFilter, $"Invalid neighbor filter {f}", neighborFilterValidProperties, LocationLakeFilterer.ValidProperties()))
             .Any(validated => validated == null)
             ? null
             : definition;
@@ -137,13 +159,19 @@ public static class FilterValidation
                 return null;
             }
 
-            if (neighborFilter.Bound is not ("lower" or "upper"))
+            if (neighborFilter.Bound is not ("lower" or "upper" or "all" or "none" or "some"))
             {
-                ConsoleLogger.Error($"{nameof(neighborFilter)} {nameof(neighborFilter.Bound).ToLower()} must be either 'lower' or 'upper'.");
+                ConsoleLogger.Error($"{nameof(neighborFilter)} {nameof(neighborFilter.Bound).ToLower()} must be either 'lower' / 'upper' / 'all' / 'none' / 'some'.");
                 return null;
             }
 
-            if (neighborFilter.Limit < 0)
+            if (neighborFilter is { Limit: not null, Bound: "all" or "none" or "some" })
+            {
+                ConsoleLogger.Error("Do not set limit when using 'all' / 'none' / 'some' as bound.");
+                return null;
+            }
+
+            if (neighborFilter is { Limit: < 0, Bound: "lower" or "upper" })
             {
                 ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit less than 0 is not supported.");
                 return null;
@@ -190,7 +218,7 @@ public static class FilterValidation
         return definition;
     }
 
-    public static T? ValidateExpression<T>(this T definition, string filter, Action<string> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties)
+    public static T? ValidateExpression<T>(this T definition, string filter, Action<string> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties, IReadOnlyCollection<string> outputVisibleValidProperties)
     {
         if (filter == "")
         {
@@ -235,7 +263,7 @@ public static class FilterValidation
                                      * A number.
                                      * A value in single quotes like 'gravel'.
                                      * One of the operators [{operators.Merge(", ")}]
-                                     * One of the properties [{properties.Merge(", ")}]
+                                     * One of the properties [{outputVisibleValidProperties.Select(x => x.Trim()).Merge(", ")}]
                                      * null
                                      """);
                 return default;
@@ -246,9 +274,10 @@ public static class FilterValidation
         {
             dryRun(filter);
         }
-        catch (Exception)
+        catch (Exception e)
         {
             ConsoleLogger.Error(dryRunExceptionMessage);
+            ConsoleLogger.Error(e.ToString());
             return default;
         }
 

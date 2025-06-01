@@ -117,6 +117,19 @@ public static class Extensions
         return source[randIndex];
     }
 
+    public static string TrimStart(this string target, string trimString)
+    {
+        if (string.IsNullOrEmpty(trimString)) return target;
+
+        var result = target;
+        while (result.StartsWith(trimString))
+        {
+            result = result[trimString.Length..];
+        }
+
+        return result;
+    }
+
     public static IEnumerable<string> NonEmptyStrings(this IEnumerable<string?> values) => values.Where(x => !string.IsNullOrEmpty(x)).Select(x => x!);
 
     public static async Task<IReadOnlyCollection<(T1 Result, T2 Data)>> ChunkAsync<T1, T2>(this ICollection<T2> source, Func<T2, Task<T1>> task, int chunkSize)
@@ -416,5 +429,21 @@ public static class Extensions
         {
             // Handled at caller.
         }
+    }
+
+    public static bool AllAtLeastOne<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+    {
+        var mustExist = true;
+        foreach (var e in source)
+        {
+            if (!predicate(e))
+            {
+                return false;
+            }
+
+            mustExist = false;
+        }
+
+        return !mustExist;
     }
 }

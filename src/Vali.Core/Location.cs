@@ -106,6 +106,7 @@ public record OsmData
     public int? ClosestRailway { get; set; }
     [ProtoMember(20)]
     public long[] WayIds { get; set; } = [];
+    public string WayId => string.Join("|", WayIds.Select(w => w.ToString()));
 }
 
 [ProtoContract]

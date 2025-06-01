@@ -23,4 +23,9 @@ public readonly struct HighwayType(RoadType roadType)
         => a._roadType.HasFlag(Enum.TryParse<RoadType>(b, true, out var val) ? val : RoadType.Unknown);
 
     public static bool operator !=(HighwayType a, string b) => !(a == b);
+
+    public static bool operator ==(HighwayType a, HighwayType b)
+        => (a._roadType & b._roadType) == a._roadType;
+
+    public static bool operator !=(HighwayType a, HighwayType b) => !(a == b);
 }

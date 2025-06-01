@@ -146,6 +146,7 @@ Locations can be filtered globally, per country or per subdivision.
 | ClosestRiver          | [OSM] Distance to closest river in meters. Only works up to ~10 000 meters. Can be not set (null).
 | ClosestRailway        | [OSM] Distance to closest railway in meters. Only works up to ~10 000 meters. Can be not set (null).
 | HighwayType           | [OSM] Text representing the [highway type](https://wiki.openstreetmap.org/wiki/Key:highway#Highway). See road types below for possible values. If Roads0 is larger than 1 (location is at an intersection) HighwayType can have multiple values, aka `HighwayType eq 'Living_street' and HighwayType eq 'Residential'` is valid.
+| WayId                 | [OSM] Text representing the way id(s) of the location combined with `|`. So a location with two ways might have `368544076|1030813440`. Useful when comparing locations in neighbor filters.
 | Month                 | [Google] The month of the coverage. Integer.
 | Year                  | [Google] The year of the coverage. Integer.
 | Lat                   | [Google] The latitude of the location. Number.
@@ -368,8 +369,7 @@ NB: this feature is quite resource intensive and may take a long time depending 
   "neighborFilters": [{
     "radius": 400,
     "expression": "$$rural eq false",
-    "limit": 0,
-    "bound": "upper"
+    "bound": "none"
   }]
 }
 ```
@@ -380,7 +380,7 @@ NB: this feature is quite resource intensive and may take a long time depending 
     "radius": 300,
     "expression": "",
     "limit": 0,
-    "bound": "upper",
+    "bound": "none",
     "checkEachCardinalDirectionSeparately": true
   }]
 }
@@ -393,6 +393,26 @@ NB: this feature is quite resource intensive and may take a long time depending 
     "expression": "",
     "limit": 120,
     "bound": "lower"
+  }]
+}
+```
+"Top of the hill"
+```json
+{
+  "neighborFilters": [{
+    "radius": 500,
+    "expression": "current:Elevation gt Elevation",
+    "bound": "all"
+  }]
+}
+```
+"Close to county borders"
+```json
+{
+  "neighborFilters": [{
+    "radius": 150,
+    "expression": "(current:County neq County)",
+    "bound": "some"
   }]
 }
 ```
@@ -486,6 +506,7 @@ You can tag locations in `output.locationTags`. Available tags:
 * IsScout
 * Season
 * HighwayType
+* WayId
 * IsResidential
 * Elevation500 - elevation in buckets of 500 meters. Elevation1000/Elevation10 etc.
 * Buildings10 - exact number of buildings within 10 meters.

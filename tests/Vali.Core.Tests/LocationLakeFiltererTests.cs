@@ -43,6 +43,27 @@ public class LocationLakeFiltererTests
         Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], andExpression, new(), [], mapDefinition));
     }
 
+    [Theory]
+    [InlineData("current:Buildings100 gt Buildings100")]
+    public void Should_compile_parent_expressions(string expression)
+    {
+        var parentLocations = LocationArray();
+        var locations = LocationArray();
+        var ex = LocationLakeFilterer.CompileExpressionWithParent<Location, bool>(expression, false);
+        var j = parentLocations.Where(p => locations.Any(l => ex(l, p))).ToArray();
+        NeighborFilter[] neighborFilters = [new NeighborFilter
+        {
+            Expression = expression,
+            Bound = "some",
+            Radius = 200
+        }];
+        var mapDefinition = new MapDefinition
+        {
+            NeighborFilters = neighborFilters
+        };
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], "", new(), neighborFilters, mapDefinition));
+    }
+
     private static Location[] LocationArray() =>
         new[]
         {

@@ -35,7 +35,7 @@ public record NeighborFilter
     public bool CheckEachCardinalDirectionSeparately { get; set; }
     public int Radius { get; set; }
     public string Expression { get; set; } = "";
-    public int Limit { get; set; }
+    public int? Limit { get; set; }
     public string Bound { get; set; } = "";
 }
 
