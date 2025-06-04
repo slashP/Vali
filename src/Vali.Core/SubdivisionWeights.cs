@@ -1561,20 +1561,20 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> NA = new()
     {
-        { "NA-ER", (10, "Erongo") },
-        { "NA-HA", (10, "Hardap") },
-        { "NA-KA", (10, "Karas") },
-        { "NA-KE", (10, "Kavango East") },
-        { "NA-KW", (10, "Kavango West") },
-        { "NA-KH", (10, "Khomas") },
-        { "NA-KU", (10, "Kunene") },
-        { "NA-OW", (10, "Ohangwena") },
-        { "NA-OH", (10, "Omaheke") },
-        { "NA-OS", (10, "Omusati") },
-        { "NA-ON", (10, "Oshana") },
-        { "NA-OT", (10, "Oshikoto") },
-        { "NA-OD", (10, "Otjozondjupa") },
-        { "NA-CA", (10, "Zambezi") },
+        { "NA-ER", (332, "Erongo") },
+        { "NA-HA", (731, "Hardap") },
+        { "NA-KA", (802, "Karas") },
+        { "NA-KE", (119, "Kavango East") },
+        { "NA-KW", (114, "Kavango West") },
+        { "NA-KH", (257, "Khomas") },
+        { "NA-KU", (331, "Kunene") },
+        { "NA-OW", (123, "Ohangwena") },
+        { "NA-OH", (363, "Omaheke") },
+        { "NA-OS", (181, "Omusati") },
+        { "NA-ON", (46, "Oshana") },
+        { "NA-OT", (141, "Oshikoto") },
+        { "NA-OD", (476, "Otjozondjupa") },
+        { "NA-CA", (147, "Zambezi") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> NG = new()
@@ -3401,12 +3401,12 @@ public class SubdivisionWeights
             { "ST", ST },
             { "LI", LI },
             { "OM", OM },
+            { "NA", NA },
         };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> NotQuiteThereYetCountryToSubdivision =
         new()
         {
-            { "NA", NA },
             { "PY", PY },
             { "BA", BA },
             { "VN", VN },

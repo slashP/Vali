@@ -258,6 +258,6 @@ public class LocationLakeMapGenerator
 
     public record GeoMapLocationExtra
     {
-        public required string[] tags { get; set; }
+        public string[] tags { get; set; } = [];
     }
 }
