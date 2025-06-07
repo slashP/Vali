@@ -195,11 +195,17 @@ public static class DataDownloadService
         var updatesFolder = UpdatesFolder(countryCode, runMode);
         var newLocations = new List<Location>();
         var updateFilePath = "";
-        foreach (var file in blobFiles)
+        var chunkSize = 20;
+        foreach (var fileChunk in blobFiles.Chunk(chunkSize))
         {
-            updateFilePath = await DownloadFile(blobContainerClient, file.BlobName, updatesFolder);
-            newLocations.AddRange(Extensions.ProtoDeserializeFromFile<Location[]>(updateFilePath));
-            task.Increment(file.ContentLength ?? 0);
+            var updateFilePaths = await fileChunk.RunLimitedNumberAtATime(f => DownloadFile(blobContainerClient, f.BlobName, updatesFolder), chunkSize);
+            foreach (var updateFile in updateFilePaths)
+            {
+                newLocations.AddRange(Extensions.ProtoDeserializeFromFile<Location[]>(updateFile));
+                updateFilePath = updateFile;
+            }
+
+            task.Increment(fileChunk.Sum(f => f.ContentLength ?? 0));
         }
 
         var countryFolder = CountryFolder(countryCode, runMode);
@@ -224,9 +230,8 @@ public static class DataDownloadService
 
     private static async Task ApplyUpdatesToDataFile(string dataFilePath, IEnumerable<Location> updateLocations)
     {
-        var existingLocations = Extensions.ProtoDeserializeFromFile<Location[]>(dataFilePath);
-        var newLocations = updateLocations.Concat(existingLocations).DistinctBy(x => x.NodeId).ToArray();
-        await Extensions.ProtoSerializeToFile(dataFilePath, newLocations);
+        var newLocations = updateLocations.ToArray();
+        await Extensions.ProtoAppendSerializeToFile(dataFilePath, newLocations);
     }
 
     private static BlobContainerClient CreateBlobServiceClient() => GetBlobServiceClient("countries-v1");

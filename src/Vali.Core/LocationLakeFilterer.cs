@@ -75,7 +75,7 @@ public static class LocationLakeFilterer
             locations = FilterByNeighbors(locations, neighborLocationBuckets, neighborFilter, mapDefinition);
         }
 
-        return locations.ToArray();
+        return locations.DistinctBy(l => l.NodeId).ToArray();
     }
 
     private static readonly ConcurrentDictionary<string, Func<Loc, int>> _cacheInt = new();

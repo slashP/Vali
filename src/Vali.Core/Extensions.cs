@@ -178,6 +178,12 @@ public static class Extensions
         ProtoBuf.Serializer.Serialize(file, data);
     }
 
+    public static async ValueTask ProtoAppendSerializeToFile<T>(string path, T data)
+    {
+        await using var file = new FileStream(path, FileMode.Append);
+        ProtoBuf.Serializer.Serialize(file, data);
+    }
+
     public static async ValueTask JsonSerializeToFile<T>(string path, T data)
     {
         await using var file = !File.Exists(path) ? File.Create(path) : new FileStream(path, FileMode.Truncate);
