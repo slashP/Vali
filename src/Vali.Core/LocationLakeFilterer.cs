@@ -1,9 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using System.Collections.Frozen;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
 using Vali.Core.Google;
-using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
@@ -72,7 +70,7 @@ public static class LocationLakeFilterer
 
         foreach (var neighborFilter in neighborFilters)
         {
-            locations = FilterByNeighbors(locations, neighborLocationBuckets, neighborFilter, mapDefinition);
+            locations = NeighborFilterer.FilterByNeighbors(locations, neighborLocationBuckets, neighborFilter, mapDefinition);
         }
 
         return locations.DistinctBy(l => l.NodeId).ToArray();
@@ -372,82 +370,5 @@ public static class LocationLakeFilterer
             var hash = Hasher.Encode(l.Lat, l.Lng, precision);
             return proximityLocationBuckets.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.Lat, x.Lng) < proximityFilterRadius);
         });
-    }
-
-    private static IEnumerable<Loc> FilterByNeighbors(
-        IEnumerable<Loc> locations,
-        Dictionary<string, List<Loc>> neighborLocationBuckets,
-        NeighborFilter neighborFilter,
-        MapDefinition mapDefinition)
-    {
-        var precision = mapDefinition.HashPrecisionFromNeighborFiltersRadius()!.Value;
-        var filterExpression = string.IsNullOrEmpty(neighborFilter.Expression)
-            ? (_, _) => true
-            : CompileParentBoolLocationExpression(neighborFilter.Expression);
-        var directions = neighborFilter.CheckEachCardinalDirectionSeparately ? Enum.GetValues<CardinalDirection>().Cast<CardinalDirection?>().ToArray() : [null];
-        return neighborFilter switch
-        {
-            { Bound: "lower", CheckEachCardinalDirectionSeparately: true } => locations
-                .Where(l => directions.Any(d => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    IsInDirection(d, l, l2) &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l)) >= neighborFilter.Limit)),
-            { Limit: 1, Bound: "lower", CheckEachCardinalDirectionSeparately: false } or { Bound: "some" } => locations
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l))),
-            { Bound: "lower", CheckEachCardinalDirectionSeparately: false } => locations
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l)) >= neighborFilter.Limit),
-            { Limit: 0, Bound: "upper", CheckEachCardinalDirectionSeparately: true } or { CheckEachCardinalDirectionSeparately: true, Bound: "none" } => locations
-                .Where(l => directions.Any(d => !LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    IsInDirection(d, l, l2) &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l)))),
-            { Limit: 0, Bound: "upper", CheckEachCardinalDirectionSeparately: false } or { Bound: "none" } => locations
-                .Where(l => !LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l))),
-            { Limit: > 0, Bound: "upper", CheckEachCardinalDirectionSeparately: true } => locations
-                .Where(l => directions.Any(d => neighborLocationBuckets[Hasher.Encode(l.Lat, l.Lng, HashPrecision.Size_km_39x20)].Count(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    IsInDirection(d, l, l2) &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l)) <= neighborFilter.Limit)),
-            { Bound: "upper", CheckEachCardinalDirectionSeparately: false } => locations
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
-                    l.NodeId != l2.NodeId &&
-                    Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius &&
-                    filterExpression(l2, l)) <= neighborFilter.Limit),
-            { Bound: "all" } => locations
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Where(l2 =>
-                        l.NodeId != l2.NodeId &&
-                        Extensions.ApproximateDistance(l.Lat, l.Lng, l2.Lat, l2.Lng) <= neighborFilter.Radius)
-                    .AllAtLeastOne(l2 => filterExpression(l2, l))),
-            _ => throw new InvalidOperationException($"Neighbor filter combination is not valid/implemented. Bound: {neighborFilter.Bound}. Check separately: {neighborFilter.CheckEachCardinalDirectionSeparately}. Limit: {neighborFilter.Limit}")
-        };
-    }
-
-    private static IEnumerable<Loc> LocationsFromDictionary(Dictionary<string, List<Loc>> neighborLocationBuckets, Loc l, HashPrecision precision) =>
-        neighborLocationBuckets.TryGetValue(Hasher.Encode(l.Lat, l.Lng, precision), out var locations)
-            ? locations
-            : [];
-
-    private static bool IsInDirection(CardinalDirection? direction, Loc x1, Loc x2)
-    {
-        return direction switch
-        {
-            CardinalDirection.West => x1.Lng < x2.Lng,
-            CardinalDirection.East => x1.Lng > x2.Lng,
-            CardinalDirection.North => x1.Lat > x2.Lat,
-            CardinalDirection.South => x1.Lat < x2.Lat,
-            _ => false
-        };
     }
 }

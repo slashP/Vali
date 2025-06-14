@@ -298,9 +298,9 @@ Sometimes filter expressions can get complicated and it would be nice to have a 
 ```json
 {
   "namedExpressions": {
-    "$$rural": "Buildings200 eq 0 and Roads100 eq 1",
+    "$$generallyRural": "Buildings200 eq 0 and Roads100 eq 1",
     "$$mainRoad": "HighwayType eq 'Motorway' or HighwayType eq 'Trunk' or HighwayType eq 'Primary'",
-    "$$ruralSmallerRoad": "$$rural and $$mainRoad eq false",
+    "$$ruralSmallerRoad": "$$generallyRural and $$mainRoad eq false",
     "$$residential": "IsResidential or Buildings100 gt 4",
     "$$dirty": "Surface eq 'dirt' or Surface eq 'gravel' or Surface eq 'unpaved' or Surface eq 'ground' or Surface eq 'sand'"
   }
@@ -345,22 +345,33 @@ If you have a `.csv` or `.json` file with locations (standard formats, f.ex. exp
 }
 ```
 ## Neighbor filters
-Vali can filter locations based on number of locations nearby (neighbors) that satisfy given requirements. Examples:
+Vali can filter locations based on number or percentage of locations nearby (neighbors) that satisfy given requirements. Examples:
 * Must have at least 5 locations with surface 'gravel' within 500 meters.
 * Must have no locations with highway type 'Living_street' within 1000 meters.
 * Must have no locations either north/east/south/west within 300 meters.
+* At most 10 percent of locations within 2000 meters have more than 5 buildings within 200m.
 
-This can be practical for "amplifying" filter expressions by requiring the location itself to meet a certain criteria, but also no neighbors to fulfill the opposite criteria. Neighbor filters are also valid on location preference filters.
+This can be practical for "amplifying" filter expressions by requiring the location itself to meet a certain criteria, but also all neighbors to fulfill the same criteria. Neighbor filters are also valid on location preference filters.
 
 NB: this feature is quite resource intensive and may take a long time depending on the location filtering you apply and which countries the map generation includes.
+
+### Neighbor filter properties/attributes
+There are five properties you can set: Radius / Expression / Bound / Limit / CheckEachCardinalDirectionSeparately
+
+* Radius: the number of meters the neighbor filter applies to.
+* Expression: an expression describing what the criterias each location requires. It is mostly the same as "regular" Vali expressions, but in addition you can access properties from the current location through prefixing it with `current:` i.e. `current:Buildings200`.
+* Bound: in combination with `Limit` describes the number of locations required. Valid values: `gte` (greater than or equal), `lte` (less than or equal), `all`, `none`, `some`, `percentage-gte`, `percentage-lte`. `all`, `none`, `some` cannot be used togheter with `Limit`. `gte`, `lte` requires `Limit` and the limit denotes the absolute number of locations required. `percentage-gte`, `percentage-lte` requires `Limit` and the limit denotes the percentage of locations required, with valid values ranging between 0 and 100.
+* Limit: not always required. Absolute number or percentage of locations, depending on `Bound`.
+
+### Neighbor filter examples
 "Some residential locations nearby":
 ```json
 {
   "neighborFilters": [{
     "radius": 500,
-    "expression": "$$residential",
+    "expression": "Buildings100 gt 6 or Buildings25 gte 2 or IsResidential",
     "limit": 10,
-    "bound": "lower"
+    "bound": "gte"
   }]
 }
 ```
@@ -369,8 +380,8 @@ NB: this feature is quite resource intensive and may take a long time depending 
 {
   "neighborFilters": [{
     "radius": 400,
-    "expression": "$$rural eq false",
-    "bound": "none"
+    "expression": "Buildings100 eq 0",
+    "bound": "all"
   }]
 }
 ```
@@ -393,7 +404,7 @@ NB: this feature is quite resource intensive and may take a long time depending 
     "radius": 500,
     "expression": "",
     "limit": 120,
-    "bound": "lower"
+    "bound": "gte"
   }]
 }
 ```
@@ -414,6 +425,17 @@ NB: this feature is quite resource intensive and may take a long time depending 
     "radius": 150,
     "expression": "(current:County neq County)",
     "bound": "some"
+  }]
+}
+```
+"Unusual road type" Less than 5 percent of locations in a 1000m radius has the same HighwayType as this location.
+```json
+{
+  "neighborFilters": [{
+    "radius": 1000,
+    "expression": "current:HighwayType eq HighwayType",
+    "limit": 5,
+    "bound": "percentage-lte"
   }]
 }
 ```
@@ -646,8 +668,7 @@ With all the building blocks described above we can start creating real, serious
   "neighborFilters": [{
     "radius": 200,
     "expression": "",
-    "limit": 0,
-    "bound": "upper",
+    "bound": "none",
     "checkEachCardinalDirectionSeparately": true
   }],
   "output": {

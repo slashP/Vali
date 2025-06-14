@@ -159,9 +159,9 @@ public static class FilterValidation
                 return null;
             }
 
-            if (neighborFilter.Bound is not ("lower" or "upper" or "all" or "none" or "some"))
+            if (neighborFilter.Bound is not ("gte" or "lte" or "all" or "none" or "some" or "percentage-gte" or "percentage-lte"))
             {
-                ConsoleLogger.Error($"{nameof(neighborFilter)} {nameof(neighborFilter.Bound).ToLower()} must be either 'lower' / 'upper' / 'all' / 'none' / 'some'.");
+                ConsoleLogger.Error($"{nameof(neighborFilter)} {nameof(neighborFilter.Bound).ToLower()} (\"{neighborFilter.Bound}\") must be either 'gte' (greater than or equal) / 'lte' (less than or equal) / 'all' / 'none' / 'some' / 'percentage-gte' / 'percentage-lte'.");
                 return null;
             }
 
@@ -171,15 +171,21 @@ public static class FilterValidation
                 return null;
             }
 
-            if (neighborFilter is { Limit: < 0, Bound: "lower" or "upper" })
+            if (neighborFilter is { Limit: < 0, Bound: "gte" or "lte" or "percentage-gte" or "percentage-lte" })
             {
                 ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit less than 0 is not supported.");
                 return null;
             }
 
-            if (neighborFilter is { Limit: 0, Bound: "lower" })
+            if (neighborFilter is { Limit: 0, Bound: "gte" or "percentage-gte" })
             {
-                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit 0 and bound 'lower' does not have any effect since there are always 0 locations meeting the requirements. Did you mean bound 'upper'?");
+                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit 0 and bound 'gte'/'percentage-gte' does not have any effect since there are always 0 locations meeting the requirements. Did you mean bound 'lte'/'percentage-lte'?");
+                return null;
+            }
+
+            if (neighborFilter is { Limit: > 100, Bound: "percentage-gte" or "percentage-lte" })
+            {
+                ConsoleLogger.Error($"Using {nameof(definition.NeighborFilters)} with limit bigger than 100 and bound 'percentage-gte'/'percentage-lte' is not supported.");
                 return null;
             }
         }

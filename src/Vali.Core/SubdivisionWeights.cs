@@ -889,7 +889,7 @@ public class SubdivisionWeights
         { "IN-KA", (3817, "Karnataka") },
         { "IN-KL", (777, "Kerala") },
         { "IN-LA", (17, "Ladakh") },
-        { "IN-LD", (4, " Lakshadweep") },
+        { "IN-LD", (4, "Lakshadweep") },
         { "IN-MH", (5910, "Maharashtra") },
         { "IN-ML", (218, "Meghalaya") },
         { "IN-MN", (30, "Manipur") },
