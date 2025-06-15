@@ -226,14 +226,10 @@ public class GoogleApi
                 return (location, LocationLookupResult.NoImages);
             }
 
+            bool? isGen1 = false;
             if (selected.PanoId != pano)
             {
-                var (isGen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, detailsCopyright) = await DetailsFromPanoId(selected.PanoId);
-                if (isGen1 != false)
-                {
-                    return (location, LocationLookupResult.NoImages);
-                }
-
+                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, detailsCopyright) = await DetailsFromPanoId(selected.PanoId);
                 pano = selected.PanoId;
                 year = selected.Year;
                 month = selected.Month;
@@ -243,6 +239,7 @@ public class GoogleApi
                 elevation = metersAboveSeaLevel;
                 isScout = scout;
                 copyright = detailsCopyright;
+                isGen1 = gen1;
             }
 
             if (defaultDrivingDirectionAngle > 360 || year < 2005)
@@ -250,9 +247,32 @@ public class GoogleApi
                 return (location, LocationLookupResult.NoImages);
             }
 
-            var result = Regex.IsMatch(copyright, @"© \d{4} Google")
-                ? LocationLookupResult.Valid
-                : LocationLookupResult.Ari;
+            var result = isGen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(copyright);
+            if (result == LocationLookupResult.Ari && selectionStrategy == PanoStrategy.Newest)
+            {
+                // try searching through all panos to see if any of them are not unofficial.
+                foreach (var alternativePano in alternativeImages.Where(i => i.PanoId != selected.PanoId))
+                {
+                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId);
+                    pano = alternativePano.PanoId;
+                    year = alternativePano.Year;
+                    month = alternativePano.Month;
+                    defaultDrivingDirectionAngle = drivingDirectionAngle;
+                    defaultArrowCount = (ushort)arrowCount;
+                    heading = defaultHeading;
+                    elevation = metersAboveSeaLevel;
+                    isScout = scout;
+                    isGen1 = gen1;
+                    copyright = detailsCopyright;
+                    if (gen1 != true && CopyrightToLookupResult(detailsCopyright) == LocationLookupResult.Valid)
+                    {
+                        break;
+                    }
+                }
+
+                result = isGen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(copyright);
+            }
+
             return (location with
             {
                 heading = Math.Round(heading, 2),
@@ -281,6 +301,11 @@ public class GoogleApi
             return (location, LocationLookupResult.UnknownError);
         }
     }
+
+    private static LocationLookupResult CopyrightToLookupResult(string copyright) =>
+        Regex.IsMatch(copyright, @"© \d{4} Google")
+            ? LocationLookupResult.Valid
+            : LocationLookupResult.Ari;
 
     public static bool IsGen1Possible(string? countryCode, int year)
     {
