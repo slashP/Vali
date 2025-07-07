@@ -236,6 +236,7 @@ public static class MapDefinitionDefaults
             "lerg" => Weights.LessExtremeRegionGuessing,
             "amw" => Weights.MovingWorld,
             "yellowbelly" => Weights.YellowBelly,
+            "5kable" => Weights.A5kableWorld,
             { Length: > 0 } => [],
             _ => Weights.CommunityWorld
         };
