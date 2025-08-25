@@ -59,7 +59,7 @@ public class DistributionExport
                 foreach (var subdivisionPrintRow in response.SelectMany(x => x.Value.Select(y => new SubdivisionPrintRow
                          {
                              Code = y.Key,
-                             Name = SubdivisionWeights.SubdivisionName(x.Key, y.Key),
+                             Name = SubdivisionWeights.SubdivisionName(x.Key, y.Key) ?? "N/A",
                              Weight = y.Value
                          })))
                 {
@@ -107,7 +107,7 @@ public class DistributionExport
             _ => _ => "Invalid property"
         };
         Func<NominatimData, string> keySelector = byCountry ? x => x.CountryCode : x => x.SubdivisionCode;
-        Func<NominatimData, string> nameSelector = byCountry ? x => CountryCodes.Name(x.CountryCode) : x => SubdivisionWeights.SubdivisionName(x.CountryCode, x.SubdivisionCode);
+        Func<NominatimData, string> nameSelector = byCountry ? x => CountryCodes.Name(x.CountryCode) : x => SubdivisionWeights.SubdivisionName(x.CountryCode, x.SubdivisionCode) ?? "N/A";
         var keyHeading = byCountry ? "Country code" : "Subdivision code";
 
         foreach (var countryCode in MapDefinitionDefaults.MapCountryCodes([code], new DistributionStrategy()))

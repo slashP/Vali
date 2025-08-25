@@ -1,8 +1,10 @@
-﻿using System.Text.Json.Nodes;
-using System.Text;
-using System.Text.Json.Serialization;
+﻿using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Vali.Core.Data;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Vali.Core.Google;
 
@@ -34,7 +36,7 @@ public class GoogleApi
         var startTime = DateTime.UtcNow;
         foreach (var chunk in locations.Chunk(chunkSize))
         {
-            var locs = await Task.WhenAll(chunk.Select(x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: PanoStrategy.Newest, countryPanning: countryPanning, includeLinked: false, panoVerificationStart: null, panoVerificationEnd: null)));
+            var locs = await Task.WhenAll(chunk.Select(x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: PanoStrategy.Newest, countryPanning: countryPanning, includeLinked: false, panoVerificationStart: null, panoVerificationEnd: null, badCamStrategy: BadCamStrategy.DisallowInCountriesWithDecentOtherCoverage)));
             result.AddRange(locs.Where(x => x is { location: not null, result: LocationLookupResult.Valid }).Select(x => x.location));
             counter += chunkSize;
             var locationsCount = counter * 100 / (decimal)locations.Count;
@@ -59,12 +61,13 @@ public class GoogleApi
             Dictionary<string, string?>? countryPanning,
             bool includeLinked,
             DateOnly? panoVerificationStart,
-            DateOnly? panoVerificationEnd) =>
+            DateOnly? panoVerificationEnd,
+            BadCamStrategy badCamStrategy) =>
         silent
             ? await locations.RunLimitedNumberAtATime(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd), chunkSize)
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy), chunkSize)
             : await locations.RunLimitedNumberAtATimeWithProgressBar(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd),
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy),
                 chunkSize,
                 "Verifying locations by calling Google APIs.");
 
@@ -77,6 +80,7 @@ public class GoogleApi
         bool includeLinked,
         DateOnly? panoVerificationStart,
         DateOnly? panoVerificationEnd,
+        BadCamStrategy badCamStrategy,
         int radius = 5)
     {
         var body = $@"
@@ -229,7 +233,7 @@ public class GoogleApi
             bool? isGen1 = false;
             if (selected.PanoId != pano)
             {
-                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, detailsCopyright) = await DetailsFromPanoId(selected.PanoId);
+                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(selected.PanoId);
                 pano = selected.PanoId;
                 year = selected.Year;
                 month = selected.Month;
@@ -239,6 +243,7 @@ public class GoogleApi
                 elevation = metersAboveSeaLevel;
                 isScout = scout;
                 copyright = detailsCopyright;
+                resolutionHeight = resHeight;
                 isGen1 = gen1;
             }
 
@@ -248,29 +253,43 @@ public class GoogleApi
             }
 
             var result = isGen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(copyright);
-            if (result == LocationLookupResult.Ari && selectionStrategy == PanoStrategy.Newest)
+            if (IsNotDesiredCoverage(result, resolutionHeight, countryCode, year))
             {
-                // try searching through all panos to see if any of them are not unofficial.
+                var alternativeImageResults = new List<(string pano, int year, int month, ushort defaultDrivingDirectionAngle, ushort arrowCount, decimal heading, double elevation, bool isScout, bool? isGen1, string? copyright, int resolutionHeight, LocationLookupResult result)>();
                 foreach (var alternativePano in alternativeImages.Where(i => i.PanoId != selected.PanoId))
                 {
-                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId);
-                    pano = alternativePano.PanoId;
-                    year = alternativePano.Year;
-                    month = alternativePano.Month;
-                    defaultDrivingDirectionAngle = drivingDirectionAngle;
-                    defaultArrowCount = (ushort)arrowCount;
-                    heading = defaultHeading;
-                    elevation = metersAboveSeaLevel;
-                    isScout = scout;
-                    isGen1 = gen1;
-                    copyright = detailsCopyright;
-                    if (gen1 != true && CopyrightToLookupResult(detailsCopyright) == LocationLookupResult.Valid)
+                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId);
+                    result = gen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(detailsCopyright);
+                    if (result == LocationLookupResult.Valid)
+                    {
+                        alternativeImageResults.Add((alternativePano.PanoId, alternativePano.Year, alternativePano.Month, drivingDirectionAngle, (ushort)arrowCount, defaultHeading, metersAboveSeaLevel, scout, gen1, detailsCopyright, resHeight, result));
+                    }
+                    if (alternativeImageResults.Any(i => !IsNotDesiredCoverage(i.result, i.resolutionHeight, countryCode, i.year)))
                     {
                         break;
                     }
                 }
 
-                result = isGen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(copyright);
+                var alternativeImageFound = alternativeImageResults
+                    .Where(i => !IsNotDesiredCoverage(i.result, i.resolutionHeight, countryCode, i.year))
+                    .OrderByDescending(i => i.resolutionHeight)
+                    .ThenByDescending(i => i.year)
+                    .ThenByDescending(i => i.month)
+                    .FirstOrDefault();
+                if (alternativeImageFound.pano != null)
+                {
+                    pano = alternativeImageFound.pano;
+                    year = alternativeImageFound.year;
+                    month = alternativeImageFound.month;
+                    defaultDrivingDirectionAngle = alternativeImageFound.defaultDrivingDirectionAngle;
+                    defaultArrowCount = alternativeImageFound.arrowCount;
+                    heading = alternativeImageFound.heading;
+                    elevation = alternativeImageFound.elevation;
+                    isScout = alternativeImageFound.isScout;
+                    isGen1 = alternativeImageFound.isGen1;
+                    copyright = alternativeImageFound.copyright;
+                    resolutionHeight = alternativeImageFound.resolutionHeight;
+                }
             }
 
             return (location with
@@ -300,6 +319,12 @@ public class GoogleApi
             await Task.Delay(TimeSpan.FromSeconds(5));
             return (location, LocationLookupResult.UnknownError);
         }
+
+        bool IsNotDesiredCoverage(LocationLookupResult result, int resolutionHeight, string? countryCode, int year)
+        {
+            return (result == LocationLookupResult.Ari && selectionStrategy == PanoStrategy.Newest) ||
+                   (resolutionHeight == Resolution.Gen3BadCam && year > 2019 && badCamStrategy == BadCamStrategy.DisallowInCountriesWithDecentOtherCoverage && countryCode != null && !CountryCodes.BadCamAcceptableCountryCodes.Contains(countryCode));
+        }
     }
 
     private static LocationLookupResult CopyrightToLookupResult(string copyright) =>
@@ -318,7 +343,7 @@ public class GoogleApi
         };
     }
 
-    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, string copyright)> DetailsFromPanoId(string panoId)
+    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, int resolutionHeight, string copyright)> DetailsFromPanoId(string panoId)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -333,7 +358,7 @@ public class GoogleApi
         {
             Console.WriteLine(e);
             await Task.Delay(TimeSpan.FromSeconds(5));
-            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
+            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, "");
         }
 
         try
@@ -341,21 +366,21 @@ public class GoogleApi
             var metadataResponse = JsonNode.Parse(content);
             if (metadataResponse == null)
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, "");
             }
 
             if (metadataResponse.AsArray().Count == 2 && metadataResponse[1] is JsonValue &&
                 metadataResponse[1]!.GetValue<string>() is "Internal error encountered." or "The service is currently unavailable.")
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, "");
             }
 
             if (metadataResponse.AsArray().Count == 1)
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, "");
             }
 
-            var resolutionHeight = metadataResponse[1]![0]![2]?[2]?[0]?.GetValue<double>() ?? 0;
+            var resolutionHeight = metadataResponse[1]![0]![2]?[2]?[0]?.GetValue<int>() ?? 0;
             var isGen1 = resolutionHeight <= Resolution.Gen1;
             var arrows = metadataResponse[1]![0]![5]?[0]?.AsArray().Count > 6 ? metadataResponse[1]![0]![5]?[0]?[6]?.AsArray() ?? []: [];
             var drivingDirectionAngle = metadataResponse[1]![0]![5]?[0]![1]!.AsArray().Count > 2 ? (ushort)Math.Round(metadataResponse[1]![0]![5]?[0]![1]![2]?[0]!.GetValue<decimal>() ?? 0, 0) : (ushort)0;
@@ -369,7 +394,7 @@ public class GoogleApi
             var year = metadataResponse[1]![0]![6]?.AsArray().Count >= 8 ? metadataResponse[1]![0]![6]?[7]![0]!.GetValue<int>() ?? 2000 : 2000;
             if (year < 2001)
             {
-                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
+                return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, "");
             }
 
             var month = metadataResponse[1]![0]![6]!.AsArray().Count >= 8 ? metadataResponse[1]![0]![6]?[7]![1]!.GetValue<int>() ?? 1 : 1;
@@ -378,13 +403,13 @@ public class GoogleApi
             var isScout = metadataResponse[1]![0]![6]![5]!.AsArray().Count >= 3 &&
                                 metadataResponse[1]![0]![6]![5]![2]!.GetValue<string>() == "scout";
             var copyright = metadataResponse[1]![0]![4]![0]![0]![0]![0]!.GetValue<string>();
-            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng, isScout, copyright);
+            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng, isScout, resolutionHeight, copyright);
         }
         catch (Exception e)
         {
             Console.WriteLine($"Failed verifying {nameof(DetailsFromPanoId)}. {content}");
             Console.WriteLine(e);
-            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, "");
+            return (null, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, "");
         }
     }
 
@@ -476,9 +501,15 @@ public class GoogleApi
         SecondOldest,
         YearMonthPeriod
     }
+
+    public enum BadCamStrategy
+    {
+        DisallowInCountriesWithDecentOtherCoverage,
+        AllowForAll,
+    }
 }
 
-public record MapCheckrLocation : IDistributionLocation<string>
+    public record MapCheckrLocation : IDistributionLocation<string>
 {
     public double lat { get; set; }
     public double lng { get; set; }
@@ -524,5 +555,6 @@ public record AlternativePano
 public static class Resolution
 {
     public const int Gen4 = 8192;
+    public const int Gen3BadCam = 6656;
     public const int Gen1 = 1664;
 }

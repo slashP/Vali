@@ -1656,13 +1656,13 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> NP = new()
     {
-        { "NP-P3", (10, "Bāgmatī") },
-        { "NP-P4", (10, "Gaṇḍakī") },
-        { "NP-P6", (10, "Karṇālī") },
-        { "NP-P1", (10, "Koshī") },
-        { "NP-P5", (10, "Lumbinī") },
-        { "NP-P2", (10, "Madhesh") },
-        { "NP-P7", (10, "Sudūrpashchim") },
+        { "NP-P3", (696, "Bāgmatī") },
+        { "NP-P4", (465, "Gaṇḍakī") },
+        { "NP-P6", (230, "Karṇālī") },
+        { "NP-P1", (899, "Koshī") },
+        { "NP-P5", (1134, "Lumbinī") },
+        { "NP-P2", (943, "Madhesh") },
+        { "NP-P7", (625, "Sudūrpashchim") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> NZ = new()
@@ -3403,6 +3403,7 @@ public class SubdivisionWeights
             { "OM", OM },
             { "NA", NA },
             { "VN", VN },
+            { "NP", NP },
         };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> NotQuiteThereYetCountryToSubdivision =
@@ -3410,7 +3411,6 @@ public class SubdivisionWeights
         {
             { "PY", PY },
             { "BA", BA },
-            { "NP", NP },
             { "UZ", UZ },
             { "TJ", TJ },
             { "SA", SA },
@@ -3465,14 +3465,14 @@ public class SubdivisionWeights
         return regionGoalCount;
     }
 
-    public static string SubdivisionName(string countryCode, string code)
+    public static string? SubdivisionName(string countryCode, string code)
     {
         var subdivisions = SubdivisionWeights.CountryToSubdivision.TryGetValue(countryCode, out var value)
             ? value
             : SubdivisionWeights.NotQuiteThereYetCountryToSubdivision[countryCode];
         return subdivisions.TryGetValue(code, out var val)
             ? val.subdivisionName
-            : "N/A";
+            : null;
     }
 
 

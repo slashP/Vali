@@ -219,7 +219,7 @@ public class LiveGenerate
             var panoStrategy = Enum.TryParse<GoogleApi.PanoStrategy>(selectionStrategy, true, out var s)
                 ? s
                 : GoogleApi.PanoStrategy.Newest;
-            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: includeLinked, panoVerificationStart, panoVerificationEnd);
+            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: includeLinked, panoVerificationStart, panoVerificationEnd, GoogleApi.BadCamStrategy.AllowForAll);
             var allLinked = includeLinked
                 ? await GetLinked(googleLocations, 0, countryCode, panoStrategy, panoVerificationStart, panoVerificationEnd, chunkSize, rejectLocationsWithoutDescription, new())
                 : [];
@@ -282,7 +282,7 @@ public class LiveGenerate
             tempPanoIdsChecked.Add(linkedPano.locationId);
         }
 
-        var panoCheckedLocations = await GoogleApi.GetLocations(linked, countryCode, chunkSize: chunkSize, radius: 100, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: true, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd);
+        var panoCheckedLocations = await GoogleApi.GetLocations(linked, countryCode, chunkSize: chunkSize, radius: 100, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: true, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, GoogleApi.BadCamStrategy.AllowForAll);
         return panoCheckedLocations.Concat(await GetLinked(panoCheckedLocations, depth + 1, countryCode, panoStrategy, panoVerificationStart, panoVerificationEnd, chunkSize, rejectLocationsWithoutDescription, tempPanoIdsChecked));
     }
 

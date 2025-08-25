@@ -2,6 +2,8 @@
 
 public static class CountryCodes
 {
+    public static readonly string[] BadCamAcceptableCountryCodes = ["IN", "NP", "NG"];
+
     public static readonly Dictionary<string, string> Countries = new()
     {
         { "AE", "United Arab Emirates" },
