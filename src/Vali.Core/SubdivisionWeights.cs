@@ -365,11 +365,13 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> CR = new()
     {
-        { "CR-A", (2, "Provincia de Alajuela") },
-        { "CR-C", (2, "Provincia de Cartago") },
-        { "CR-G", (4, "Provincia de Guanacaste") },
-        { "CR-H", (3, "Provincia de Heredia") },
-        { "CR-SJ", (11, "Provincia de San Jose") },
+        { "CR-A", (349, "Alajuela") },
+        { "CR-C", (97, "Cartago") },
+        { "CR-G", (452, "Guanacaste") },
+        { "CR-H", (63, "Heredia") },
+        { "CR-L", (158, "Limón") },
+        { "CR-P", (324, "Puntarenas") },
+        { "CR-SJ", (153, "San José") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> CW = new()

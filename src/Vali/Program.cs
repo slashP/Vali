@@ -24,7 +24,7 @@ if (!string.IsNullOrEmpty(currentDownloadFolder))
     ConsoleLogger.Success($"Download/data folder: {currentDownloadFolder}");
 }
 
-// args = ["live-generate", "--file", @"C:\dev\priv\vali-maps\live.json"];
+// args = ["generate", "--file", @"C:\dev\priv\map-definitions\general\yellowbelly\map.json"];
 
 using var loggerFactory = ValiLogger.Initialize();
 
@@ -121,6 +121,10 @@ try
         await DataDownloadService.DownloadFiles(countryOptionValue, full, updates);
         context.ExitCode = 100;
     });
+    var runMode = RunMode.Default;
+#if DEBUG
+    runMode = RunMode.Localhost;
+#endif
 
     generateMapCommand.SetHandler(async context =>
     {
@@ -151,11 +155,6 @@ try
             context.ExitCode = -1;
             return;
         }
-
-        var runMode = RunMode.Default;
-#if DEBUG
-        runMode = RunMode.Localhost;
-#endif
 
         await LocationLakeMapGenerator.Generate(validatedMapDefinition, fileOptionValue, runMode);
         context.ExitCode = 100;
@@ -193,7 +192,7 @@ try
         var propertyOptionValue = context.ParseResult.GetValueForOption(propertyOption);
         var byCountry = context.ParseResult.GetValueForOption(byCountryOption) == true;
         Console.WriteLine($"By country {byCountry}");
-        await DistributionExport.Report(countryOptionValue, propertyOptionValue, byCountry);
+        await DistributionExport.Report(countryOptionValue, propertyOptionValue, byCountry, runMode);
         context.ExitCode = 100;
     });
 

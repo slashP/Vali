@@ -87,7 +87,7 @@ public class DistributionExport
         Code
     }
 
-    public static async Task Report(string? code, string? property, bool byCountry)
+    public static async Task Report(string? code, string? property, bool byCountry, RunMode runMode)
     {
         if (code == null || property == null)
         {
@@ -112,7 +112,7 @@ public class DistributionExport
 
         foreach (var countryCode in MapDefinitionDefaults.MapCountryCodes([code], new DistributionStrategy()))
         {
-            var subdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Default);
+            var subdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, runMode);
             var files = subdivisions.Select(x => x.file).ToArray();
             await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
             AnsiConsole.Progress()

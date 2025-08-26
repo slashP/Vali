@@ -231,17 +231,18 @@ public static class Extensions
     {
         var counter = 0;
         var list = new List<(string oldValue, string newValue)>();
-        input = input.Replace("\\'", "$01");
+        input = input.Replace("\\'", "$900001");
         var matches = Regex.Matches(input, "'([^']*)'");
         foreach (Match match in matches)
         {
             var matchedValue = match.Groups[1].Value;
-            var newValue = $"{PlaceholderValue}{counter++}";
+            var i = (counter++).ToString().PadLeft(7, '0');
+            var newValue = $"{PlaceholderValue}{i}";
             list.Add((matchedValue, newValue));
             input = input.Replace($"'{matchedValue}'", $"'{newValue}'");
         }
 
-        list.Add(("\\'", "$01"));
+        list.Add(("\\'", "$900001"));
         return (input, list);
     }
 

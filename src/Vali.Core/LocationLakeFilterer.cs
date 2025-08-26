@@ -10,7 +10,7 @@ public static class LocationLakeFilterer
 {
     public static readonly string[] CountryCodesAcceptableWithoutDescription =
     [
-        "CX", "CC", "MP", "GU", "EG", "ML", "MG", "PN", "GL", "MN", "KR", "FO", "UG", "KG", "RW", "CR", "LB", "RE",
+        "CX", "CC", "MP", "GU", "EG", "ML", "MG", "PN", "GL", "MN", "KR", "FO", "UG", "KG", "RW", "LB", "RE",
         "MQ", "NP", "PK", "BY", "UM"
     ];
 
@@ -129,8 +129,7 @@ public static class LocationLakeFilterer
         var componentsInExpression = expressionWithPlaceholders
             .RemoveMultipleSpaces()
             .RemoveParentheses()
-            .Split(' ')
-            .ToArray();
+            .Split(' ');
         var validProperties = typeof(TLoc).Name switch
         {
             nameof(Location) => ValidProperties(),
