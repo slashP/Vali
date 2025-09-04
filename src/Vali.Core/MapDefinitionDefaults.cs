@@ -1,5 +1,4 @@
 ﻿using System.Globalization;
-using System.Runtime.CompilerServices;
 using Vali.Core.Data;
 using Vali.Core.Google;
 using Vali.Core.Hash;

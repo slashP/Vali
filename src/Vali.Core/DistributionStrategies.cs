@@ -1,5 +1,4 @@
 ﻿using Spectre.Console;
-using Vali.Core.Data;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 

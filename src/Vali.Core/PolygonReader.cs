@@ -1,7 +1,5 @@
 ﻿using System.Collections.Concurrent;
-using System.Text.Json;
 using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
 
 namespace Vali.Core;
 
