@@ -23,8 +23,10 @@ public static class LocationLakeFilterer
         IReadOnlyCollection<Loc> locationsFromFile,
         Dictionary<string, List<Loc>> neighborLocationBuckets,
         Dictionary<string, List<ILatLng>> proximityLocationBuckets,
+        Dictionary<string, List<Polygon>> polygonLocationBuckets,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
+        PolygonFilter polygonFilter,
         NeighborFilter[] neighborFilters,
         MapDefinition mapDefinition)
     {
@@ -66,6 +68,12 @@ public static class LocationLakeFilterer
         {
             var locs = locations.ToArray();
             locations = FilterByProximity(locs, proximityFilter, proximityLocationBuckets);
+        }
+
+        if (File.Exists(polygonFilter.PolygonsPath))
+        {
+            var locs = locations.ToArray();
+            locations = FilterByPolygon(locs, polygonFilter, polygonLocationBuckets);
         }
 
         foreach (var neighborFilter in neighborFilters)
@@ -368,6 +376,18 @@ public static class LocationLakeFilterer
         {
             var hash = Hasher.Encode(l.Lat, l.Lng, precision);
             return proximityLocationBuckets.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.Lat, x.Lng) < proximityFilterRadius);
+        });
+    }
+
+    private static IEnumerable<Loc> FilterByPolygon(
+        IReadOnlyCollection<Loc> locations,
+        PolygonFilter polygonFilter,
+        Dictionary<string, List<Polygon>> polygonLocationBuckets)
+    {
+        return locations.Where(l =>
+        {
+            var hash = Hasher.Encode(l.Lat, l.Lng, polygonFilter.precision ?? throw new InvalidOperationException("No polygon precision set"));
+            return polygonLocationBuckets.TryGetValue(hash, out var p) && p.Any(p => p.IsPointInside(l));
         });
     }
 }

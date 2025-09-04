@@ -1,4 +1,7 @@
-﻿namespace Vali.Core;
+﻿using System.Text.Json.Serialization;
+using Vali.Core.Hash;
+
+namespace Vali.Core;
 
 public record MapDefinition
 {
@@ -11,14 +14,17 @@ public record MapDefinition
     public string? GlobalLocationFilter { get; init; }
     public Dictionary<string, string> CountryLocationFilters { get; init; } = [];
     public Dictionary<string, ProximityFilter> CountryProximityFilters { get; init; } = [];
+    public Dictionary<string, PolygonFilter> CountryPolygonFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, string>> SubdivisionLocationFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, ProximityFilter>> SubdivisionProximityFilters { get; init; } = [];
+    public Dictionary<string, Dictionary<string, PolygonFilter>> SubdivisionPolygonFilters { get; init; } = [];
     public LocationPreferenceFilter[] GlobalLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, LocationPreferenceFilter[]> CountryLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
     public LocationOutput Output { get; set; } = new();
     public ProximityFilter ProximityFilter { get; set; } = new();
     public NeighborFilter[] NeighborFilters { get; init; } = [];
+    public PolygonFilter PolygonFilter { get; init; } = new();
     public Dictionary<string, string> NamedExpressions { get; set; } = new();
     public string[] UsedLocationsPaths { get; set; } = [];
     public bool EnableDefaultLocationFilters { get; set; }
@@ -37,6 +43,13 @@ public record NeighborFilter
     public string Expression { get; set; } = "";
     public int? Limit { get; set; }
     public string Bound { get; set; } = "";
+}
+
+public record PolygonFilter
+{
+    public string PolygonsPath { get; set; } = "";
+    [JsonIgnore]
+    public HashPrecision? precision { get; set; }
 }
 
 public record LiveGenerateMapDefinition
@@ -94,6 +107,7 @@ public record LocationPreferenceFilter
     public string? LocationTag { get; init; }
     public int? MinMinDistance { get; init; }
     public ProximityFilter ProximityFilter { get; set; } = new();
+    public PolygonFilter PolygonFilter { get; set; } = new();
     public NeighborFilter[] NeighborFilters { get; init; } = [];
 }
 

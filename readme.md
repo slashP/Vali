@@ -344,6 +344,46 @@ If you have a `.csv` or `.json` file with locations (standard formats, f.ex. exp
   }
 }
 ```
+## Polygon filters
+Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. created using [geojson.io](https://geojson.io) or the [Map Polygon Tool](https://www.keene.edu/campus/maps/tool/)).
+```json
+{
+  "polygonFilter": {
+    "polygonPath": "c:\\priv\\vali-maps\\home-area.json"
+  }
+}
+```
+```json
+{
+  "countryPolygonFilters": {
+    "AR": {
+      "polygonPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
+    }
+  }
+}
+```
+```json
+{
+  "subdivisionPolygonFilters": {
+    "AR": {
+      "AR-B": {
+        "polygonPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
+      }
+    }
+  }
+}
+```
+You can also use polygon filters in preference filters. Example where 40% of the locaitons are in your home area:
+```json
+{
+  "expression": "*",
+  "percentage": 40,
+  "fill": false,
+  "polygonFilter": {
+    "polygonPath": "c:\\priv\\vali-maps\\home-area.json"
+  }
+},
+```
 ## Neighbor filters
 Vali can filter locations based on number or percentage of locations nearby (neighbors) that satisfy given requirements. Examples:
 * Must have at least 5 locations with surface 'gravel' within 500 meters.

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 using Vali.Core.Data;
 using Vali.Core.Google;
 using Vali.Core.Hash;
@@ -263,6 +264,30 @@ public static class MapDefinitionDefaults
                 _ => HashPrecision.Size_km_39x20
             }
             : null;
+
+    public static HashPrecision? HashPrecisionFromPolygonFilter(this PolygonFilter polygonFilter, Polygon[] polygons)
+    {
+        if (string.IsNullOrEmpty(polygonFilter.PolygonsPath)) return null;
+        if (polygonFilter.precision != null)
+        {
+            return polygonFilter.precision;
+        }
+
+        double maxSide = polygons
+            .Select(p => p.GetBoundingBox().GetLongestSide())
+            .Max();
+
+        polygonFilter.precision = maxSide switch
+        {
+            < 1000 => HashPrecision.Size_km_1x1,
+            < 5000 => HashPrecision.Size_km_5x5,
+            < 20000 => HashPrecision.Size_km_39x20,
+            < 156000 => HashPrecision.Size_km_156x156,
+            < 625000 => HashPrecision.Size_km_1250x625,
+            _ => HashPrecision.Size_km_5000x5000
+        };
+        return polygonFilter.precision;
+    }
 
     public static (GoogleApi.PanoStrategy? panoStrategy, int yearStart, int monthStart, int yearEnd, int monthEnd) ExtractYearMonthPanoStrategy(string? strategyString)
     {

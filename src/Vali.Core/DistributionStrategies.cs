@@ -1,4 +1,5 @@
 ﻿using Spectre.Console;
+using Vali.Core.Data;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
@@ -37,7 +38,12 @@ public static class DistributionStrategies
             ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
             : [];
         var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
-        var filteredLocations = FilteredLocations(countryCode, mapDefinition, subdivision, deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets);
+        var polygonFilter = PolygonFilter(countryCode, mapDefinition, subdivision);
+        var polygonsFromFile = File.Exists(polygonFilter.PolygonsPath)
+            ? PolygonReader.DeserializePolygonsFromFile(polygonFilter.PolygonsPath)
+            : [];
+        var polygonLocationBuckets = LocationLookupService.Bucketize(polygonsFromFile, polygonFilter.HashPrecisionFromPolygonFilter(polygonsFromFile));
+        var filteredLocations = FilteredLocations(countryCode, mapDefinition, subdivision, deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, polygonLocationBuckets);
         var regionGoalCount = mapDefinition.SubdivisionDistribution.TryGetValue(countryCode, out var subdivisionWeights) ?
             ((decimal)(subdivisionWeights.GetValueOrDefault(subdivision, 0)) / subdivisionWeights.Sum(x => x.Value) * goalCount).RoundToInt() :
             SubdivisionWeights.GoalForSubdivision(countryCode, subdivision, goalCount, availableSubdivisions);
@@ -72,12 +78,14 @@ public static class DistributionStrategies
         string subdivision,
         IReadOnlyCollection<Loc> deserializeFromFile,
         Dictionary<string, List<Loc>> neighborLocationBuckets,
-        Dictionary<string, List<ILatLng>> proximityLocationBuckets)
+        Dictionary<string, List<ILatLng>> proximityLocationBuckets,
+        Dictionary<string, List<Polygon>> polygonLocationBuckets)
     {
         var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
         var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
+        var polygonFilter = PolygonFilter(countryCode, mapDefinition, subdivision);
         var neighborFilters = mapDefinition.NeighborFilters;
-        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, locationFilter, proximityFilter, neighborFilters, mapDefinition);
+        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, polygonLocationBuckets, locationFilter, proximityFilter, polygonFilter, neighborFilters, mapDefinition);
         return filteredLocations;
     }
 
@@ -105,7 +113,12 @@ public static class DistributionStrategies
             ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
             : [];
         var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
-        var locations = FilteredLocations(countryCode, mapDefinition, "", allLocations, neighborLocationBuckets, proximityLocationBuckets);
+        var polygonFilter = PolygonFilter(countryCode, mapDefinition, "N/A");
+        var polygonsFromFile = File.Exists(polygonFilter.PolygonsPath)
+            ? PolygonReader.DeserializePolygonsFromFile(polygonFilter.PolygonsPath)
+            : [];
+        var polygonLocationBuckets = LocationLookupService.Bucketize(polygonsFromFile, polygonFilter.HashPrecisionFromPolygonFilter(polygonsFromFile));
+        var locations = FilteredLocations(countryCode, mapDefinition, "", allLocations, neighborLocationBuckets, proximityLocationBuckets, polygonLocationBuckets);
         if (locations.Length == 0)
         {
             return [([], 0, 0)];
@@ -151,8 +164,13 @@ public static class DistributionStrategies
                 : [];
             var proximityLocationBucket = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
             proximityLocationBuckets[subdivision] = proximityLocationBucket;
+            var polygonFilter = PolygonFilter(countryCode, mapDefinition, subdivision);
+            var polygonsFromFile = File.Exists(polygonFilter.PolygonsPath)
+                ? PolygonReader.DeserializePolygonsFromFile(polygonFilter.PolygonsPath)
+                : [];
+            var polygonLocationBuckets = LocationLookupService.Bucketize(polygonsFromFile, polygonFilter.HashPrecisionFromPolygonFilter(polygonsFromFile));
             allAvailableLocations[subdivision] = availableSubdivisions.Contains(subdivision)
-                    ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationsBuckets[subdivision], proximityLocationBuckets[subdivision], locationFilter, proximityFilter, mapDefinition.NeighborFilters, mapDefinition)
+                    ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationsBuckets[subdivision], proximityLocationBuckets[subdivision], polygonLocationBuckets, locationFilter, proximityFilter, polygonFilter, mapDefinition.NeighborFilters, mapDefinition)
                     : [];
         }
 
@@ -254,8 +272,13 @@ public static class DistributionStrategies
             var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
 
             var neighborLocationBuckets = LocationLookupService.Bucketize(deserializeFromFile, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
+            var polygonFilter = PolygonFilter(countryCode, mapDefinition, subdivision);
+            var polygonsFromFile = File.Exists(polygonFilter.PolygonsPath)
+                ? PolygonReader.DeserializePolygonsFromFile(polygonFilter.PolygonsPath)
+                : [];
+            var polygonLocationBuckets = LocationLookupService.Bucketize(polygonsFromFile, polygonFilter.HashPrecisionFromPolygonFilter(polygonsFromFile));
             allAvailableLocations.AddRange(availableSubdivisions.Contains(subdivision)
-                ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, locationFilter, proximityFilter, mapDefinition.NeighborFilters, mapDefinition)
+                ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, polygonLocationBuckets, locationFilter, proximityFilter, polygonFilter, mapDefinition.NeighborFilters, mapDefinition)
                 : []);
         }
 
@@ -300,9 +323,16 @@ public static class DistributionStrategies
                     _ => mapDefinition.ProximityFilter
                 };
                 var neighbourFilters = locationPreferenceFilter.NeighborFilters.Concat(mapDefinition.NeighborFilters).ToArray();
-                var filtered = locationPreferenceFilter.Expression is "*" or "" ?
-                    filteredLocations :
-                    LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, locationPreferenceFilter.Expression, proximityFilter, neighbourFilters, mapDefinition);
+                var polygonFilter = locationPreferenceFilter.PolygonFilter switch 
+                {
+                    { PolygonsPath.Length: > 0 } => locationPreferenceFilter.PolygonFilter,
+                    _ => PolygonFilter(countryCode, mapDefinition, subdivision)
+                };
+                var polygonsFromFile = File.Exists(polygonFilter.PolygonsPath)
+                    ? PolygonReader.DeserializePolygonsFromFile(polygonFilter.PolygonsPath)
+                    : [];
+                var polygonLocationBuckets = LocationLookupService.Bucketize(polygonsFromFile, polygonFilter.HashPrecisionFromPolygonFilter(polygonsFromFile));
+                var filtered = LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, polygonLocationBuckets, locationPreferenceFilter.Expression, proximityFilter, polygonFilter, neighbourFilters, mapDefinition);
                 var goalCount = locationPreferenceFilter.Fill || locationPreferenceFilter.Percentage is null
                     ? regionGoalCount - locations.Count
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();
@@ -348,6 +378,16 @@ public static class DistributionStrategies
                 countrySubdivisionProximityFilters.TryGetValue(subdivision, out var subdivisionProximityFilter) => subdivisionProximityFilter,
             _ when mapDefinition.CountryProximityFilters.TryGetValue(countryCode, out var countryProximityFilter) => countryProximityFilter,
             _ => mapDefinition.ProximityFilter
+        };
+
+    private static PolygonFilter PolygonFilter(string countryCode, MapDefinition mapDefinition, string subdivision) =>
+        mapDefinition switch
+        {
+            _ when
+                mapDefinition.SubdivisionPolygonFilters.TryGetValue(countryCode, out var countrySubdivisionPolygonFilters) &&
+                countrySubdivisionPolygonFilters.TryGetValue(subdivision, out var subdivisionPolygonFilter) => subdivisionPolygonFilter,
+            _ when mapDefinition.CountryPolygonFilters.TryGetValue(countryCode, out var countryPolygonFilter) => countryPolygonFilter,
+            _ => mapDefinition.PolygonFilter
         };
 
     private enum Status

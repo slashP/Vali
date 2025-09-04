@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Vali": {
+      "commandName": "Project",
+      "commandLineArgs": "generate --file \"D:\\Hannes\\GeoGuessr\\test.json\""
+    }
+  }
+}
