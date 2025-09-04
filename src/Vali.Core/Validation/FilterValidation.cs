@@ -224,6 +224,23 @@ public static class FilterValidation
         return definition;
     }
 
+    public static MapDefinition? ValidatePolygonFilters(this MapDefinition definition)
+    {
+        var polygonFilters = new[] { definition.PolygonFilter }
+            .Concat(definition.CountryPolygonFilters.Select(f => f.Value))
+            .Concat(definition.SubdivisionPolygonFilters.Select(s => s.Value).SelectMany(f => f.Values))
+            .ToArray();
+        foreach (var polygonFilter in polygonFilters)
+        {
+            if (!string.IsNullOrEmpty(polygonFilter.PolygonsPath) && !File.Exists(polygonFilter.PolygonsPath))
+            {
+                ConsoleLogger.Error($"File {polygonFilter.PolygonsPath} used in a {nameof(polygonFilter)} does not exist.");
+                return null;
+            }
+        }
+        return definition;
+    }
+
     public static T? ValidateExpression<T>(this T definition, string filter, Action<string> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties, IReadOnlyCollection<string> outputVisibleValidProperties)
     {
         if (filter == "")
