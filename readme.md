@@ -379,7 +379,7 @@ Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. 
   }
 }
 ```
-It can also be specified, that the locations must be outside of the polygon:
+It can also be specified, that the locations must *not* be in *any* polygon in the file:
 ```json
 {
   "polygonFilters": [
@@ -390,7 +390,7 @@ It can also be specified, that the locations must be outside of the polygon:
   ]
 }
 ```
-Multiple filters can be added, which must all be true for a location to be selected. For example to generate locations that are in your home county but not your home city:
+Multiple filters can be added, which must all be met for a location to be selected. For example to generate locations that are in your home county but not your home city:
 ```json
 {
   "polygonFilters": [
