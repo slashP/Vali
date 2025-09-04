@@ -2,7 +2,6 @@
 
 public enum HashPrecision
 {
-    None = 0,
     /// <summary>
     ///     Represents an area of approximate width 5000km and height 5000km
     /// </summary>
