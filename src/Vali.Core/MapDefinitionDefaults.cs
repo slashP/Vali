@@ -7,6 +7,7 @@ namespace Vali.Core;
 
 public static class MapDefinitionDefaults
 {
+    private const string DefaultGeometryFilterCombinationMode = "intersection";
     public static readonly string[] HardcodedPanoIdCountries = ["ML", "JE", "IM", "CW", "BT"];
 
     public static MapDefinition ApplyDefaults(this MapDefinition definition)
@@ -26,7 +27,7 @@ public static class MapDefinitionDefaults
                 CountryHeadingExpressions = ExpandCountryDictionary(definition.Output.CountryHeadingExpressions),
                 CountryPanoVerificationPanning = ExpandCountryDictionary(definition.Output.CountryPanoVerificationPanning),
                 PanoVerificationStrategy = isYearMonthPanoVerificationStrategy
-                    ? GoogleApi.PanoStrategy.YearMonthPeriod.ToString()
+                    ? nameof(GoogleApi.PanoStrategy.YearMonthPeriod)
                     : definition.Output.PanoVerificationStrategy,
                 PanoVerificationStart = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearStart, yearMonthStrategy.monthStart, 1) : null,
                 PanoVerificationEnd = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearEnd, yearMonthStrategy.monthEnd, 1) : null,
@@ -47,6 +48,10 @@ public static class MapDefinitionDefaults
                     NeighborFilters = y.NeighborFilters.Select(f => f with
                     {
                         Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+                    }).ToArray(),
+                    GeometryFilters = y.GeometryFilters.Select(g => g with
+                    {
+                        CombinationMode = y.GeometryFilters.FirstCombinationModeOrDefault()
                     }).ToArray()
                 }).ToArray()),
             GlobalLocationFilter = definition.GlobalLocationFilter switch
@@ -60,6 +65,10 @@ public static class MapDefinitionDefaults
                 NeighborFilters = x.NeighborFilters.Select(f => f with
                 {
                     Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+                }).ToArray(),
+                GeometryFilters = x.GeometryFilters.Select(g => g with
+                {
+                    CombinationMode = x.GeometryFilters.FirstCombinationModeOrDefault()
                 }).ToArray()
             }).ToArray(),
             NeighborFilters = definition.NeighborFilters.Select(f => f with
@@ -77,8 +86,24 @@ public static class MapDefinitionDefaults
                         NeighborFilters = z.NeighborFilters.Select(f => f with
                         {
                             Expression = ExpressionDefaults.Expand(namedExpressions, f.Expression)
+                        }).ToArray(),
+                        GeometryFilters = z.GeometryFilters.Select(g => g with
+                        {
+                            CombinationMode = z.GeometryFilters.FirstCombinationModeOrDefault()
                         }).ToArray()
                     }).ToArray())),
+            GeometryFilters = definition.GeometryFilters.Select(g => g with
+            {
+                CombinationMode = definition.GeometryFilters.FirstCombinationModeOrDefault(),
+            }).ToArray(),
+            CountryGeometryFilters = definition.CountryGeometryFilters.ToDictionary(cgf => cgf.Key, cgf => cgf.Value.Select(g => g with
+            {
+                CombinationMode = cgf.Value.FirstCombinationModeOrDefault()
+            }).ToArray()),
+            SubdivisionGeometryFilters = definition.SubdivisionGeometryFilters.ToDictionary(sgf => sgf.Key, sgf => sgf.Value.ToDictionary(gf => gf.Key, gf => gf.Value.Select(g => g with
+            {
+                CombinationMode = gf.Value.FirstCombinationModeOrDefault()
+            }).ToArray()))
         };
 
         return definitionWithDefaults;
@@ -309,4 +334,7 @@ public static class MapDefinitionDefaults
             { CountryDistribution.Count: > 0 } => mapDefinition.CountryDistribution,
             _ => weights.Where(x => x.Item2 > 0).ToDictionary(x => x.Item1, x => x.Item2)
         };
+
+    private static string FirstCombinationModeOrDefault(this GeometryFilter[] filters) =>
+        !string.IsNullOrEmpty(filters.FirstOrDefault()?.CombinationMode) ? filters.First().CombinationMode : DefaultGeometryFilterCombinationMode;
 }

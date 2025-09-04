@@ -282,3 +282,4 @@ yarn-error.log*
 **/Properties/PublishProfiles/
 publish.txt
 **/BenchmarkDotNet.Artifacts/
+src/Vali/Properties/

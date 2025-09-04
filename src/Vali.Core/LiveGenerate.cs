@@ -59,7 +59,7 @@ public class LiveGenerate
             var geoJsons = new List<Geometry>();
             foreach (var geoJsonFile in map.GeoJsonFiles)
             {
-                geoJsons.AddRange(await GeoJsonSerialization.DeserializeFromFile(geoJsonFile));
+                geoJsons.AddRange(GeoJsonSerialization.DeserializeFromFile(geoJsonFile));
             }
 
             await AnsiConsole.Progress()

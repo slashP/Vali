@@ -344,6 +344,94 @@ If you have a `.csv` or `.json` file with locations (standard formats, f.ex. exp
   }
 }
 ```
+## Geometry filters
+Vali can filter locations that are within area(s) defined in GeoJSON files (e.g. created using [geojson.io](https://geojson.io) or the [Map Polygon Tool](https://www.keene.edu/campus/maps/tool/)).
+```json
+{
+  "geometryFilters": [
+    {
+      "filePath": "c:\\priv\\vali-maps\\home-city.json"
+    }
+  ]
+}
+```
+```json
+{
+  "countryGeometryFilters": {
+    "AR": [
+      {
+        "filePath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
+      }
+    ]
+  }
+}
+```
+```json
+{
+  "subdivisionGeometryFilters": {
+    "AR": {
+      "AR-B": [
+        {
+          "filePath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
+        }
+      ]
+    }
+  }
+}
+```
+It can also be specified that the locations must *not* be inside the geometry/polygons in the file:
+```json
+{
+  "geometryFilters": [
+    {
+      "filePath": "c:\\priv\\vali-maps\\home-city.json",
+      "inclusionMode": "exclude"
+    }
+  ]
+}
+```
+Multiple filters can be added. By default all filters must be satisfied (AND). For example to generate locations that are in your home county but not your home city:
+```json
+{
+  "geometryFilters": [
+    {
+      "filePath": "c:\\priv\\vali-maps\\home-county.json",
+      "inclusionMode": "include"
+    },
+    {
+      "filePath": "c:\\priv\\vali-maps\\home-city.json",
+      "inclusionMode": "exclude"
+    }
+  ]
+}
+```
+If you would rather like any of the filters to be satisfied (OR), you can set combinationMode "union" on the first entry. For example to generate locations in either Oslo or Bergen:
+```json
+{
+  "geometryFilters": [
+    {
+      "filePath": "c:\\priv\\vali-maps\\oslo.geojson",
+      "combinationMode": "union"
+    },
+    {
+      "filePath": "c:\\priv\\vali-maps\\bergen.json",
+    }
+  ]
+}
+```
+You can also use geometry filters in preference filters. Example where 40% of the locaitons are in your home city:
+```json
+{
+  "expression": "*",
+  "percentage": 40,
+  "fill": false,
+  "geometryFilters": [
+    {
+      "filePath": "c:\\priv\\vali-maps\\home-city.json"
+    }
+  ]
+}
+```
 ## Neighbor filters
 Vali can filter locations based on number or percentage of locations nearby (neighbors) that satisfy given requirements. Examples:
 * Must have at least 5 locations with surface 'gravel' within 500 meters.
