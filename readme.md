@@ -348,17 +348,21 @@ If you have a `.csv` or `.json` file with locations (standard formats, f.ex. exp
 Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. created using [geojson.io](https://geojson.io) or the [Map Polygon Tool](https://www.keene.edu/campus/maps/tool/)).
 ```json
 {
-  "polygonFilter": {
-    "polygonPath": "c:\\priv\\vali-maps\\home-area.json"
-  }
+  "polygonFilters": [
+    {
+      "polygonPath": "c:\\priv\\vali-maps\\home-city.json"
+    }
+  ]
 }
 ```
 ```json
 {
   "countryPolygonFilters": {
-    "AR": {
-      "polygonPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
-    }
+    "AR": [
+      {
+        "polygonPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
+      }
+    ]
   }
 }
 ```
@@ -366,22 +370,52 @@ Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. 
 {
   "subdivisionPolygonFilters": {
     "AR": {
-      "AR-B": {
-        "polygonPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
-      }
+      "AR-B": [
+        {
+          "polygonPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
+        }
+      ]
     }
   }
 }
 ```
-You can also use polygon filters in preference filters. Example where 40% of the locaitons are in your home area:
+It can also be specified, that the locations must be outside of the polygon:
+```json
+{
+  "polygonFilters": [
+    {
+      "polygonPath": "c:\\priv\\vali-maps\\home-city.json",
+      "insidePolygon": false
+    }
+  ]
+}
+```
+Multiple filters can be added, which must all be true for a location to be selected. For example to generate locations that are in your home county but not your home city:
+```json
+{
+  "polygonFilters": [
+    {
+      "polygonPath": "c:\\priv\\vali-maps\\home-county.json",
+      "insidePolygon": true
+    }
+    {
+      "polygonPath": "c:\\priv\\vali-maps\\home-city.json",
+      "insidePolygon": false
+    }
+  ]
+}
+```
+You can also use polygon filters in preference filters. Example where 40% of the locaitons are in your home city:
 ```json
 {
   "expression": "*",
   "percentage": 40,
   "fill": false,
-  "polygonFilter": {
-    "polygonPath": "c:\\priv\\vali-maps\\home-area.json"
-  }
+  "polygonFilters": [
+    {
+      "polygonPath": "c:\\priv\\vali-maps\\home-city.json"
+    }
+  ]
 },
 ```
 ## Neighbor filters

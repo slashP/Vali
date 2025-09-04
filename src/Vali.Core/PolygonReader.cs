@@ -29,10 +29,10 @@ public class PolygonReader
                     .Where(g => g.OgcGeometryType == OgcGeometryType.Polygon)
                     .Select(g => new Polygon(
                         g.Coordinates
-                        .Where(c => !Double.IsNaN(c.X) && !Double.IsNaN(c.Y))
-                        .Select(c => new Polygon.PolyPoint(c.X, c.Y))
-                        .ToArray()
-                    )).ToArray();
+                            .Where(c => !Double.IsNaN(c.X) && !Double.IsNaN(c.Y))
+                            .Select(c => new Polygon.PolyPoint(c.X, c.Y))
+                            .ToArray())
+                    ).ToArray();
             }
             catch (Exception ex)
             {

@@ -226,9 +226,9 @@ public static class FilterValidation
 
     public static MapDefinition? ValidatePolygonFilters(this MapDefinition definition)
     {
-        var polygonFilters = new[] { definition.PolygonFilter }
-            .Concat(definition.CountryPolygonFilters.Select(f => f.Value))
-            .Concat(definition.SubdivisionPolygonFilters.Select(s => s.Value).SelectMany(f => f.Values))
+        var polygonFilters = definition.PolygonFilters
+            .Concat(definition.CountryPolygonFilters.SelectMany(f => f.Value))
+            .Concat(definition.SubdivisionPolygonFilters.Select(s => s.Value).SelectMany(f => f.Values).SelectMany(f => f))
             .ToArray();
         foreach (var polygonFilter in polygonFilters)
         {
