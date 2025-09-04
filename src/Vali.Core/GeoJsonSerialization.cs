@@ -8,9 +8,9 @@ namespace Vali.Core;
 
 public class GeoJsonSerialization
 {
-    public static async Task<Geometry[]> DeserializeFromFile(string path)
+    public static Geometry[] DeserializeFromFile(string path)
     {
-        var jsonText = await File.ReadAllTextAsync(path);
+        var jsonText = File.ReadAllText(path);
         var serializer = GeoJsonSerializer.Create();
         using var stringReader = new StringReader(jsonText);
         using var jsonReader = new JsonTextReader(stringReader);

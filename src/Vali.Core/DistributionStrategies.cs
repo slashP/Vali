@@ -76,8 +76,9 @@ public static class DistributionStrategies
     {
         var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
         var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
+        var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).GetApplicableGeometryFilters();
         var neighborFilters = mapDefinition.NeighborFilters;
-        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, locationFilter, proximityFilter, neighborFilters, mapDefinition);
+        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, locationFilter, proximityFilter, geometryFilters, neighborFilters, mapDefinition);
         return filteredLocations;
     }
 
@@ -151,8 +152,9 @@ public static class DistributionStrategies
                 : [];
             var proximityLocationBucket = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
             proximityLocationBuckets[subdivision] = proximityLocationBucket;
+            var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).GetApplicableGeometryFilters();
             allAvailableLocations[subdivision] = availableSubdivisions.Contains(subdivision)
-                    ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationsBuckets[subdivision], proximityLocationBuckets[subdivision], locationFilter, proximityFilter, mapDefinition.NeighborFilters, mapDefinition)
+                    ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationsBuckets[subdivision], proximityLocationBuckets[subdivision], locationFilter, proximityFilter, geometryFilters, mapDefinition.NeighborFilters, mapDefinition)
                     : [];
         }
 
@@ -254,8 +256,9 @@ public static class DistributionStrategies
             var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
 
             var neighborLocationBuckets = LocationLookupService.Bucketize(deserializeFromFile, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
+            var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).GetApplicableGeometryFilters();
             allAvailableLocations.AddRange(availableSubdivisions.Contains(subdivision)
-                ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, locationFilter, proximityFilter, mapDefinition.NeighborFilters, mapDefinition)
+                ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, locationFilter, proximityFilter, geometryFilters, mapDefinition.NeighborFilters, mapDefinition)
                 : []);
         }
 
@@ -294,15 +297,10 @@ public static class DistributionStrategies
             var lastMinMinDistance = minDistance;
             foreach (var locationPreferenceFilter in preferenceFilters)
             {
-                var proximityFilter = locationPreferenceFilter.ProximityFilter switch
-                {
-                    { LocationsPath.Length: > 0 } => locationPreferenceFilter.ProximityFilter,
-                    _ => mapDefinition.ProximityFilter
-                };
+                var proximityFilter = locationPreferenceFilter.ProximityFilter;
                 var neighbourFilters = locationPreferenceFilter.NeighborFilters.Concat(mapDefinition.NeighborFilters).ToArray();
-                var filtered = locationPreferenceFilter.Expression is "*" or "" ?
-                    filteredLocations :
-                    LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, locationPreferenceFilter.Expression, proximityFilter, neighbourFilters, mapDefinition);
+                var geometryFilters = locationPreferenceFilter.GeometryFilters.GetApplicableGeometryFilters();
+                var filtered = LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, locationPreferenceFilter.Expression, proximityFilter, geometryFilters, neighbourFilters, mapDefinition);
                 var goalCount = locationPreferenceFilter.Fill || locationPreferenceFilter.Percentage is null
                     ? regionGoalCount - locations.Count
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();
@@ -348,6 +346,16 @@ public static class DistributionStrategies
                 countrySubdivisionProximityFilters.TryGetValue(subdivision, out var subdivisionProximityFilter) => subdivisionProximityFilter,
             _ when mapDefinition.CountryProximityFilters.TryGetValue(countryCode, out var countryProximityFilter) => countryProximityFilter,
             _ => mapDefinition.ProximityFilter
+        };
+
+    private static GeometryFilter[] GeometryFilters(string countryCode, MapDefinition mapDefinition, string subdivision) =>
+        mapDefinition switch
+        {
+            _ when
+                mapDefinition.SubdivisionGeometryFilters.TryGetValue(countryCode, out var countrySubdivisionGeometryFilters) &&
+                countrySubdivisionGeometryFilters.TryGetValue(subdivision, out var subdivisionGeometryFilters) => subdivisionGeometryFilters,
+            _ when mapDefinition.CountryGeometryFilters.TryGetValue(countryCode, out var countryGeometryFilters) => countryGeometryFilters,
+            _ => mapDefinition.GeometryFilters
         };
 
     private enum Status

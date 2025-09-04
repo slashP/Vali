@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using NetTopologySuite.Geometries;
 using Vali.Core.Google;
 using Loc = Vali.Core.Location;
 
@@ -25,6 +26,7 @@ public static class LocationLakeFilterer
         Dictionary<string, List<ILatLng>> proximityLocationBuckets,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
+        (GeometryFilter filter, Geometry[] geometries)[] geometryFilters,
         NeighborFilter[] neighborFilters,
         MapDefinition mapDefinition)
     {
@@ -64,8 +66,12 @@ public static class LocationLakeFilterer
 
         if (proximityFilter.Radius > 0 && File.Exists(proximityFilter.LocationsPath))
         {
-            var locs = locations.ToArray();
-            locations = FilterByProximity(locs, proximityFilter, proximityLocationBuckets);
+            locations = FilterByProximity(locations, proximityFilter, proximityLocationBuckets);
+        }
+
+        if (geometryFilters.Length > 0)
+        {
+            locations = FilterByGeometries(locations, geometryFilters);
         }
 
         foreach (var neighborFilter in neighborFilters)
@@ -173,8 +179,7 @@ public static class LocationLakeFilterer
         var componentsInExpression = expressionWithPlaceholders
             .RemoveMultipleSpaces()
             .RemoveParentheses()
-            .Split(' ')
-            .ToArray();
+            .Split(' ');
         const string primaryLambdaParameterName = "x";
         const string parentLambdaParameterName = "current:";
         var validProperties = (typeof(TLoc).Name switch
@@ -358,7 +363,7 @@ public static class LocationLakeFilterer
     };
 
     private static IEnumerable<Loc> FilterByProximity(
-        IReadOnlyCollection<Loc> locations,
+        IEnumerable<Loc> locations,
         ProximityFilter proximityFilter,
         Dictionary<string, List<ILatLng>> proximityLocationBuckets)
     {
@@ -369,5 +374,30 @@ public static class LocationLakeFilterer
             var hash = Hasher.Encode(l.Lat, l.Lng, precision);
             return proximityLocationBuckets.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.Lat, x.Lng) < proximityFilterRadius);
         });
+    }
+
+    private static IEnumerable<Loc> FilterByGeometries(IEnumerable<Loc> locations, (GeometryFilter filter, Geometry[] geometries)[] geometryFilters)
+    {
+        var combinationMode = geometryFilters.First().filter.CombinationMode;
+        return combinationMode switch
+        {
+            "union" => locations
+                .Where(l =>
+                {
+                    var point = new Point(l.Lng, l.Lat);
+                    return geometryFilters
+                        .Any(gf => gf.geometries
+                            .Any(g => g.Covers(point)) == gf.filter.LocationsInside);
+                }),
+            "intersection" => locations
+                .Where(l =>
+                {
+                    var point = new Point(l.Lng, l.Lat);
+                    return geometryFilters
+                        .All(gf => gf.geometries
+                            .Any(g => g.Covers(point)) == gf.filter.LocationsInside);
+                }),
+            _ => throw new ArgumentOutOfRangeException(nameof(combinationMode), "Only union/intersection acceptable values.")
+        };
     }
 }

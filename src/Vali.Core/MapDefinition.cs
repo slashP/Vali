@@ -1,4 +1,7 @@
-﻿namespace Vali.Core;
+﻿using System.Text.Json.Serialization;
+using Vali.Core.Hash;
+
+namespace Vali.Core;
 
 public record MapDefinition
 {
@@ -11,14 +14,17 @@ public record MapDefinition
     public string? GlobalLocationFilter { get; init; }
     public Dictionary<string, string> CountryLocationFilters { get; init; } = [];
     public Dictionary<string, ProximityFilter> CountryProximityFilters { get; init; } = [];
+    public Dictionary<string, GeometryFilter[]> CountryGeometryFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, string>> SubdivisionLocationFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, ProximityFilter>> SubdivisionProximityFilters { get; init; } = [];
+    public Dictionary<string, Dictionary<string, GeometryFilter[]>> SubdivisionGeometryFilters { get; init; } = [];
     public LocationPreferenceFilter[] GlobalLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, LocationPreferenceFilter[]> CountryLocationPreferenceFilters { get; init; } = [];
     public Dictionary<string, Dictionary<string, LocationPreferenceFilter[]>> SubdivisionLocationPreferenceFilters { get; init; } = [];
     public LocationOutput Output { get; set; } = new();
     public ProximityFilter ProximityFilter { get; set; } = new();
     public NeighborFilter[] NeighborFilters { get; init; } = [];
+    public GeometryFilter[] GeometryFilters { get; init; } = [];
     public Dictionary<string, string> NamedExpressions { get; set; } = new();
     public string[] UsedLocationsPaths { get; set; } = [];
     public bool EnableDefaultLocationFilters { get; set; }
@@ -37,6 +43,15 @@ public record NeighborFilter
     public string Expression { get; set; } = "";
     public int? Limit { get; set; }
     public string Bound { get; set; } = "";
+}
+
+public record GeometryFilter
+{
+    public string FilePath { get; init; } = "";
+    public string InclusionMode { get; init; } = "";
+    [JsonIgnore]
+    public bool LocationsInside => InclusionMode != "exclude";
+    public string CombinationMode { get; init; } = "";
 }
 
 public record LiveGenerateMapDefinition
@@ -94,6 +109,7 @@ public record LocationPreferenceFilter
     public string? LocationTag { get; init; }
     public int? MinMinDistance { get; init; }
     public ProximityFilter ProximityFilter { get; set; } = new();
+    public GeometryFilter[] GeometryFilters { get; set; } = [];
     public NeighborFilter[] NeighborFilters { get; init; } = [];
 }
 

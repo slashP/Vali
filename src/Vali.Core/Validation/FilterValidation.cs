@@ -224,6 +224,66 @@ public static class FilterValidation
         return definition;
     }
 
+    public static MapDefinition? ValidateGeometryFilters(this MapDefinition definition)
+    {
+        var geometryFilters = definition.GeometryFilters
+            .Concat(definition.CountryGeometryFilters.SelectMany(f => f.Value))
+            .Concat(definition.SubdivisionGeometryFilters.Select(s => s.Value).SelectMany(f => f.Values).SelectMany(f => f))
+            .Concat(definition.GlobalLocationPreferenceFilters.SelectMany(x => x.GeometryFilters))
+            .Concat(definition.CountryLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.GeometryFilters)))
+            .Concat(definition.SubdivisionLocationPreferenceFilters.SelectMany(x => x.Value.SelectMany(y => y.Value.SelectMany(z => z.GeometryFilters))))
+            .ToArray();
+        foreach (var geometryFilter in geometryFilters)
+        {
+            if (!File.Exists(geometryFilter.FilePath))
+            {
+                ConsoleLogger.Error($"File {geometryFilter.FilePath} used in a {nameof(geometryFilter)} does not exist.");
+                return null;
+            }
+
+            if (GeometryReader.DeserializeGeometriesFromFile(geometryFilter.FilePath).Length == 0)
+            {
+                return null;
+            }
+        }
+
+        if (geometryFilters.Any(g =>
+                !string.IsNullOrEmpty(g.CombinationMode) &&
+                !new[] { "union", "intersection" }.Contains(g.CombinationMode)))
+        {
+            ConsoleLogger.Error($"Only union/intersection can be used as values for {nameof(GeometryFilter.CombinationMode)}.");
+            return null;
+        }
+
+        if (geometryFilters.Any(g =>
+                !string.IsNullOrEmpty(g.InclusionMode) &&
+                !new[] { "exclude", "include" }.Contains(g.InclusionMode)))
+        {
+            ConsoleLogger.Error($"Only exclude/include can be used as values for {nameof(GeometryFilter.InclusionMode)}.");
+            return null;
+        }
+
+        if (definition.GeometryFilters.Where(x => !string.IsNullOrEmpty(x.CombinationMode)).DistinctBy(x => x.CombinationMode).Count() > 1)
+        {
+            ConsoleLogger.Error($"{nameof(GeometryFilter.CombinationMode)} union/intersection cannot be used together. Choose one.");
+            return null;
+        }
+
+        if (definition.CountryGeometryFilters.Any(cgf => cgf.Value.Where(x => !string.IsNullOrEmpty(x.CombinationMode)).DistinctBy(x => x.CombinationMode).Count() > 1))
+        {
+            ConsoleLogger.Error($"{nameof(GeometryFilter.CombinationMode)} union/intersection cannot be used together. Choose one.");
+            return null;
+        }
+
+        if (definition.SubdivisionGeometryFilters.Any(sgf => sgf.Value.Any(gf => gf.Value.Where(x => !string.IsNullOrEmpty(x.CombinationMode)).DistinctBy(x => x.CombinationMode).Count() > 1)))
+        {
+            ConsoleLogger.Error($"{nameof(GeometryFilter.CombinationMode)} union/intersection cannot be used together. Choose one.");
+            return null;
+        }
+
+        return definition;
+    }
+
     public static T? ValidateExpression<T>(this T definition, string filter, Action<string> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties, IReadOnlyCollection<string> outputVisibleValidProperties)
     {
         if (filter == "")
