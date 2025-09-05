@@ -350,7 +350,7 @@ Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. 
 {
   "polygonFilters": [
     {
-      "polygonPath": "c:\\priv\\vali-maps\\home-city.json"
+      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json"
     }
   ]
 }
@@ -360,7 +360,7 @@ Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. 
   "countryPolygonFilters": {
     "AR": [
       {
-        "polygonPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
+        "polygonsPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
       }
     ]
   }
@@ -372,7 +372,7 @@ Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. 
     "AR": {
       "AR-B": [
         {
-          "polygonPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
+          "polygonsPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
         }
       ]
     }
@@ -384,7 +384,7 @@ It can also be specified, that the locations must *not* be in *any* polygon in t
 {
   "polygonFilters": [
     {
-      "polygonPath": "c:\\priv\\vali-maps\\home-city.json",
+      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json",
       "insidePolygon": false
     }
   ]
@@ -395,11 +395,11 @@ Multiple filters can be added, which must all be met for a location to be select
 {
   "polygonFilters": [
     {
-      "polygonPath": "c:\\priv\\vali-maps\\home-county.json",
+      "polygonsPath": "c:\\priv\\vali-maps\\home-county.json",
       "insidePolygon": true
     }
     {
-      "polygonPath": "c:\\priv\\vali-maps\\home-city.json",
+      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json",
       "insidePolygon": false
     }
   ]
@@ -413,7 +413,7 @@ You can also use polygon filters in preference filters. Example where 40% of the
   "fill": false,
   "polygonFilters": [
     {
-      "polygonPath": "c:\\priv\\vali-maps\\home-city.json"
+      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json"
     }
   ]
 },
