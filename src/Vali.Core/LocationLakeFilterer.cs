@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using NetTopologySuite.Geometries;
 using Vali.Core.Google;
 using Loc = Vali.Core.Location;
 
@@ -23,10 +24,10 @@ public static class LocationLakeFilterer
         IReadOnlyCollection<Loc> locationsFromFile,
         Dictionary<string, List<Loc>> neighborLocationBuckets,
         Dictionary<string, List<ILatLng>> proximityLocationBuckets,
-        Dictionary<string, List<Polygon>>[] polygonLocationBuckets,
+        Geometry[][] geometries,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
-        PolygonFilter[] polygonFilters,
+        GeometryFilter[] geometryFilters,
         NeighborFilter[] neighborFilters,
         MapDefinition mapDefinition)
     {
@@ -70,12 +71,12 @@ public static class LocationLakeFilterer
             locations = FilterByProximity(locs, proximityFilter, proximityLocationBuckets);
         }
 
-        for (int i = 0; i < polygonFilters.Length; i++)
+        for (int i = 0; i < geometryFilters.Length; i++)
         {
-            if (File.Exists(polygonFilters[i].PolygonsPath))
+            if (File.Exists(geometryFilters[i].GeometriesPath))
             {
                 var locs = locations.ToArray();
-                locations = FilterByPolygon(locs, polygonFilters[i], polygonLocationBuckets[i]);
+                locations = FilterByGeometries(locs, geometryFilters[i], geometries[i]);
             }
         }
        
@@ -383,15 +384,11 @@ public static class LocationLakeFilterer
         });
     }
 
-    private static IEnumerable<Loc> FilterByPolygon(
+    private static IEnumerable<Loc> FilterByGeometries(
         IReadOnlyCollection<Loc> locations,
-        PolygonFilter polygonFilter,
-        Dictionary<string, List<Polygon>> polygonLocationBuckets)
+        GeometryFilter geometryFilter,
+        Geometry[] geometries)
     {
-        return locations.Where(l =>
-        {
-            var hash = Hasher.Encode(l.Lat, l.Lng, polygonFilter.precision ?? throw new InvalidOperationException("No polygon precision set"));
-            return (polygonLocationBuckets.TryGetValue(hash, out var p) && p.Any(p => p.IsPointInside(l))) == polygonFilter.InsidePolygon;
-        });
+        return locations.Where(l => geometries.Any(g => g.Covers(new Point(l.Lng, l.Lat))) == geometryFilter.LocationsInside);
     }
 }

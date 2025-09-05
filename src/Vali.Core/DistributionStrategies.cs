@@ -1,4 +1,5 @@
-﻿using Spectre.Console;
+﻿using NetTopologySuite.Geometries;
+using Spectre.Console;
 using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
@@ -37,15 +38,8 @@ public static class DistributionStrategies
             ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
             : [];
         var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
-        var polygonFilters = PolygonFilters(countryCode, mapDefinition, subdivision)
-            .Where(f => File.Exists(f.PolygonsPath));
-        var polygonBuckets = polygonFilters
-            .Select(f =>
-            {
-                var polygonsFromFile = PolygonReader.DeserializePolygonsFromFile(f.PolygonsPath);
-                return LocationLookupService.Bucketize(polygonsFromFile, f.HashPrecisionFromPolygonFilter(polygonsFromFile));
-            }).ToArray();
-        var filteredLocations = FilteredLocations(countryCode, mapDefinition, subdivision, deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, polygonBuckets);
+        var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).ProcessGeometryFilters();
+        var filteredLocations = FilteredLocations(countryCode, mapDefinition, subdivision, deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, geometryFilters.geometries);
         var regionGoalCount = mapDefinition.SubdivisionDistribution.TryGetValue(countryCode, out var subdivisionWeights) ?
             ((decimal)(subdivisionWeights.GetValueOrDefault(subdivision, 0)) / subdivisionWeights.Sum(x => x.Value) * goalCount).RoundToInt() :
             SubdivisionWeights.GoalForSubdivision(countryCode, subdivision, goalCount, availableSubdivisions);
@@ -81,13 +75,13 @@ public static class DistributionStrategies
         IReadOnlyCollection<Loc> deserializeFromFile,
         Dictionary<string, List<Loc>> neighborLocationBuckets,
         Dictionary<string, List<ILatLng>> proximityLocationBuckets,
-        Dictionary<string, List<Polygon>>[] polygonLocationBuckets)
+        Geometry[][] geometries)
     {
         var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
         var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
-        var polygonFilters = PolygonFilters(countryCode, mapDefinition, subdivision);
+        var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision);
         var neighborFilters = mapDefinition.NeighborFilters;
-        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, polygonLocationBuckets, locationFilter, proximityFilter, polygonFilters, neighborFilters, mapDefinition);
+        var filteredLocations = LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, geometries, locationFilter, proximityFilter, geometryFilters, neighborFilters, mapDefinition);
         return filteredLocations;
     }
 
@@ -115,15 +109,8 @@ public static class DistributionStrategies
             ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
             : [];
         var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
-        var polygonFilters = PolygonFilters(countryCode, mapDefinition, "N/A")
-            .Where(f => File.Exists(f.PolygonsPath));
-        var polygonBuckets = polygonFilters
-            .Select(f =>
-            {
-                var polygonsFromFile = PolygonReader.DeserializePolygonsFromFile(f.PolygonsPath);
-                return LocationLookupService.Bucketize(polygonsFromFile, f.HashPrecisionFromPolygonFilter(polygonsFromFile));
-            }).ToArray();
-        var locations = FilteredLocations(countryCode, mapDefinition, "", allLocations, neighborLocationBuckets, proximityLocationBuckets, polygonBuckets);
+        var geometryFilters = GeometryFilters(countryCode, mapDefinition, "N/A").ProcessGeometryFilters();
+        var locations = FilteredLocations(countryCode, mapDefinition, "", allLocations, neighborLocationBuckets, proximityLocationBuckets, geometryFilters.geometries);
         if (locations.Length == 0)
         {
             return [([], 0, 0)];
@@ -169,17 +156,9 @@ public static class DistributionStrategies
                 : [];
             var proximityLocationBucket = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
             proximityLocationBuckets[subdivision] = proximityLocationBucket;
-            var polygonFilters = PolygonFilters(countryCode, mapDefinition, subdivision)
-                .Where(f => File.Exists(f.PolygonsPath))
-                .ToArray();
-            var polygonBuckets = polygonFilters
-                .Select(f =>
-                {
-                    var polygonsFromFile = PolygonReader.DeserializePolygonsFromFile(f.PolygonsPath);
-                    return LocationLookupService.Bucketize(polygonsFromFile, f.HashPrecisionFromPolygonFilter(polygonsFromFile));
-                }).ToArray();
+            var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).ProcessGeometryFilters();
             allAvailableLocations[subdivision] = availableSubdivisions.Contains(subdivision)
-                    ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationsBuckets[subdivision], proximityLocationBuckets[subdivision], polygonBuckets, locationFilter, proximityFilter, polygonFilters, mapDefinition.NeighborFilters, mapDefinition)
+                    ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationsBuckets[subdivision], proximityLocationBuckets[subdivision], geometryFilters.geometries, locationFilter, proximityFilter, geometryFilters.filters, mapDefinition.NeighborFilters, mapDefinition)
                     : [];
         }
 
@@ -281,17 +260,9 @@ public static class DistributionStrategies
             var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
 
             var neighborLocationBuckets = LocationLookupService.Bucketize(deserializeFromFile, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
-            var polygonFilters = PolygonFilters(countryCode, mapDefinition, subdivision)
-                .Where(f => File.Exists(f.PolygonsPath))
-                .ToArray();
-            var polygonBuckets = polygonFilters
-                .Select(f =>
-                {
-                    var polygonsFromFile = PolygonReader.DeserializePolygonsFromFile(f.PolygonsPath);
-                    return LocationLookupService.Bucketize(polygonsFromFile, f.HashPrecisionFromPolygonFilter(polygonsFromFile));
-                }).ToArray();
+            var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).ProcessGeometryFilters();
             allAvailableLocations.AddRange(availableSubdivisions.Contains(subdivision)
-                ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, polygonBuckets, locationFilter, proximityFilter, polygonFilters, mapDefinition.NeighborFilters, mapDefinition)
+                ? LocationLakeFilterer.Filter(deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets, geometryFilters.geometries, locationFilter, proximityFilter, geometryFilters.filters, mapDefinition.NeighborFilters, mapDefinition)
                 : []);
         }
 
@@ -336,20 +307,13 @@ public static class DistributionStrategies
                     _ => mapDefinition.ProximityFilter
                 };
                 var neighbourFilters = locationPreferenceFilter.NeighborFilters.Concat(mapDefinition.NeighborFilters).ToArray();
-                var polygonFilters = locationPreferenceFilter.PolygonFilters switch
+                var preferenceGeometryFilters = locationPreferenceFilter.GeometryFilters switch
                 {
-                    { Length: > 0 } => locationPreferenceFilter.PolygonFilters
-                        .Where(f => File.Exists(f.PolygonsPath))
-                        .ToArray(),
+                    { Length: > 0 } => locationPreferenceFilter.GeometryFilters,
                     _ => []
                 };
-                var polygonBuckets = polygonFilters
-                    .Select(f =>
-                    {
-                        var polygonsFromFile = PolygonReader.DeserializePolygonsFromFile(f.PolygonsPath);
-                        return LocationLookupService.Bucketize(polygonsFromFile, f.HashPrecisionFromPolygonFilter(polygonsFromFile));
-                    }).ToArray();
-                var filtered = LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, polygonBuckets, locationPreferenceFilter.Expression, proximityFilter, polygonFilters, neighbourFilters, mapDefinition);
+                var geometryFilters = preferenceGeometryFilters.ProcessGeometryFilters();
+                var filtered = LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, geometryFilters.geometries, locationPreferenceFilter.Expression, proximityFilter, geometryFilters.filters, neighbourFilters, mapDefinition);
                 var goalCount = locationPreferenceFilter.Fill || locationPreferenceFilter.Percentage is null
                     ? regionGoalCount - locations.Count
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();
@@ -397,14 +361,14 @@ public static class DistributionStrategies
             _ => mapDefinition.ProximityFilter
         };
 
-    private static PolygonFilter[] PolygonFilters(string countryCode, MapDefinition mapDefinition, string subdivision) =>
+    private static GeometryFilter[] GeometryFilters(string countryCode, MapDefinition mapDefinition, string subdivision) =>
         mapDefinition switch
         {
             _ when
-                mapDefinition.SubdivisionPolygonFilters.TryGetValue(countryCode, out var countrySubdivisionPolygonFilters) &&
-                countrySubdivisionPolygonFilters.TryGetValue(subdivision, out var subdivisionPolygonFilter) => subdivisionPolygonFilter,
-            _ when mapDefinition.CountryPolygonFilters.TryGetValue(countryCode, out var countryPolygonFilter) => countryPolygonFilter,
-            _ => mapDefinition.PolygonFilters
+                mapDefinition.SubdivisionGeometryFilters.TryGetValue(countryCode, out var countrySubdivisionGeometryFilters) &&
+                countrySubdivisionGeometryFilters.TryGetValue(subdivision, out var subdivisionGeometryFilters) => subdivisionGeometryFilters,
+            _ when mapDefinition.CountryGeometryFilters.TryGetValue(countryCode, out var countryGeometryFilters) => countryGeometryFilters,
+            _ => mapDefinition.GeometryFilters
         };
 
     private enum Status

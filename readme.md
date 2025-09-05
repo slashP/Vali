@@ -344,23 +344,23 @@ If you have a `.csv` or `.json` file with locations (standard formats, f.ex. exp
   }
 }
 ```
-## Polygon filters
-Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. created using [geojson.io](https://geojson.io) or the [Map Polygon Tool](https://www.keene.edu/campus/maps/tool/)).
+## Geometry filters
+Vali can filter locations that are in *any* geometry inside a GeoJSON file (e.g. created using [geojson.io](https://geojson.io) or the [Map Polygon Tool](https://www.keene.edu/campus/maps/tool/)).
 ```json
 {
-  "polygonFilters": [
+  "geometryFilters": [
     {
-      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json"
+      "geometriesPath": "c:\\priv\\vali-maps\\home-city.json"
     }
   ]
 }
 ```
 ```json
 {
-  "countryPolygonFilters": {
+  "countryGeometryFilters": {
     "AR": [
       {
-        "polygonsPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
+        "geometriesPath": "c:\\priv\\vali-maps\\argentina-custom-area.json"
       }
     ]
   }
@@ -368,24 +368,24 @@ Vali can filter locations that are in *any* polygon inside a GeoJSON file (e.g. 
 ```
 ```json
 {
-  "subdivisionPolygonFilters": {
+  "subdivisionGeometryFilters": {
     "AR": {
       "AR-B": [
         {
-          "polygonsPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
+          "geometriesPath": "c:\\priv\\vali-maps\\buenos-aires-inner-city.json"
         }
       ]
     }
   }
 }
 ```
-It can also be specified, that the locations must *not* be in *any* polygon in the file:
+It can also be specified, that the locations must *not* be in *any* geometry in the file:
 ```json
 {
-  "polygonFilters": [
+  "geometryFilters": [
     {
-      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json",
-      "insidePolygon": false
+      "geometriesPath": "c:\\priv\\vali-maps\\home-city.json",
+      "locationsInside": false
     }
   ]
 }
@@ -393,14 +393,14 @@ It can also be specified, that the locations must *not* be in *any* polygon in t
 Multiple filters can be added, which must all be met for a location to be selected. For example to generate locations that are in your home county but not your home city:
 ```json
 {
-  "polygonFilters": [
+  "geometryFilters": [
     {
-      "polygonsPath": "c:\\priv\\vali-maps\\home-county.json",
-      "insidePolygon": true
+      "geometriesPath": "c:\\priv\\vali-maps\\home-county.json",
+      "locationsInside": true
     }
     {
-      "polygonsPath": "c:\\priv\\vali-maps\\home-city.json",
-      "insidePolygon": false
+      "geometriesPath": "c:\\priv\\vali-maps\\home-city.json",
+      "locationsInside": false
     }
   ]
 }

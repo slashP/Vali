@@ -15,7 +15,7 @@ public static class GenerateFileValidator
             ?.ValidatePreferenceFilters()
             ?.ValidateNeighborFilters()
             ?.ValidateProximityFilters()
-            ?.ValidatePolygonFilters()
+            ?.ValidateGeometryFilters()
             ?.ValidateDistributionStrategy()
             ?.ValidateInclusions()
             ?.ValidateExclusions()

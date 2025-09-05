@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using NetTopologySuite.Geometries;
 using ProtoBuf;
 
 namespace Vali.Core;

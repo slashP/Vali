@@ -224,17 +224,17 @@ public static class FilterValidation
         return definition;
     }
 
-    public static MapDefinition? ValidatePolygonFilters(this MapDefinition definition)
+    public static MapDefinition? ValidateGeometryFilters(this MapDefinition definition)
     {
-        var polygonFilters = definition.PolygonFilters
-            .Concat(definition.CountryPolygonFilters.SelectMany(f => f.Value))
-            .Concat(definition.SubdivisionPolygonFilters.Select(s => s.Value).SelectMany(f => f.Values).SelectMany(f => f))
+        var geometryFilters = definition.GeometryFilters
+            .Concat(definition.CountryGeometryFilters.SelectMany(f => f.Value))
+            .Concat(definition.SubdivisionGeometryFilters.Select(s => s.Value).SelectMany(f => f.Values).SelectMany(f => f))
             .ToArray();
-        foreach (var polygonFilter in polygonFilters)
+        foreach (var geometryFilter in geometryFilters)
         {
-            if (!string.IsNullOrEmpty(polygonFilter.PolygonsPath) && !File.Exists(polygonFilter.PolygonsPath))
+            if (!string.IsNullOrEmpty(geometryFilter.GeometriesPath) && !File.Exists(geometryFilter.GeometriesPath))
             {
-                ConsoleLogger.Error($"File {polygonFilter.PolygonsPath} used in a {nameof(polygonFilter)} does not exist.");
+                ConsoleLogger.Error($"File {geometryFilter.GeometriesPath} used in a {nameof(geometryFilter)} does not exist.");
                 return null;
             }
         }
