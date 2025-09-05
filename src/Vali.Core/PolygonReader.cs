@@ -24,7 +24,7 @@ public class PolygonReader
 
             try
             {
-                Geometry[] geometries = GeoJsonSerialization.DeserializeFromFile(path).Result;
+                Geometry[] geometries = GeoJsonSerialization.DeserializeFromFile(path);
                 return geometries
                     .Where(g => g.OgcGeometryType == OgcGeometryType.Polygon)
                     .Select(g => new Polygon(
