@@ -24,10 +24,9 @@ public static class LocationLakeFilterer
         IReadOnlyCollection<Loc> locationsFromFile,
         Dictionary<string, List<Loc>> neighborLocationBuckets,
         Dictionary<string, List<ILatLng>> proximityLocationBuckets,
-        Geometry[][] geometries,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
-        GeometryFilter[] geometryFilters,
+        (GeometryFilter F, Geometry[] G)[] geometryFilters,
         NeighborFilter[] neighborFilters,
         MapDefinition mapDefinition)
     {
@@ -71,15 +70,11 @@ public static class LocationLakeFilterer
             locations = FilterByProximity(locs, proximityFilter, proximityLocationBuckets);
         }
 
-        for (int i = 0; i < geometryFilters.Length; i++)
+        if (geometryFilters.Length > 0)
         {
-            if (File.Exists(geometryFilters[i].GeometriesPath))
-            {
-                var locs = locations.ToArray();
-                locations = FilterByGeometries(locs, geometryFilters[i], geometries[i]);
-            }
+            var locs = locations.ToArray();
+            locations = FilterByGeometries(locs, geometryFilters);
         }
-       
 
         foreach (var neighborFilter in neighborFilters)
         {
@@ -386,9 +381,12 @@ public static class LocationLakeFilterer
 
     private static IEnumerable<Loc> FilterByGeometries(
         IReadOnlyCollection<Loc> locations,
-        GeometryFilter geometryFilter,
-        Geometry[] geometries)
+        (GeometryFilter F, Geometry[] G)[] geometryFilters)
     {
-        return locations.Where(l => geometries.Any(g => g.Covers(new Point(l.Lng, l.Lat))) == geometryFilter.LocationsInside);
+        return locations.Where(l => 
+        {
+            var point = new Point(l.Lng, l.Lat);
+            return geometryFilters.All(f => f.G.Any(g => g.Covers(point)) == f.F.LocationsInside);
+        });
     }
 }

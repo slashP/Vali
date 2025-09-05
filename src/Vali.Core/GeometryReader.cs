@@ -34,12 +34,12 @@ public static class GeometryReader
         }
     }
 
-    public static (GeometryFilter[] filters, Geometry[][] geometries) ProcessGeometryFilters(this GeometryFilter[] filters)
+    public static (GeometryFilter filters, Geometry[] geometries)[] ProcessGeometryFilters(this GeometryFilter[] filters)
     {
-        var filterFiles = filters
+        return filters
             .Where(f => File.Exists(f.GeometriesPath))
             .Select(f => (f, g: GeometryReader.DeserializeGeometriesFromFile(f.GeometriesPath)))
-            .Where(r => r.g.Length > 0);
-        return (filterFiles.Select(r => r.f).ToArray(), filterFiles.Select(r => r.g).ToArray());
+            .Where(r => r.g.Length > 0)
+            .ToArray();
     }
 }

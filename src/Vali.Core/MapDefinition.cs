@@ -1,7 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using Vali.Core.Hash;
-
-namespace Vali.Core;
+﻿namespace Vali.Core;
 
 public record MapDefinition
 {
