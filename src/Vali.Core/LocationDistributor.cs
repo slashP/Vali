@@ -1,5 +1,6 @@
 ﻿using Spectre.Console;
 using Vali.Core.Hash;
+using Weighted_Randomizer;
 
 namespace Vali.Core;
 
@@ -10,9 +11,10 @@ public static class LocationDistributor
     public static (IList<T> locations, int minDistance) WithMaxMinDistance<T, T2>(
         ICollection<T> locations,
         int goalCount,
+        LocationProbability locationProbability,
         IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
         bool avoidShuffle = false,
-        int? minMinDistance = null) where T : IDistributionLocation<T2> where T2 : notnull
+        int? minMinDistance = null) where T : IDistributionLocation<T2> where T2 : IComparable<T2>
     {
         if (goalCount <= 0 || locations.Count == 0)
         {
@@ -26,7 +28,7 @@ public static class LocationDistributor
         do
         {
             var minDistance = distances[minDistanceIndex];
-            var distributedLocations = DistributeEvenly<T, T2>(locations, minDistance, avoidShuffle: avoidShuffle, silent: true, locationsAlreadyInMap: locationsAlreadyInMap)
+            var distributedLocations = DistributeEvenly<T, T2>(locations, minDistance, locationProbability, avoidShuffle: avoidShuffle, silent: true, locationsAlreadyInMap: locationsAlreadyInMap)
                 .TakeRandom(goalCount)
                 .ToArray();
             visited[minDistance] = distributedLocations;
@@ -79,10 +81,11 @@ public static class LocationDistributor
     public static IList<T> DistributeEvenly<T, T2>(
         ICollection<T> locations,
         int minDistanceBetweenLocations,
+        LocationProbability locationProbability,
         bool avoidShuffle = false,
         bool ensureNoNeighborSpill = true,
         IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
-        bool silent = false) where T : IDistributionLocation<T2>, ILatLng where T2 : notnull
+        bool silent = false) where T : IDistributionLocation<T2>, ILatLng where T2 : IComparable<T2>
     {
         var list = new List<(T loc, string hash)>();
         var precision = minDistanceBetweenLocations switch
@@ -112,7 +115,7 @@ public static class LocationDistributor
                 var neighbors = Hasher.Neighbors(group.Key).Select(x => x.Value).ToArray();
                 var alreadyInMap = ensureNoNeighborSpill ? list.Where(x => neighbors.Contains(x.hash)).Select(x => (ILatLng)x.loc).Concat(locationsAlreadyInMap ?? []).ToArray() : (locationsAlreadyInMap ?? []);
                 var distributionLocations = group.ToArray();
-                var selection = GetSome<T, T2>(distributionLocations, 1_000_000, minDistanceBetweenLocations, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
+                var selection = GetSome<T, T2>(distributionLocations, 1_000_000, minDistanceBetweenLocations, locationProbability, locationsAlreadyInMap: alreadyInMap, avoidShuffle: avoidShuffle);
                 list.AddRange(selection.Select(x => (x, ensureNoNeighborSpill ? Hasher.Encode(x.Lat, x.Lng, precision) : "")));
 
                 task?.Increment(1);
@@ -124,8 +127,9 @@ public static class LocationDistributor
         ICollection<T> locations,
         int goalCount,
         int minDistanceBetweenLocations,
+        LocationProbability locationProbability,
         IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
-        bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : notnull
+        bool avoidShuffle = false) where T : IDistributionLocation<T2> where T2 : IComparable<T2>
     {
         if (goalCount <= 0 || locations.Count == 0)
         {
@@ -157,9 +161,30 @@ public static class LocationDistributor
             }
         }
 
+        DynamicWeightedRandomizer<T2>? randomizer = null;
+        if (typeof(T) == typeof(Location) && locationProbability.WeightOverrides.Length > 0)
+        {
+            randomizer = [];
+            foreach (var distributionLocation in notProcessed)
+            {
+                var weight = locationProbability.WeightOverrides
+                    .Select(e => new
+                    {
+                        IsMatch = LocationLakeFilterer.CompileBoolLocationExpression(e.Expression)((locationsLookup[distributionLocation.Key] as Location)!),
+                        e.Weight
+                    })
+                    .FirstOrDefault(x => x.IsMatch)?.Weight ?? locationProbability.DefaultWeight;
+                randomizer[distributionLocation.Key] = weight;
+            }
+        }
+
         while (resultLocations.Count < goalCount && notProcessed.Count != 0)
         {
-            var randomPoint = notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value;
+            var randomPoint = randomizer switch
+            {
+                not null => notProcessed[randomizer.NextWithRemoval()],
+                _ => notProcessed.ElementAt(avoidShuffle ? 0 : Random.Shared.Next(0, notProcessed.Count)).Value
+            };
             notProcessed.Remove(randomPoint.LocationId);
             resultLocations.Add(locationsLookup[randomPoint.LocationId]);
 
@@ -168,6 +193,7 @@ public static class LocationDistributor
                 if (Extensions.PointsAreCloserThan(pointOnMap.Lat, pointOnMap.Lng, randomPoint.Lat, randomPoint.Lng, minDistanceBetweenLocations))
                 {
                     notProcessed.Remove(pointOnMap.LocationId);
+                    randomizer?.Remove(pointOnMap.LocationId);
                 }
             }
         }

@@ -57,8 +57,8 @@ public class SubdivisionSuggester
 
                         var some = locations.GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_39x20));
                         var minDistanceBetweenLocations = 2000;
-                        var someOfThem = some.SelectMany(x => LocationDistributor.GetSome<Location, long>(x.ToArray(), 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations + 100)).ToArray();
-                        var distribution = LocationDistributor.GetSome<Location, long>(someOfThem, 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations);
+                        var someOfThem = some.SelectMany(x => LocationDistributor.GetSome<Location, long>(x.ToArray(), 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations + 100, new())).ToArray();
+                        var distribution = LocationDistributor.GetSome<Location, long>(someOfThem, 1_000_000, minDistanceBetweenLocations: minDistanceBetweenLocations, new());
                         entries.Add(new SubdivisionDistributionEntry
                         {
                             Code = subDivision,
