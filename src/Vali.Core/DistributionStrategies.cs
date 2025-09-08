@@ -112,11 +112,12 @@ public static class DistributionStrategies
             return [([], 0, 0)];
         }
 
+        var locationProbability = LocationProbability(countryCode, mapDefinition, "N/A");
         var minDistance = mapDefinition.DistributionStrategy.MinMinDistance;
         var filteredLocations = locations
             .GroupBy(x => Hasher.Encode(x.Lat, x.Lng, HashPrecision.Size_km_1x1))
             .AsParallel()
-            .SelectMany(x => LocationDistributor.GetSome<Loc, long>([.. x], (120_000m/files.Length).RoundToInt(), minDistance / 2))
+            .SelectMany(x => LocationDistributor.GetSome<Loc, long>([.. x], (120_000m/files.Length).RoundToInt(), minDistance / 2, locationProbability))
             .ToArray();
         var tuple = ByMaxMinDistance(filteredLocations, goalCount, neighborLocationBuckets, proximityLocationBuckets, minDistance, mapDefinition, countryCode, "");
         var diff = goalCount - tuple.locations.Count;
@@ -179,7 +180,8 @@ public static class DistributionStrategies
                     break;
                 }
 
-                var subdivisionLocations = LocationDistributor.GetSome<Location, long>(subdivisionAvailableLocations, subdivisionGoalCount, fixedMinDistance);
+                var locationProbability = LocationProbability(countryCode, mapDefinition, subdivision);
+                var subdivisionLocations = LocationDistributor.GetSome<Location, long>(subdivisionAvailableLocations, subdivisionGoalCount, fixedMinDistance, locationProbability);
                 if (subdivisionLocations.Count < subdivisionGoalCount)
                 {
                     triedGoalCounts.Add((totalGoalCount, Status.Fail));
@@ -263,7 +265,8 @@ public static class DistributionStrategies
         }
 
         var minDistanceBetweenLocations = mapDefinition.DistributionStrategy.FixedMinDistance;
-        var locations = LocationDistributor.DistributeEvenly<Loc, long>(allAvailableLocations, minDistanceBetweenLocations);
+        var locationProbability = LocationProbability(countryCode, mapDefinition, "N/A");
+        var locations = LocationDistributor.DistributeEvenly<Loc, long>(allAvailableLocations, minDistanceBetweenLocations, locationProbability);
         return [(locations, -1, minDistanceBetweenLocations)];
     }
 
@@ -291,6 +294,7 @@ public static class DistributionStrategies
             _ when mapDefinition.CountryLocationPreferenceFilters.TryGetValue(countryCode, out var countryPreferences) => countryPreferences,
             _ => mapDefinition.GlobalLocationPreferenceFilters
         };
+        var locationProbability = LocationProbability(countryCode, mapDefinition, subdivision);
         if (preferenceFilters.Any())
         {
             var locations = new List<Loc>();
@@ -306,7 +310,7 @@ public static class DistributionStrategies
                     : (regionGoalCount * locationPreferenceFilter.Percentage / 100m).Value.RoundToInt();
                 var minMinDistance = locationPreferenceFilter.MinMinDistance ?? minDistance;
                 IReadOnlyCollection<ILatLng> locationsAlreadyInMap = usedLocations.Any() ? locations.Concat<ILatLng>(usedLocations).ToArray() : locations;
-                var withMaxMinDistance = LocationDistributor.WithMaxMinDistance<Loc, long>(filtered, goalCount, minMinDistance: minMinDistance, locationsAlreadyInMap: locationsAlreadyInMap);
+                var withMaxMinDistance = LocationDistributor.WithMaxMinDistance<Loc, long>(filtered, goalCount, minMinDistance: minMinDistance, locationsAlreadyInMap: locationsAlreadyInMap, locationProbability: locationProbability);
                 lastMinMinDistance = withMaxMinDistance.minDistance;
                 IEnumerable<Loc> locationsFromPreference = withMaxMinDistance.locations;
                 if (!string.IsNullOrEmpty(locationPreferenceFilter.LocationTag))
@@ -322,7 +326,7 @@ public static class DistributionStrategies
             return (locations, lastMinMinDistance);
         }
 
-        return LocationDistributor.WithMaxMinDistance<Loc, long>(filteredLocations, regionGoalCount, minMinDistance: minDistance, locationsAlreadyInMap: usedLocations);
+        return LocationDistributor.WithMaxMinDistance<Loc, long>(filteredLocations, regionGoalCount, minMinDistance: minDistance, locationsAlreadyInMap: usedLocations, locationProbability: locationProbability);
     }
 
     private static string? LocationFilter(string countryCode, MapDefinition mapDefinition, string subdivision)
@@ -356,6 +360,16 @@ public static class DistributionStrategies
                 countrySubdivisionGeometryFilters.TryGetValue(subdivision, out var subdivisionGeometryFilters) => subdivisionGeometryFilters,
             _ when mapDefinition.CountryGeometryFilters.TryGetValue(countryCode, out var countryGeometryFilters) => countryGeometryFilters,
             _ => mapDefinition.GeometryFilters
+        };
+
+    private static LocationProbability LocationProbability(string countryCode, MapDefinition mapDefinition, string subdivision) =>
+        mapDefinition switch
+        {
+            _ when
+                mapDefinition.SubdivisionLocationProbabilities.TryGetValue(countryCode, out var countrySubdivisionLocationProbabilities) &&
+                countrySubdivisionLocationProbabilities.TryGetValue(subdivision, out var subdivisionLocationProbability) => subdivisionLocationProbability,
+            _ when mapDefinition.CountryLocationProbabilities.TryGetValue(countryCode, out var countryLocationProbability) => countryLocationProbability,
+            _ => mapDefinition.GlobalLocationProbability
         };
 
     private enum Status

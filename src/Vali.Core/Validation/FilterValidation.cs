@@ -50,12 +50,6 @@ public static class FilterValidation
             }
         }
 
-        static void DryRun(string filter)
-        {
-            var expression = LocationLakeFilterer.CompileExpression<Location, bool>(filter, true);
-            var locations = EmptyLocationArray().Where(expression).ToArray();
-        }
-
         static void DryRunNeighborFilter(string filter)
         {
             var expression = LocationLakeFilterer.CompileParentBoolLocationExpression(filter);
@@ -350,6 +344,41 @@ public static class FilterValidation
         return definition;
     }
 
+    public static MapDefinition? ValidateLocationProbabilities(this MapDefinition definition)
+    {
+        var locationProbabilities = definition.CountryLocationProbabilities.Select(x => x.Value)
+            .Concat(definition.SubdivisionLocationProbabilities.SelectMany(x => x.Value.Select(y => y.Value)))
+            .Concat([definition.GlobalLocationProbability])
+            .Where(x => x.WeightOverrides.Any())
+            .ToArray();
+
+        foreach (var locationProbability in locationProbabilities)
+        {
+            if (locationProbability.DefaultWeight <= 0)
+            {
+                ConsoleLogger.Error($"defaultWeight must be larger than 0.");
+                return null;
+            }
+
+            if (locationProbability.WeightOverrides.Any(w => w.Weight <= 0))
+            {
+                ConsoleLogger.Error($"locationProbability.weight must be larger than 0.");
+                return null;
+            }
+
+            foreach (var weightOverride in locationProbability.WeightOverrides)
+            {
+                var def = definition.ValidateExpression(weightOverride.Expression, DryRun, $"Invalid location probability override expression {weightOverride.Expression}", LocationLakeFilterer.ValidProperties(), LocationLakeFilterer.ValidProperties());
+                if (def == null)
+                {
+                    return null;
+                }
+            }
+        }
+
+        return definition;
+    }
+
     private static bool IsSingleQuoteWord(string expression)
     {
         const char singleQuote = '\'';
@@ -362,6 +391,12 @@ public static class FilterValidation
         }
 
         return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue || c == '_');
+    }
+
+    static void DryRun(string filter)
+    {
+        var expression = LocationLakeFilterer.CompileExpression<Location, bool>(filter, true);
+        var locations = EmptyLocationArray().Where(expression).ToArray();
     }
 
     public static IEnumerable<Location> EmptyLocationArray() =>

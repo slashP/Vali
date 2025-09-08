@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using Vali.Core.Hash;
 
 namespace Vali.Core;
 
@@ -28,6 +27,9 @@ public record MapDefinition
     public Dictionary<string, string> NamedExpressions { get; set; } = new();
     public string[] UsedLocationsPaths { get; set; } = [];
     public bool EnableDefaultLocationFilters { get; set; }
+    public LocationProbability GlobalLocationProbability { get; set; } = new();
+    public Dictionary<string, LocationProbability> CountryLocationProbabilities { get; set; } = new();
+    public Dictionary<string, Dictionary<string, LocationProbability>> SubdivisionLocationProbabilities { get; set; } = new();
 }
 
 public record ProximityFilter
@@ -138,4 +140,16 @@ public record PanningExpression
 {
     public string Expression { get; set; } = "";
     public string Panning { get; set; } = "";
+}
+
+public record LocationProbability
+{
+    public int DefaultWeight { get; set; }
+    public LocationWeightOverride[] WeightOverrides { get; set; } = [];
+}
+
+public record LocationWeightOverride
+{
+    public string Expression { get; set; } = "";
+    public int Weight { get; set; }
 }

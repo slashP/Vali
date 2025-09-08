@@ -120,7 +120,7 @@ public class LiveGenerate
         {
             ConsoleLogger.Info("Distributing locations");
             var distributed = mapDefinition.Countries
-                .Select(c => LocationDistributor.DistributeEvenly<MapCheckrLocation, string>(_locations.Where(l => l.countryCode == c.Key).ToArray(), minDistanceBetweenLocations: mapDefinition.Distribution.MinMinDistance, silent: true).TakeRandom(c.Value).ToList())
+                .Select(c => LocationDistributor.DistributeEvenly<MapCheckrLocation, string>(_locations.Where(l => l.countryCode == c.Key).ToArray(), minDistanceBetweenLocations: mapDefinition.Distribution.MinMinDistance, silent: true, locationProbability: new()).TakeRandom(c.Value).ToList())
                 .SelectMany(x => x)
                 .ToArray();
             await SaveLocations(mapDefinition, "-locations-distributed", distributed);

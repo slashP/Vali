@@ -19,7 +19,8 @@ public static class GenerateFileValidator
             ?.ValidateDistributionStrategy()
             ?.ValidateInclusions()
             ?.ValidateExclusions()
-            ?.ValidateOutput();
+            ?.ValidateOutput()
+            ?.ValidateLocationProbabilities();
 
     public static async Task<string?> ReadFile(string path)
     {
