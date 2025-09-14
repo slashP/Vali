@@ -4,7 +4,6 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Vali.Core.Data;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace Vali.Core.Google;
 
@@ -27,7 +26,7 @@ public class GoogleApi
         IReadOnlyCollection<MapCheckrLocation> locations,
         string countryCode,
         int chunkSize,
-        Dictionary<string, string?> countryPanning,
+        Dictionary<string, CountryPanning?> countryPanning,
         bool silent = false,
         bool rejectLocationsWithoutDescription = true)
     {
@@ -58,7 +57,7 @@ public class GoogleApi
             bool rejectLocationsWithoutDescription,
             bool silent,
             PanoStrategy selectionStrategy,
-            Dictionary<string, string?>? countryPanning,
+            Dictionary<string, CountryPanning?>? countryPanning,
             bool includeLinked,
             DateOnly? panoVerificationStart,
             DateOnly? panoVerificationEnd,
@@ -76,7 +75,7 @@ public class GoogleApi
         bool rejectLocationsWithoutDescription,
         string? knownCountryCode,
         PanoStrategy selectionStrategy,
-        Dictionary<string, string?>? countryPanning,
+        Dictionary<string, CountryPanning?>? countryPanning,
         bool includeLinked,
         DateOnly? panoVerificationStart,
         DateOnly? panoVerificationEnd,
@@ -194,17 +193,7 @@ public class GoogleApi
             }
 
             var defaultDrivingDirectionAngle = baseInfoArray[1]!.AsArray().Count >= 3 && baseInfoArray[1]![2]?.AsArray().Count > 0 && baseInfoArray[1]![2]![0] != null ? (ushort)Math.Round(baseInfoArray[1]![2]![0]!.GetValue<decimal>(), 0) : (ushort)1000;
-
-            string? panning = null;
-            countryPanning?.TryGetValue(countryCode ?? "", out panning);
-            var heading = (arrows, panning?.ToLower()) switch
-            {
-                ({ Length: > 1 }, "indrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).MinBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
-                ({ Length: > 1 }, "awayfromdrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).MaxBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
-                ({ Length: > 2 }, _) => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.TakeRandom(1).Single(),
-                ({ Length: > 0 }, _) => arrows[Random.Shared.Next(0, arrows.Length)]![1]![3]!.GetValue<decimal>(),
-                _ => baseInfoArray[1]!.AsArray().Count >= 3 && baseInfoArray[1]![2]?.AsArray().Count > 0 && baseInfoArray[1]![2]![0] != null ? Math.Round(baseInfoArray[1]![2]![0]!.GetValue<decimal>(), 0) : 1000
-            };
+            var heading = Heading(countryPanning, countryCode, resolutionHeight, year, month, arrows, defaultDrivingDirectionAngle, lat, lng);
 
             var defaultArrowCount = (ushort)arrows.Length;
             var selected = selectionStrategy switch
@@ -233,7 +222,7 @@ public class GoogleApi
             bool? isGen1 = false;
             if (selected.PanoId != pano)
             {
-                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(selected.PanoId);
+                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(selected.PanoId, countryPanning, countryCode);
                 pano = selected.PanoId;
                 year = selected.Year;
                 month = selected.Month;
@@ -258,7 +247,7 @@ public class GoogleApi
                 var alternativeImageResults = new List<(string pano, int year, int month, ushort defaultDrivingDirectionAngle, ushort arrowCount, decimal heading, double elevation, bool isScout, bool? isGen1, string? copyright, int resolutionHeight, LocationLookupResult result)>();
                 foreach (var alternativePano in alternativeImages.Where(i => i.PanoId != selected.PanoId))
                 {
-                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId);
+                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId, countryPanning, countryCode);
                     result = gen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(detailsCopyright);
                     if (result == LocationLookupResult.Valid)
                     {
@@ -343,7 +332,7 @@ public class GoogleApi
         };
     }
 
-    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, int resolutionHeight, string copyright)> DetailsFromPanoId(string panoId)
+    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, int resolutionHeight, string copyright)> DetailsFromPanoId(string panoId,  Dictionary<string, CountryPanning?>? countryPanning, string? countryCode)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -382,15 +371,9 @@ public class GoogleApi
 
             var resolutionHeight = metadataResponse[1]![0]![2]?[2]?[0]?.GetValue<int>() ?? 0;
             var isGen1 = resolutionHeight <= Resolution.Gen1;
-            var arrows = metadataResponse[1]![0]![5]?[0]?.AsArray().Count > 6 ? metadataResponse[1]![0]![5]?[0]?[6]?.AsArray() ?? []: [];
+            var arrows = metadataResponse[1]![0]![5]?[0]?.AsArray().Count > 6 ? metadataResponse[1]![0]![5]?[0]?[6]?.AsArray().ToArray() ?? []: [];
             var drivingDirectionAngle = metadataResponse[1]![0]![5]?[0]![1]!.AsArray().Count > 2 ? (ushort)Math.Round(metadataResponse[1]![0]![5]?[0]![1]![2]?[0]!.GetValue<decimal>() ?? 0, 0) : (ushort)0;
             var elevation = metadataResponse[1]![0]![5]?[0]![1]![1]?[0]?.GetValue<double>() ?? -1;
-            var heading = arrows switch
-            {
-                { Count: > 2 } => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.TakeRandom(1).Single(),
-                { Count: > 0 } => arrows[Random.Shared.Next(0, arrows.Count)]![1]![3]!.GetValue<decimal>(),
-                _ => drivingDirectionAngle
-            };
             var year = metadataResponse[1]![0]![6]?.AsArray().Count >= 8 ? metadataResponse[1]![0]![6]?[7]![0]!.GetValue<int>() ?? 2000 : 2000;
             if (year < 2001)
             {
@@ -403,7 +386,8 @@ public class GoogleApi
             var isScout = metadataResponse[1]![0]![6]![5]!.AsArray().Count >= 3 &&
                                 metadataResponse[1]![0]![6]![5]![2]!.GetValue<string>() == "scout";
             var copyright = metadataResponse[1]![0]![4]![0]![0]![0]![0]!.GetValue<string>();
-            return (isGen1, drivingDirectionAngle, heading, arrows.Count, elevation, year, month, lat, lng, isScout, resolutionHeight, copyright);
+            var heading = Heading(countryPanning, countryCode, resolutionHeight, year, month, arrows, drivingDirectionAngle, lat, lng);
+            return (isGen1, drivingDirectionAngle, heading, arrows.Length, elevation, year, month, lat, lng, isScout, resolutionHeight, copyright);
         }
         catch (Exception e)
         {
@@ -465,6 +449,55 @@ public class GoogleApi
             Console.WriteLine(e);
             return [];
         }
+    }
+
+    private static decimal Heading(
+        Dictionary<string, CountryPanning?>? countryPannings,
+        string? countryCode,
+        int resolutionHeight,
+        int year,
+        int month,
+        JsonNode?[] arrows,
+        ushort defaultDrivingDirectionAngle,
+        double lat,
+        double lng)
+    {
+        string? panning = null;
+        if (countryPannings != null && countryPannings.TryGetValue(countryCode ?? "", out var countryPanning) && countryPanning != null)
+        {
+            foreach (var panningExpression in countryPanning.PanningExpressions)
+            {
+                var panExpression = LocationLakeFilterer.CompileBoolMapCheckrExpression(panningExpression.Expression, false);
+                var panningShouldApply = panExpression(new MapCheckrLocation
+                {
+                    countryCode = countryCode,
+                    resolutionHeight = resolutionHeight,
+                    year = year,
+                    month = month,
+                    lat = lat,
+                    lng = lng
+                });
+                if (panningShouldApply)
+                {
+                    panning = panningExpression.Panning;
+                    break;
+                }
+            }
+
+            panning ??= countryPanning.DefaultPanning;
+        }
+
+        var heading = (arrows, panning?.ToLower()) switch
+        {
+            ({ Length: > 2 }, "indrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.MinBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
+            ({ Length: > 2 }, "awayfromdrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.MaxBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
+            ({ Length: > 1 }, "indrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).MinBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
+            ({ Length: > 1 }, "awayfromdrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).MaxBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
+            ({ Length: > 2 }, _) => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.TakeRandom(1).Single(),
+            ({ Length: > 0 }, _) => arrows[Random.Shared.Next(0, arrows.Length)]![1]![3]!.GetValue<decimal>(),
+            _ => defaultDrivingDirectionAngle
+        };
+        return heading;
     }
 
     public static async Task<string?> Shorten(double lat, double lng, string panoId)

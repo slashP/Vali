@@ -83,10 +83,9 @@ public static class LocationLakeFilterer
     }
 
     private static readonly ConcurrentDictionary<string, Func<Loc, int>> _cacheInt = new();
-
     private static readonly ConcurrentDictionary<string, Func<Loc, bool>> _cacheBool = new();
-
     private static readonly ConcurrentDictionary<string, Func<Loc, Loc, bool>> _cacheParentBool = new();
+    private static readonly ConcurrentDictionary<string, Func<MapCheckrLocation, bool>> _cacheMapCheckrBool = new();
 
     public static Func<Loc, int> CompileIntLocationExpression(string initialExpression)
     {
@@ -121,6 +120,18 @@ public static class LocationLakeFilterer
 
         var func = CompileExpressionWithParent<Loc, bool>(initialExpression, true);
         _cacheParentBool.TryAdd(initialExpression, func);
+        return func;
+    }
+
+    public static Func<MapCheckrLocation, bool> CompileBoolMapCheckrExpression(string initialExpression, bool fallback)
+    {
+        if (_cacheMapCheckrBool.TryGetValue(initialExpression, out var selector))
+        {
+            return selector;
+        }
+
+        var func = CompileExpression<MapCheckrLocation, bool>(initialExpression, fallback);
+        _cacheMapCheckrBool.TryAdd(initialExpression, func);
         return func;
     }
 

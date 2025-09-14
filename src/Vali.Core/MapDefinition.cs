@@ -122,8 +122,20 @@ public record LocationOutput
     public double? GlobalZoom { get; set; }
     public double? GlobalPitch { get; set; }
     public string? PanoVerificationStrategy { get; set; }
-    public Dictionary<string, string?> CountryPanoVerificationPanning { get; set; } = new();
+    public Dictionary<string, CountryPanning?> CountryPanoVerificationPanning { get; set; } = new();
     public string? PanoVerificationExpression { get; set; }
     public DateOnly? PanoVerificationStart { get; set; }
     public DateOnly? PanoVerificationEnd { get; set; }
+}
+
+public record CountryPanning
+{
+    public string DefaultPanning { get; set; } = "";
+    public PanningExpression[] PanningExpressions { get; set; } = [];
+}
+
+public record PanningExpression
+{
+    public string Expression { get; set; } = "";
+    public string Panning { get; set; } = "";
 }

@@ -1,4 +1,5 @@
-﻿using Vali.Core.Google;
+﻿using Vali.Core.Data;
+using Vali.Core.Google;
 
 namespace Vali.Core.Validation;
 
@@ -37,6 +38,73 @@ public static class OutputValidation
             }
         }
 
+        foreach (var countryPanning in definition.Output.CountryPanoVerificationPanning)
+        {
+            if (string.IsNullOrEmpty(countryPanning.Key) || !CountryCodes.Countries.ContainsKey(countryPanning.Key))
+            {
+                ConsoleLogger.Error($"{nameof(definition.Output.CountryPanoVerificationPanning)} keys must be valid country codes. |{countryPanning.Key}|");
+                return null;
+            }
+
+            if (countryPanning.Value?.DefaultPanning is not ("awayfromdrivingdirection" or "indrivingdirection"))
+            {
+                ConsoleLogger.Error($"{nameof(countryPanning.Value.DefaultPanning)} must be either indrivingdirection or awayfromdrivingdirection.");
+                return null;
+            }
+
+            static void DryRunMapCheckrExpression(string filter)
+            {
+                var expression = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(filter, true);
+                var locations = new[] { ExampleMapCheckrLocation() }.Where(expression).ToArray();
+            }
+
+            foreach (var panningExpression in countryPanning.Value?.PanningExpressions ?? [])
+            {
+                if (string.IsNullOrEmpty(panningExpression.Expression))
+                {
+                    ConsoleLogger.Error($"panningExpression.{nameof(panningExpression.Expression)} cannot be empty.");
+                    return null;
+                }
+
+                var validProperties = new[]
+                {
+                    nameof(MapCheckrLocation.countryCode),
+                    nameof(MapCheckrLocation.lat),
+                    nameof(MapCheckrLocation.lng),
+                    nameof(MapCheckrLocation.year),
+                    nameof(MapCheckrLocation.month),
+                    nameof(MapCheckrLocation.resolutionHeight),
+                };
+                var validatedDefinition = definition.ValidateExpression(
+                    panningExpression.Expression,
+                    DryRunMapCheckrExpression,
+                    $"Invalid panningExpression expression {panningExpression.Expression}",
+                    validProperties,
+                    validProperties);
+                if (validatedDefinition == null)
+                {
+                    return null;
+                }
+
+                if (panningExpression.Panning is not ("awayfromdrivingdirection" or "indrivingdirection"))
+                {
+                    ConsoleLogger.Error($"{nameof(panningExpression.Panning)} must be either indrivingdirection or awayfromdrivingdirection.");
+                    return null;
+                }
+            }
+        }
+
         return definition;
     }
+
+    private static MapCheckrLocation ExampleMapCheckrLocation() =>
+        new()
+        {
+            lat = 20,
+            lng = 40,
+            year = 2023,
+            month = 7,
+            resolutionHeight = 8192,
+            countryCode = "US"
+        };
 }
