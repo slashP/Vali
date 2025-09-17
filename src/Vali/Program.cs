@@ -33,6 +33,7 @@ try
     var rootCommand = new RootCommand("Vali - create locations.");
     var countriesArgument = new Argument<string>("countries");
     var directoryArgument = new Argument<string>("directory");
+    var parallelismArgument = new Argument<int>("parallelism");
     var countryOption = new Option<string>("--country") { IsRequired = false };
     var distributionOption = new Option<string>("--distribution") { IsRequired = false };
     var requiredCountryOption = new Option<string>("--country") { IsRequired = true };
@@ -45,6 +46,11 @@ try
     rootCommand.Add(setDownloadFolderCommand);
     var unsetDownloadFolderCommand = new Command("unset-download-folder", @"Reset download folder to default.");
     rootCommand.AddCommand(unsetDownloadFolderCommand);
+    var setParallelismCommand = new Command("set-parallelism", "Set parallelism in an attempt to use less memory/resources, but more time. Default is 20.");
+    setParallelismCommand.AddArgument(parallelismArgument);
+    rootCommand.Add(setParallelismCommand);
+    var unsetParallelismFolderCommand = new Command("unset-parallelism", "Reset parallelism to default.");
+    rootCommand.AddCommand(unsetParallelismFolderCommand);
     var applicationSettingsCommand = new Command("application-settings");
     rootCommand.AddCommand(applicationSettingsCommand);
 
@@ -257,6 +263,19 @@ try
     unsetDownloadFolderCommand.SetHandler(context =>
     {
         ApplicationSettingsService.UnsetDownloadFolder();
+        context.ExitCode = 100;
+    });
+
+    setParallelismCommand.SetHandler(context =>
+    {
+        var parallelism = context.ParseResult.GetValueForArgument(parallelismArgument);
+        ApplicationSettingsService.SetParallelism(parallelism);
+        context.ExitCode = 100;
+    });
+
+    unsetParallelismFolderCommand.SetHandler(context =>
+    {
+        ApplicationSettingsService.UnsetParallelism();
         context.ExitCode = 100;
     });
 

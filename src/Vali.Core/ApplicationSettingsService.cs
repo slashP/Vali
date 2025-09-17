@@ -16,6 +16,13 @@ public static class ApplicationSettingsService
         WriteApplicationSettings(settings);
     }
 
+    public static void SetParallelism(int parallelism)
+    {
+        var settings = ReadApplicationSettings();
+        settings.Parallelism = parallelism;
+        WriteApplicationSettings(settings);
+    }
+
     public static string? ReadDownloadFolderFromEnvironmentVariable() =>
         Environment.GetEnvironmentVariable(DownloadFolderEnvironmentVariableName);
 
@@ -23,6 +30,13 @@ public static class ApplicationSettingsService
     {
         var settings = ReadApplicationSettings();
         settings.DownloadDirectory = null;
+        WriteApplicationSettings(settings);
+    }
+
+    public static void UnsetParallelism()
+    {
+        var settings = ReadApplicationSettings();
+        settings.Parallelism = null;
         WriteApplicationSettings(settings);
     }
 
@@ -65,4 +79,5 @@ public record ApplicationSettings
 {
     public string? DownloadDirectory { get; set; }
     public string? LocalhostDownloadDirectory { get; set; }
+    public int? Parallelism { get; set; }
 }

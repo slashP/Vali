@@ -28,7 +28,7 @@ public class LocationLakeMapGenerator
             var subdivisionFiles = subDivisions.Select(s => allSubdivisions.First(f => f.subdivisionCode == s).file).ToArray();
             await DataDownloadService.EnsureFilesDownloaded(countryCode, subdivisionFiles);
             var locationCountGoal = CountryLocationCountGoal(mapDefinition, countryCode);
-            var parallelism = 20;
+            var parallelism = ApplicationSettingsService.ReadApplicationSettings().Parallelism ?? 20;
             var locationChunks = mapDefinition.DistributionStrategy.Key switch
             {
                 DistributionStrategies.FixedCountByMaxMinDistance when mapDefinition.DistributionStrategy.TreatCountriesAsSingleSubdivision.Contains(countryCode) => DistributionStrategies.CountryByMaxMinDistance(
