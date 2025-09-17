@@ -269,6 +269,13 @@ try
     setParallelismCommand.SetHandler(context =>
     {
         var parallelism = context.ParseResult.GetValueForArgument(parallelismArgument);
+        if (parallelism is <= 0 or > 100)
+        {
+            ConsoleLogger.Error("parallelism must be greater than 0 and less than 100.");
+            context.ExitCode = -1;
+            return;
+        }
+
         ApplicationSettingsService.SetParallelism(parallelism);
         context.ExitCode = 100;
     });
