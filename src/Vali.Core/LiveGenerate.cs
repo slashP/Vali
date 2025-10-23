@@ -92,7 +92,8 @@ public class LiveGenerate
                             var acceptedCoverage = map.AcceptedCoverage;
                             var batchSize = map.BatchSize;
                             var includeLinked = map.CheckLinkedPanoramas;
-                            await LocationsInCountry(countryCode, locationCount, task, map.FromDate, map.ToDate, boxPrecision, radius, chunkSize, locationFilterFunc, map.PanoSelectionStrategy, map.PanoVerificationStart, map.PanoVerificationEnd, geoJsons, rejectLocationsWithoutDescription, acceptedCoverage, batchSize, includeLinked);
+                            var badCamStrategy = map.BadCamStrategy;
+                            await LocationsInCountry(countryCode, locationCount, task, map.FromDate, map.ToDate, boxPrecision, radius, chunkSize, locationFilterFunc, map.PanoSelectionStrategy, map.PanoVerificationStart, map.PanoVerificationEnd, geoJsons, rejectLocationsWithoutDescription, acceptedCoverage, batchSize, includeLinked, badCamStrategy);
                             await StoreMap(map, false);
                             task.StopTask();
                         }
@@ -168,7 +169,8 @@ public class LiveGenerate
         bool rejectLocationsWithoutDescription,
         string? acceptedCoverage,
         int batchSize,
-        bool includeLinked)
+        bool includeLinked,
+        string badCamStrategy)
     {
         var roads = await GetRoads(countryCode, geoJsons);
         var candidateLocationsCount = Countries.TryGetValue(countryCode, out var locCount)
@@ -219,7 +221,10 @@ public class LiveGenerate
             var panoStrategy = Enum.TryParse<GoogleApi.PanoStrategy>(selectionStrategy, true, out var s)
                 ? s
                 : GoogleApi.PanoStrategy.Newest;
-            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: includeLinked, panoVerificationStart, panoVerificationEnd, GoogleApi.BadCamStrategy.AllowForAll);
+            var badCamStrat = Enum.TryParse<GoogleApi.BadCamStrategy>(badCamStrategy, out var strat)
+                ? strat
+                : GoogleApi.BadCamStrategy.AllowForAll;
+            var googleLocations = await GoogleApi.GetLocations(locations, countryCode, chunkSize: chunkSize, radius: radius, rejectLocationsWithoutDescription: rejectLocationsWithoutDescription, silent: true, selectionStrategy: panoStrategy, countryPanning: null, includeLinked: includeLinked, panoVerificationStart, panoVerificationEnd, badCamStrat);
             var allLinked = includeLinked
                 ? await GetLinked(googleLocations, 0, countryCode, panoStrategy, panoVerificationStart, panoVerificationEnd, chunkSize, rejectLocationsWithoutDescription, new())
                 : [];

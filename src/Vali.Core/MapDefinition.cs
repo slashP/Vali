@@ -85,6 +85,7 @@ public record LiveGenerateMapDefinition
     public string? AcceptedCoverage { get; set; }
     public int BatchSize { get; set; } = 10_000;
     public bool CheckLinkedPanoramas { get; set; }
+    public string BadCamStrategy { get; set; } = "";
 
     public record LocationDistribution
     {
