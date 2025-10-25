@@ -238,7 +238,7 @@ public static class DataDownloadService
 
     private static BlobContainerClient CreateBlobServiceClientForUpdates() => GetBlobServiceClient("countries-updates-v1");
 
-    private static BlobContainerClient CreateBlobServiceClientForRoadData() => GetBlobServiceClient("roads-v1");
+    private static BlobContainerClient CreateBlobServiceClientForRoadData() => GetBlobServiceClient("roads-v2");
 
     private static BlobContainerClient GetBlobServiceClient(string blobContainerName) => new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient(blobContainerName);
 
@@ -416,12 +416,21 @@ public static class DataDownloadService
         memoryStream.Position = 0;
         ZipFile.ExtractToDirectory(memoryStream, roadsFolder);
         ConsoleLogger.Info("Downloaded roads data.");
+
+        foreach (var oldRoadsDataFolderName in OldRoadsDataFolderNames)
+        {
+            var currentDownloadFolder = DownloadFolder(RunMode.Default);
+            var oldRoadsFolder = Path.Combine(currentDownloadFolder, oldRoadsDataFolderName);
+            Directory.Delete(oldRoadsFolder, true);
+        }
     }
+
+    private static readonly string[] OldRoadsDataFolderNames = ["roads-v1"];
 
     public static string RoadsFolder()
     {
         var currentDownloadFolder = DownloadFolder(RunMode.Default);
-        var roadsFolder = Path.Combine(currentDownloadFolder, "roads-v1");
+        var roadsFolder = Path.Combine(currentDownloadFolder, "roads-v2");
         return roadsFolder;
     }
 }

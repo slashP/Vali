@@ -116,7 +116,7 @@ public class GoogleApi
                 return (location, LocationLookupResult.NoImages);
             }
 
-            if (locationResponse.AsArray().Count == 1 && locationResponse[0]?[2]?.GetValue<string>() == "Search returned no images.")
+            if (locationResponse.AsArray().Count == 1 && locationResponse[0]?[2]?.GetValue<string>() is "Search returned no images." or "Invalid location")
             {
                 return (location, LocationLookupResult.NoImages);
             }
@@ -192,7 +192,7 @@ public class GoogleApi
                 return (location, LocationLookupResult.MissingDescription);
             }
 
-            var defaultDrivingDirectionAngle = baseInfoArray[1]!.AsArray().Count >= 3 && baseInfoArray[1]![2]?.AsArray().Count > 0 && baseInfoArray[1]![2]![0] != null ? (ushort)Math.Round(baseInfoArray[1]![2]![0]!.GetValue<decimal>(), 0) : (ushort)1000;
+            var defaultDrivingDirectionAngle = baseInfoArray[1]!.AsArray().Count >= 3 && baseInfoArray[1]![2]?.AsArray().Count > 0 && baseInfoArray[1]![2]![0] != null && baseInfoArray[1]![2]![0]!.GetValueKind() == JsonValueKind.Number ? (ushort)Math.Round(baseInfoArray[1]![2]![0]!.GetValue<decimal>(), 0) : (ushort)1000;
             var heading = Heading(countryPanning, countryCode, resolutionHeight, year, month, arrows, defaultDrivingDirectionAngle, lat, lng);
 
             var defaultArrowCount = (ushort)arrows.Length;

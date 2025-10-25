@@ -127,6 +127,7 @@ public record LocationOutput
     public string? PanoVerificationStrategy { get; set; }
     public Dictionary<string, CountryPanning?> CountryPanoVerificationPanning { get; set; } = new();
     public string? PanoVerificationExpression { get; set; }
+    public int PanoVerificationParallelism { get; set; } = 100;
     public DateOnly? PanoVerificationStart { get; set; }
     public DateOnly? PanoVerificationEnd { get; set; }
 }
