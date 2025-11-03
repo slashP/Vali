@@ -114,7 +114,11 @@ public class DistributionExport
         {
             var subdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, runMode);
             var files = subdivisions.Select(x => x.file).ToArray();
-            await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
+            if (runMode != RunMode.Localhost)
+            {
+                await DataDownloadService.EnsureFilesDownloaded(countryCode, files);
+            }
+
             AnsiConsole.Progress()
                 .Start(ctx =>
                 {

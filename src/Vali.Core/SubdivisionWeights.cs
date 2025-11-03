@@ -102,9 +102,9 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> BA = new()
     {
-        { "BA-BIH", (10, "Federation of Bosnia and Herzegovina") },
-        { "BA-SRP", (10, "Republika Srpska") },
-        { "BA-BRC", (10, "Brčko District") },
+        { "BA-BIH", (1583, "Federation of Bosnia and Herzegovina") },
+        { "BA-SRP", (1364, "Republika Srpska") },
+        { "BA-BRC", (50, "Brčko District") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> BD = new()
@@ -3243,12 +3243,12 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> CY = new()
     {
-        { "CY-04", (10, "Famagusta") },
-        { "CY-06", (10, "Kyrenia") },
-        { "CY-03", (10, "Larnaca") },
-        { "CY-01", (10, "Nicosia") },
-        { "CY-02", (10, "Limassol") },
-        { "CY-05", (10, "Paphos") },
+        { "CY-06", (0, "Kyrenia") },
+        { "CY-04", (24, "Famagusta") },
+        { "CY-03", (110, "Larnaca") },
+        { "CY-01", (203, "Nicosia") },
+        { "CY-02", (157, "Limassol") },
+        { "CY-05", (151, "Paphos") },
     };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> CountryToSubdivision =
@@ -3377,13 +3377,14 @@ public class SubdivisionWeights
             { "NA", NA },
             { "VN", VN },
             { "NP", NP },
+            { "BA", BA },
+            { "CY", CY },
         };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> NotQuiteThereYetCountryToSubdivision =
         new()
         {
             { "PY", PY },
-            { "BA", BA },
             { "UZ", UZ },
             { "TJ", TJ },
             { "SA", SA },
@@ -3413,7 +3414,6 @@ public class SubdivisionWeights
             { "NC", NC },
             { "TO", TO },
             { "TV", TV },
-            { "CY", CY },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;
