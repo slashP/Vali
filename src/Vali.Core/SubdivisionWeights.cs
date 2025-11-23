@@ -1836,24 +1836,24 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> PY = new()
     {
-        { "PY-16", (10, "Upper Paraguay") },
-        { "PY-10", (10, "Upper Parana") },
-        { "PY-13", (10, "Amambay") },
-        { "PY-ASU", (10, "Asuncion") },
-        { "PY-19", (10, "Boqueron") },
-        { "PY-5", (10, "Caaguazu") },
-        { "PY-6", (10, "Caazapa") },
-        { "PY-14", (10, "Canindeyu") },
-        { "PY-11", (10, "Central") },
-        { "PY-1", (10, "Concepcion") },
-        { "PY-3", (10, "Cordillera") },
-        { "PY-4", (10, "Guaira") },
-        { "PY-7", (10, "Itapua") },
-        { "PY-8", (10, "Misiones") },
-        { "PY-12", (10, "Neembucu") },
-        { "PY-9", (10, "Paraguari") },
-        { "PY-15", (10, "President Hayes") },
-        { "PY-2", (10, "Saint Peter") },
+        { "PY-16", (50, "Upper Paraguay") },
+        { "PY-10", (309, "Upper Parana") },
+        { "PY-13", (63, "Amambay") },
+        { "PY-ASU", (28, "Asuncion") },
+        { "PY-19", (172, "Boqueron") },
+        { "PY-5", (185, "Caaguazu") },
+        { "PY-6", (90, "Caazapa") },
+        { "PY-14", (159, "Canindeyu") },
+        { "PY-11", (235, "Central") },
+        { "PY-1", (134, "Concepcion") },
+        { "PY-3", (129, "Cordillera") },
+        { "PY-4", (83, "Guaira") },
+        { "PY-7", (224, "Itapua") },
+        { "PY-8", (94, "Misiones") },
+        { "PY-12", (87, "Neembucu") },
+        { "PY-9", (125, "Paraguari") },
+        { "PY-15", (156, "President Hayes") },
+        { "PY-2", (229, "Saint Peter") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> QA = new()
@@ -3379,12 +3379,12 @@ public class SubdivisionWeights
             { "NP", NP },
             { "BA", BA },
             { "CY", CY },
+            { "PY", PY },
         };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> NotQuiteThereYetCountryToSubdivision =
         new()
         {
-            { "PY", PY },
             { "UZ", UZ },
             { "TJ", TJ },
             { "SA", SA },

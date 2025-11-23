@@ -203,6 +203,7 @@ public static class MapDefinitionDefaults
         countryCodes
             .SelectMany(c => c.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()))
             .SelectMany(s => ExpandCountryCode(s, distributionStrategy))
+            .Distinct()
             .ToArray();
 
     public static string[] ExpandCountryCode(string countryCode, DistributionStrategy distributionStrategy)
@@ -240,7 +241,10 @@ public static class MapDefinitionDefaults
             ["southamerica"] => Distribution(Weights.SouthAmerica, definition),
             ["northamerica"] => Distribution(Weights.NorthAmerica, definition),
             ["oceania"] => Distribution(Weights.Oceania, definition),
-            _ when definition.CountryDistribution.Count == 0 => defaultDistribution.Where(x => countryCodes.Contains(x.Item1))
+            _ when definition.CountryDistribution.Count == 0 && countryCodes.Length == 1 => new() { { countryCodes.Single(), 10 } },
+            _ when definition.CountryDistribution.Count == 0 => defaultDistribution
+                .Where(x => countryCodes.Contains(x.Item1))
+                .DistinctBy(x => x.Item1)
                 .ToDictionary(x => x.Item1, x => x.Item2),
             _ => definition.CountryDistribution
         };
