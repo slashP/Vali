@@ -20,4 +20,8 @@
 	  <None Include="Schemas\*.json" Pack="true" PackagePath="schemas" CopyToOutputDirectory="PreserveNewest" />
 	  <EmbeddedResource Include="Schemas\*.json" />
 	</ItemGroup>
+
+	<Target Name="GenerateSchemas" BeforeTargets="BeforeBuild">
+		<Exec Command="dotnet run --project $(MSBuildThisFileDirectory)..\..\tools\SchemaGenerator\SchemaGenerator.csproj" WorkingDirectory="$(MSBuildProjectDirectory)" />
+	</Target>
 </Project>
