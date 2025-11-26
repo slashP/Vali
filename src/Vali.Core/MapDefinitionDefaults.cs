@@ -250,6 +250,8 @@ public static class MapDefinitionDefaults
         };
     }
 
+    public static readonly string[] ValidMapShortNames = ["aarw", "aaw", "acw", "abw", "aiw", "proworld", "aow", "rainboltworld", "geotime", "lerg", "amw", "yellowbelly", "5kable"];
+
     public static (string, int)[] DefaultDistribution(DistributionStrategy distributionStrategy) =>
         distributionStrategy.CountryDistributionFromMap?.ToLowerInvariant() switch
         {

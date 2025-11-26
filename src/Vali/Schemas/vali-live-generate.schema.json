@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Vali Live Generate Map Definition",
+  "type": "object",
+  "description": "Configuration for live-generating maps using Google API",
+  "properties": {
+    "countries": {
+      "type": "object",
+      "description": "Countries with their location count goals (e.g., {\"NO\": 1000, \"SE\": 2000})",
+      "additionalProperties": {
+        "type": "integer",
+        "format": "int32"
+      }
+    },
+    "distribution": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/LocationDistribution"
+        }
+      ]
+    },
+    "locationTags": {
+      "type": "array",
+      "description": "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).",
+      "items": {
+        "type": "string",
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "ArrowCount",
+              "Buildings10",
+              "Buildings100",
+              "Buildings200",
+              "Buildings25",
+              "ClosestCoast",
+              "ClosestLake",
+              "ClosestRailway",
+              "ClosestRiver",
+              "CountryCode",
+              "County",
+              "DescriptionLength",
+              "DrivingDirectionAngle",
+              "Elevation",
+              "Heading",
+              "HighwayType",
+              "HighwayTypeCount",
+              "IsResidential",
+              "IsScout",
+              "Month",
+              "ResolutionHeight",
+              "Roads0",
+              "Roads10",
+              "Roads100",
+              "Roads200",
+              "Roads25",
+              "Roads50",
+              "Season",
+              "SubdivisionCode",
+              "Surface",
+              "Tunnels10",
+              "Tunnels200",
+              "WayId",
+              "Year",
+              "YearMonth"
+            ]
+          },
+          {
+            "type": "string",
+            "pattern": "^(ArrowCount|Buildings10|Buildings100|Buildings200|Buildings25|ClosestCoast|ClosestLake|ClosestRailway|ClosestRiver|DescriptionLength|DrivingDirectionAngle|Elevation|Heading|HighwayTypeCount|Month|ResolutionHeight|Roads0|Roads10|Roads100|Roads200|Roads25|Roads50|Tunnels10|Tunnels200|Year)-\\d+$"
+          }
+        ]
+      }
+    },
+    "fromDate": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Start date for coverage filter (format: YYYY-MM-DD)",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "toDate": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "End date for coverage filter (format: YYYY-MM-DD)",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "headingMode": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "How to set the camera heading/direction",
+      "enum": [
+        "Default",
+        "Random",
+        "InDrivingDirection",
+        "AwayFromDrivingDirection"
+      ]
+    },
+    "headingDelta": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Degrees to add to heading (used with heading modes)",
+      "format": "int32",
+      "maximum": 180.0,
+      "minimum": -180.0
+    },
+    "pitchMode": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "How to set the camera pitch/tilt",
+      "enum": [
+        "Default",
+        "Fixed",
+        "Random"
+      ]
+    },
+    "pitch": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Fixed pitch angle in degrees (used with pitchMode: Fixed)",
+      "format": "int32",
+      "maximum": 90.0,
+      "minimum": -90.0
+    },
+    "randomPitchMin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Minimum pitch for random mode",
+      "format": "int32",
+      "maximum": 90.0,
+      "minimum": -90.0
+    },
+    "randomPitchMax": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Maximum pitch for random mode",
+      "format": "int32",
+      "maximum": 90.0,
+      "minimum": -90.0
+    },
+    "zoomMode": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "How to set the camera zoom level",
+      "enum": [
+        "Default",
+        "Fixed",
+        "Random"
+      ]
+    },
+    "zoom": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Fixed zoom level (used with zoomMode: Fixed)",
+      "format": "int32",
+      "maximum": 3.0,
+      "minimum": 0.0
+    },
+    "randomZoomMin": {
+      "type": [
+        "null",
+        "number"
+      ],
+      "description": "Minimum zoom for random mode",
+      "format": "double",
+      "maximum": 3.6,
+      "minimum": 0.0
+    },
+    "randomZoomMax": {
+      "type": [
+        "null",
+        "number"
+      ],
+      "description": "Maximum zoom for random mode",
+      "format": "double",
+      "maximum": 3.6,
+      "minimum": 0.0
+    },
+    "boxPrecision": {
+      "type": "integer",
+      "description": "Geohash precision for subdividing areas (1-7, higher = smaller boxes)",
+      "format": "int32",
+      "maximum": 7.0,
+      "minimum": 1.0
+    },
+    "parallelRequests": {
+      "type": "integer",
+      "description": "Number of parallel API requests to Google",
+      "format": "int32",
+      "maximum": 200.0,
+      "minimum": 1.0
+    },
+    "radius": {
+      "type": "integer",
+      "description": "Search radius in meters for finding locations",
+      "format": "int32",
+      "minimum": 1.0
+    },
+    "locationFilter": {
+      "type": "string",
+      "description": "Filter expression for locations (e.g., 'ArrowCount gte 2 and Year gt 2015')"
+    },
+    "panoSelectionStrategy": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Strategy for selecting panorama IDs",
+      "enum": [
+        "Newest",
+        "Random",
+        "RandomNotNewest",
+        "RandomAvoidNewest",
+        "RandomNotOldest",
+        "RandomAvoidOldest",
+        "SecondNewest",
+        "Oldest",
+        "SecondOldest",
+        "YearMonthPeriod"
+      ]
+    },
+    "panoVerificationStart": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Start date for panorama verification (format: YYYY-MM-DD)",
+      "format": "date"
+    },
+    "panoVerificationEnd": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "End date for panorama verification (format: YYYY-MM-DD)",
+      "format": "date"
+    },
+    "geoJsonFiles": {
+      "type": "array",
+      "description": "Paths to GeoJSON files defining areas to search within",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rejectLocationsWithoutDescription": {
+      "type": "boolean",
+      "description": "Reject locations without a description field (filters out some unofficial coverage)"
+    },
+    "acceptedCoverage": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Type of coverage to accept from Google Street View",
+      "enum": [
+        "official",
+        "unofficial",
+        "all"
+      ]
+    },
+    "batchSize": {
+      "type": "integer",
+      "description": "Number of locations to process in each batch",
+      "format": "int32",
+      "minimum": 100.0
+    },
+    "checkLinkedPanoramas": {
+      "type": "boolean",
+      "description": "Check linked panoramas for better coverage"
+    },
+    "badCamStrategy": {
+      "type": "string",
+      "description": "How to handle bad camera generations (e.g., gen1/gen2 cameras)",
+      "enum": [
+        "DisallowInCountriesWithDecentOtherCoverage",
+        "AllowForAll"
+      ]
+    }
+  },
+  "definitions": {
+    "LocationDistribution": {
+      "type": "object",
+      "properties": {
+        "minMinDistance": {
+          "type": "integer",
+          "description": "Minimum distance in meters between generated locations",
+          "format": "int32",
+          "minimum": 0.0
+        },
+        "overshootFactor": {
+          "type": "integer",
+          "description": "Multiplier for initial location count (e.g., 2 means generate 2x locations then filter down). Higher = better coverage but slower.",
+          "format": "int32",
+          "maximum": 10.0,
+          "minimum": 1.0
+        }
+      }
+    }
+  }
+}

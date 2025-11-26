@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vali.Core.Tests", "tests\Va
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vali.Benchmarks", "tests\Vali.Benchmarks\Vali.Benchmarks.csproj", "{6310B272-4648-4FE8-B8B9-DF0B6D284E68}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchemaGenerator", "tools\SchemaGenerator\SchemaGenerator.csproj", "{1014F3DD-0BE0-D671-9FD8-9856A8079ED2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +37,10 @@ Global
 		{6310B272-4648-4FE8-B8B9-DF0B6D284E68}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6310B272-4648-4FE8-B8B9-DF0B6D284E68}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6310B272-4648-4FE8-B8B9-DF0B6D284E68}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1014F3DD-0BE0-D671-9FD8-9856A8079ED2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1014F3DD-0BE0-D671-9FD8-9856A8079ED2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1014F3DD-0BE0-D671-9FD8-9856A8079ED2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1014F3DD-0BE0-D671-9FD8-9856A8079ED2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

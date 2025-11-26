@@ -48,6 +48,10 @@ public static class TagsGenerator
             _ when e.StartsWith(nameof(Location.Osm.ClosestLake)) => l.Osm.ClosestLake != null ? IntTag(l, nameof(l.Osm.ClosestLake), x => x.Osm.ClosestLake!.Value, e) : [],
             _ when e.StartsWith(nameof(Location.Osm.ClosestRiver)) => l.Osm.ClosestRiver != null ? IntTag(l, nameof(l.Osm.ClosestRiver), x => x.Osm.ClosestRiver!.Value, e) : [],
             _ when e.StartsWith(nameof(Location.Osm.ClosestRailway)) => l.Osm.ClosestRailway != null ? IntTag(l, nameof(l.Osm.ClosestRailway), x => x.Osm.ClosestRailway!.Value, e) : [],
+            _ when e.StartsWith(nameof(Location.Osm.HighwayTypeCount)) => IntTag(l, nameof(l.Osm.HighwayTypeCount), x => x.Osm.HighwayTypeCount, e),
+            _ when e.StartsWith(nameof(Location.Google.Year)) => IntTag(l, nameof(l.Google.Year), x => x.Google.Year, e),
+            _ when e.StartsWith(nameof(Location.Google.Month)) => IntTag(l, nameof(l.Google.Month), x => x.Google.Month, e),
+            _ when e.StartsWith(nameof(Location.Google.ResolutionHeight)) => IntTag(l, nameof(l.Google.ResolutionHeight), x => x.Google.ResolutionHeight, e),
             nameof(Location.Osm.IsResidential) => [$"{nameof(Location.Osm.IsResidential)}-{(l.Osm.IsResidential ? "Yes" : "No")}"],
             _ => []
         }).Concat([l.Tag]).Where(x => !string.IsNullOrEmpty(x)).Select(x => x!).ToArray();

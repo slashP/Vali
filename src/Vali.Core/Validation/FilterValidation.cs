@@ -136,6 +136,8 @@ public static class FilterValidation
         return definition;
     }
 
+    public static readonly string[] ValidNeighborFilterBounds = ["gte", "lte", "all", "none", "some", "percentage-gte", "percentage-lte"];
+
     public static MapDefinition? ValidateNeighborFilters(this MapDefinition definition)
     {
         foreach (var neighborFilter in definition.AllNeighborFilters())
@@ -153,7 +155,7 @@ public static class FilterValidation
                 return null;
             }
 
-            if (neighborFilter.Bound is not ("gte" or "lte" or "all" or "none" or "some" or "percentage-gte" or "percentage-lte"))
+            if (!ValidNeighborFilterBounds.Contains(neighborFilter.Bound))
             {
                 ConsoleLogger.Error($"{nameof(neighborFilter)} {nameof(neighborFilter.Bound).ToLower()} (\"{neighborFilter.Bound}\") must be either 'gte' (greater than or equal) / 'lte' (less than or equal) / 'all' / 'none' / 'some' / 'percentage-gte' / 'percentage-lte'.");
                 return null;

@@ -244,6 +244,7 @@ try
 
         await File.WriteAllTextAsync(filePath, Serializer.PrettySerialize(new Dictionary<string, object?>
         {
+            { "$schema", "https://raw.githubusercontent.com/slashP/Vali/main/src/Vali/Schemas/vali.schema.json" },
             { nameof(MapDefinition.CountryCodes).FirstCharToLowerCase(), new[] { codes } },
             { nameof(MapDefinition.DistributionStrategy).FirstCharToLowerCase(), distributionStrategy },
             { nameof(MapDefinition.Output).FirstCharToLowerCase(), output },

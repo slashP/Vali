@@ -17,5 +17,10 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Vali.Core\Vali.Core.csproj" />
 	  <None Include="readme.md" Pack="true" PackagePath="\" />
+	  <None Include="Schemas\*.json" Pack="true" PackagePath="schemas" />
 	</ItemGroup>
+
+	<Target Name="GenerateSchemas" BeforeTargets="BeforeBuild">
+		<Exec Command="dotnet run --project $(MSBuildThisFileDirectory)..\..\tools\SchemaGenerator\SchemaGenerator.csproj" WorkingDirectory="$(MSBuildProjectDirectory)" />
+	</Target>
 </Project>

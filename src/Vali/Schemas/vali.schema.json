@@ -1,0 +1,595 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Vali Map Definition",
+  "type": "object",
+  "description": "Configuration for generating maps",
+  "properties": {
+    "countryCodes": {
+      "type": "array",
+      "description": "ISO 3166-1 alpha-2 country codes, or special keywords like 'europe', 'asia', 'africa', '*', etc.",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "subdivisionInclusions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "subdivisionExclusions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "countryDistribution": {
+      "type": "object",
+      "description": "Custom distribution weights per country (integers representing relative weights)",
+      "additionalProperties": {
+        "type": "integer",
+        "format": "int32"
+      }
+    },
+    "subdivisionDistribution": {
+      "type": "object",
+      "description": "Custom distribution weights per subdivision/region (integers representing relative weights)",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "distributionStrategy": {
+      "description": "Strategy for distributing locations across regions",
+      "$ref": "#/definitions/DistributionStrategy"
+    },
+    "globalLocationFilter": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Expression to filter locations globally (e.g., 'ClosestCoast lt 100 and Buildings200 gte 4')"
+    },
+    "countryLocationFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "countryProximityFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/ProximityFilter"
+      }
+    },
+    "countryGeometryFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/GeometryFilter"
+        }
+      }
+    },
+    "subdivisionLocationFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      }
+    },
+    "subdivisionProximityFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/definitions/ProximityFilter"
+        }
+      }
+    },
+    "subdivisionGeometryFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GeometryFilter"
+          }
+        }
+      }
+    },
+    "globalLocationPreferenceFilters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/LocationPreferenceFilter"
+      }
+    },
+    "countryLocationPreferenceFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/LocationPreferenceFilter"
+        }
+      }
+    },
+    "subdivisionLocationPreferenceFilters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LocationPreferenceFilter"
+          }
+        }
+      }
+    },
+    "output": {
+      "description": "Output configuration for generated locations",
+      "$ref": "#/definitions/LocationOutput"
+    },
+    "proximityFilter": {
+      "$ref": "#/definitions/ProximityFilter"
+    },
+    "neighborFilters": {
+      "type": "array",
+      "description": "Filter locations based on nearby neighbors",
+      "items": {
+        "$ref": "#/definitions/NeighborFilter"
+      }
+    },
+    "geometryFilters": {
+      "type": "array",
+      "description": "Filter locations within GeoJSON-defined areas",
+      "items": {
+        "$ref": "#/definitions/GeometryFilter"
+      }
+    },
+    "namedExpressions": {
+      "type": "object",
+      "description": "Reusable filter expressions (must start with $$)",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "usedLocationsPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enableDefaultLocationFilters": {
+      "type": "boolean"
+    },
+    "globalLocationProbability": {
+      "$ref": "#/definitions/LocationProbability"
+    },
+    "countryLocationProbabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/LocationProbability"
+      }
+    },
+    "subdivisionLocationProbabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/definitions/LocationProbability"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "DistributionStrategy": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Distribution algorithm to use",
+          "enum": [
+            "FixedCountByMaxMinDistance",
+            "MaxCountByFixedMinDistance",
+            "EvenlyByDistanceWithinCountry"
+          ]
+        },
+        "locationCountGoal": {
+          "type": "integer",
+          "description": "Target number of locations (used with FixedCountByMaxMinDistance)",
+          "format": "int32",
+          "minimum": 1.0
+        },
+        "minMinDistance": {
+          "type": "integer",
+          "description": "Minimum distance in meters between locations",
+          "format": "int32",
+          "minimum": 0.0
+        },
+        "fixedMinDistance": {
+          "type": "integer",
+          "description": "Fixed minimum distance in meters between locations (used with MaxCountByFixedMinDistance)",
+          "format": "int32",
+          "minimum": 1.0
+        },
+        "treatCountriesAsSingleSubdivision": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "countryDistributionFromMap": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Use country distribution from a famous map",
+          "enum": [
+            "aarw",
+            "aaw",
+            "acw",
+            "abw",
+            "aiw",
+            "proworld",
+            "aow",
+            "rainboltworld",
+            "geotime",
+            "lerg",
+            "amw",
+            "yellowbelly",
+            "5kable"
+          ]
+        }
+      }
+    },
+    "ProximityFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locationsPath": {
+          "type": "string"
+        },
+        "radius": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "GeometryFilter": {
+      "type": "object",
+      "properties": {
+        "filePath": {
+          "type": "string",
+          "description": "Path to GeoJSON file defining the area"
+        },
+        "inclusionMode": {
+          "type": "string",
+          "description": "Whether to include or exclude locations in this area",
+          "enum": [
+            "include",
+            "exclude"
+          ]
+        },
+        "combinationMode": {
+          "type": "string",
+          "description": "How to combine multiple geometry filters (first filter only)",
+          "enum": [
+            "intersection",
+            "union"
+          ]
+        }
+      }
+    },
+    "LocationPreferenceFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "percentage": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32"
+        },
+        "fill": {
+          "type": "boolean"
+        },
+        "locationTag": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "minMinDistance": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32"
+        },
+        "proximityFilter": {
+          "$ref": "#/definitions/ProximityFilter"
+        },
+        "geometryFilters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GeometryFilter"
+          }
+        },
+        "neighborFilters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NeighborFilter"
+          }
+        }
+      }
+    },
+    "NeighborFilter": {
+      "type": "object",
+      "properties": {
+        "checkEachCardinalDirectionSeparately": {
+          "type": "boolean",
+          "description": "Check north, south, east, west directions separately"
+        },
+        "radius": {
+          "type": "integer",
+          "description": "Radius in meters to check for neighbors",
+          "format": "int32",
+          "minimum": 0.0
+        },
+        "expression": {
+          "type": "string",
+          "description": "Filter expression for neighbor locations (can reference current location with 'current:' prefix)"
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Number or percentage of neighbors required (depending on bound)",
+          "format": "int32"
+        },
+        "bound": {
+          "type": "string",
+          "description": "How many neighbors must match the expression",
+          "enum": [
+            "gte",
+            "lte",
+            "all",
+            "none",
+            "some",
+            "percentage-gte",
+            "percentage-lte"
+          ]
+        }
+      }
+    },
+    "LocationOutput": {
+      "type": "object",
+      "properties": {
+        "locationTags": {
+          "type": "array",
+          "description": "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ArrowCount",
+                  "Buildings10",
+                  "Buildings100",
+                  "Buildings200",
+                  "Buildings25",
+                  "ClosestCoast",
+                  "ClosestLake",
+                  "ClosestRailway",
+                  "ClosestRiver",
+                  "CountryCode",
+                  "County",
+                  "DescriptionLength",
+                  "DrivingDirectionAngle",
+                  "Elevation",
+                  "Heading",
+                  "HighwayType",
+                  "HighwayTypeCount",
+                  "IsResidential",
+                  "IsScout",
+                  "Month",
+                  "Roads0",
+                  "Roads10",
+                  "Roads100",
+                  "Roads200",
+                  "Roads25",
+                  "Roads50",
+                  "Season",
+                  "SubdivisionCode",
+                  "Surface",
+                  "Tunnels10",
+                  "Tunnels200",
+                  "WayId",
+                  "Year",
+                  "YearMonth"
+                ]
+              },
+              {
+                "type": "string",
+                "pattern": "^(ArrowCount|Buildings10|Buildings100|Buildings200|Buildings25|ClosestCoast|ClosestLake|ClosestRailway|ClosestRiver|DescriptionLength|DrivingDirectionAngle|Elevation|Heading|HighwayTypeCount|Month|Roads0|Roads10|Roads100|Roads200|Roads25|Roads50|Tunnels10|Tunnels200|Year)-\\d+$"
+              }
+            ]
+          }
+        },
+        "panoIdCountryCodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "globalHeadingExpression": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Expression to calculate heading (e.g., 'DrivingDirectionAngle + 90')"
+        },
+        "countryHeadingExpressions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "globalZoom": {
+          "type": [
+            "null",
+            "number"
+          ],
+          "description": "Zoom level for all locations (0-3.6)",
+          "format": "double",
+          "maximum": 3.6,
+          "minimum": 0.0
+        },
+        "globalPitch": {
+          "type": [
+            "null",
+            "number"
+          ],
+          "description": "Pitch angle for all locations (-90 to 90)",
+          "format": "double",
+          "maximum": 90.0,
+          "minimum": -90.0
+        },
+        "panoVerificationStrategy": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Strategy for selecting panorama IDs",
+          "enum": [
+            "Newest",
+            "Random",
+            "RandomNotNewest",
+            "RandomAvoidNewest",
+            "RandomNotOldest",
+            "RandomAvoidOldest",
+            "SecondNewest",
+            "Oldest",
+            "SecondOldest",
+            "YearMonthPeriod"
+          ]
+        },
+        "countryPanoVerificationPanning": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/definitions/CountryPanning"
+              }
+            ]
+          }
+        },
+        "panoVerificationExpression": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "panoVerificationParallelism": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "panoVerificationStart": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "format": "date"
+        },
+        "panoVerificationEnd": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "format": "date"
+        }
+      }
+    },
+    "CountryPanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultPanning": {
+          "type": "string"
+        },
+        "panningExpressions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PanningExpression"
+          }
+        }
+      }
+    },
+    "PanningExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "panning": {
+          "type": "string"
+        }
+      }
+    },
+    "LocationProbability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultWeight": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "weightOverrides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LocationWeightOverride"
+          }
+        }
+      }
+    },
+    "LocationWeightOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    }
+  }
+}
