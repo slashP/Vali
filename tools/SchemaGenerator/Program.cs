@@ -45,11 +45,11 @@ Console.WriteLine($"✓ Generated: {Path.GetFullPath(mapDefinitionPath)}");
 Console.WriteLine($"✓ Generated: {Path.GetFullPath(liveGeneratePath)}");
 Console.WriteLine("Schemas generated successfully!");
 
-static string[] GetValidLocationTags()
+static string[] GetValidLocationTags(bool isLiveGenerate = false)
 {
     var tags = new HashSet<string>();
 
-    // internal data not exposed as tags
+    // Properties excluded - either internal data or context-specific
     var excludedProperties = new HashSet<string>
     {
         "Lat",
@@ -60,6 +60,12 @@ static string[] GetValidLocationTags()
         "RoadType",
         "WayIds"
     };
+
+    // ResolutionHeight only excluded from regular map definitions (not populated in pre-processed data)
+    if (!isLiveGenerate)
+    {
+        excludedProperties.Add("ResolutionHeight");
+    }
 
     foreach (var prop in typeof(OsmData).GetProperties())
     {
@@ -91,6 +97,39 @@ static string[] GetValidLocationTags()
     tags.Add("HighwayType");
 
     return tags.OrderBy(t => t).ToArray();
+}
+
+static string[] GetBucketableLocationTags(bool isLiveGenerate = false)
+{
+    var bucketable = new HashSet<string>();
+
+    // Numeric properties from OsmData that support bucketing
+    foreach (var prop in typeof(OsmData).GetProperties())
+    {
+        var propType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        if (propType == typeof(int) && !prop.Name.EndsWith("TypeCount"))
+        {
+            bucketable.Add(prop.Name);
+        }
+    }
+
+    // Numeric properties from GoogleData that support bucketing
+    foreach (var prop in typeof(GoogleData).GetProperties())
+    {
+        var propType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        if (propType == typeof(int) && prop.Name != "Year" && prop.Name != "Month")
+        {
+            bucketable.Add(prop.Name);
+        }
+    }
+
+    // ResolutionHeight only available in live-generate
+    if (!isLiveGenerate)
+    {
+        bucketable.Remove("ResolutionHeight");
+    }
+
+    return bucketable.OrderBy(t => t).ToArray();
 }
 
 static void AddMapDefinitionConstraints(JsonSchema schema)
@@ -180,15 +219,28 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
 
         if (outputDef.Properties.TryGetValue("locationTags", out var outputLocationTags))
         {
-            outputLocationTags.Description = "Tags to add to generated locations";
+            outputLocationTags.Description = "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).";
             if (outputLocationTags.Item != null)
             {
-                outputLocationTags.Item.Enumeration.Clear();
-                var validTags = GetValidLocationTags();
+                var validTags = GetValidLocationTags(isLiveGenerate: false);
+                var bucketableTags = GetBucketableLocationTags(isLiveGenerate: false);
+
+                // Create oneOf schema: enum for base tags OR pattern for bucketed variants
+                var enumSchema = new JsonSchema { Type = JsonObjectType.String };
                 foreach (var tag in validTags)
                 {
-                    outputLocationTags.Item.Enumeration.Add(tag);
+                    enumSchema.Enumeration.Add(tag);
                 }
+
+                var patternSchema = new JsonSchema
+                {
+                    Type = JsonObjectType.String,
+                    Pattern = "^(" + string.Join("|", bucketableTags) + ")-\\d+$"
+                };
+
+                outputLocationTags.Item.OneOf.Clear();
+                outputLocationTags.Item.OneOf.Add(enumSchema);
+                outputLocationTags.Item.OneOf.Add(patternSchema);
             }
         }
 
@@ -316,15 +368,28 @@ static void AddLiveGenerateConstraints(JsonSchema schema)
 
     if (schema.Properties.TryGetValue("locationTags", out var locationTags))
     {
-        locationTags.Description = "Tags to add to generated locations";
+        locationTags.Description = "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).";
         if (locationTags.Item != null)
         {
-            locationTags.Item.Enumeration.Clear();
-            var validTags = GetValidLocationTags();
+            var validTags = GetValidLocationTags(isLiveGenerate: true);
+            var bucketableTags = GetBucketableLocationTags(isLiveGenerate: true);
+
+            // Create oneOf schema: enum for base tags OR pattern for bucketed variants
+            var enumSchema = new JsonSchema { Type = JsonObjectType.String };
             foreach (var tag in validTags)
             {
-                locationTags.Item.Enumeration.Add(tag);
+                enumSchema.Enumeration.Add(tag);
             }
+
+            var patternSchema = new JsonSchema
+            {
+                Type = JsonObjectType.String,
+                Pattern = "^(" + string.Join("|", bucketableTags) + ")-\\d+$"
+            };
+
+            locationTags.Item.OneOf.Clear();
+            locationTags.Item.OneOf.Add(enumSchema);
+            locationTags.Item.OneOf.Add(patternSchema);
         }
     }
 
