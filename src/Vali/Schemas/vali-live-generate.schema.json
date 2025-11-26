@@ -24,27 +24,66 @@
     },
     "locationTags": {
       "type": "array",
+      "description": "Tags to add to generated locations",
       "items": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "ArrowCount",
+          "Buildings10",
+          "Buildings100",
+          "Buildings200",
+          "Buildings25",
+          "ClosestCoast",
+          "ClosestLake",
+          "ClosestRailway",
+          "ClosestRiver",
+          "CountryCode",
+          "County",
+          "DescriptionLength",
+          "DrivingDirectionAngle",
+          "Elevation",
+          "Elevation500",
+          "HighwayType",
+          "IsResidential",
+          "IsScout",
+          "Month",
+          "Roads0",
+          "Roads10",
+          "Roads100",
+          "Roads200",
+          "Roads25",
+          "Roads50",
+          "Season",
+          "SubdivisionCode",
+          "Surface",
+          "WayId",
+          "Year",
+          "YearMonth"
+        ]
       }
     },
     "fromDate": {
       "type": [
         "null",
         "string"
-      ]
+      ],
+      "description": "Start date for coverage filter (format: YYYY-MM-DD)",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
     "toDate": {
       "type": [
         "null",
         "string"
-      ]
+      ],
+      "description": "End date for coverage filter (format: YYYY-MM-DD)",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
     "headingMode": {
       "type": [
         "null",
         "string"
       ],
+      "description": "How to set the camera heading/direction",
       "enum": [
         "Default",
         "Random",
@@ -57,13 +96,17 @@
         "integer",
         "null"
       ],
-      "format": "int32"
+      "description": "Degrees to add to heading (used with heading modes)",
+      "format": "int32",
+      "maximum": 180.0,
+      "minimum": -180.0
     },
     "pitchMode": {
       "type": [
         "null",
         "string"
       ],
+      "description": "How to set the camera pitch/tilt",
       "enum": [
         "Default",
         "Fixed",
@@ -75,27 +118,37 @@
         "integer",
         "null"
       ],
-      "format": "int32"
+      "description": "Fixed pitch angle in degrees (used with pitchMode: Fixed)",
+      "format": "int32",
+      "maximum": 90.0,
+      "minimum": -90.0
     },
     "randomPitchMin": {
       "type": [
         "integer",
         "null"
       ],
-      "format": "int32"
+      "description": "Minimum pitch for random mode",
+      "format": "int32",
+      "maximum": 90.0,
+      "minimum": -90.0
     },
     "randomPitchMax": {
       "type": [
         "integer",
         "null"
       ],
-      "format": "int32"
+      "description": "Maximum pitch for random mode",
+      "format": "int32",
+      "maximum": 90.0,
+      "minimum": -90.0
     },
     "zoomMode": {
       "type": [
         "null",
         "string"
       ],
+      "description": "How to set the camera zoom level",
       "enum": [
         "Default",
         "Fixed",
@@ -107,36 +160,54 @@
         "integer",
         "null"
       ],
-      "format": "int32"
+      "description": "Fixed zoom level (used with zoomMode: Fixed)",
+      "format": "int32",
+      "maximum": 3.0,
+      "minimum": 0.0
     },
     "randomZoomMin": {
       "type": [
         "null",
         "number"
       ],
-      "format": "double"
+      "description": "Minimum zoom for random mode",
+      "format": "double",
+      "maximum": 3.6,
+      "minimum": 0.0
     },
     "randomZoomMax": {
       "type": [
         "null",
         "number"
       ],
-      "format": "double"
+      "description": "Maximum zoom for random mode",
+      "format": "double",
+      "maximum": 3.6,
+      "minimum": 0.0
     },
     "boxPrecision": {
       "type": "integer",
-      "format": "int32"
+      "description": "Geohash precision for subdividing areas (1-7, higher = smaller boxes)",
+      "format": "int32",
+      "maximum": 7.0,
+      "minimum": 1.0
     },
     "parallelRequests": {
       "type": "integer",
-      "format": "int32"
+      "description": "Number of parallel API requests to Google",
+      "format": "int32",
+      "maximum": 200.0,
+      "minimum": 1.0
     },
     "radius": {
       "type": "integer",
-      "format": "int32"
+      "description": "Search radius in meters for finding locations",
+      "format": "int32",
+      "minimum": 1.0
     },
     "locationFilter": {
-      "type": "string"
+      "type": "string",
+      "description": "Filter expression for locations (e.g., 'ArrowCount gte 2 and Year gt 2015')"
     },
     "panoSelectionStrategy": {
       "type": [
@@ -161,6 +232,7 @@
         "null",
         "string"
       ],
+      "description": "Start date for panorama verification (format: YYYY-MM-DD)",
       "format": "date"
     },
     "panoVerificationEnd": {
@@ -168,23 +240,26 @@
         "null",
         "string"
       ],
+      "description": "End date for panorama verification (format: YYYY-MM-DD)",
       "format": "date"
     },
     "geoJsonFiles": {
       "type": "array",
+      "description": "Paths to GeoJSON files defining areas to search within",
       "items": {
         "type": "string"
       }
     },
     "rejectLocationsWithoutDescription": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Reject locations without a description field (filters out some unofficial coverage)"
     },
     "acceptedCoverage": {
       "type": [
         "null",
         "string"
       ],
-      "description": "Type of coverage to accept",
+      "description": "Type of coverage to accept from Google Street View",
       "enum": [
         "official",
         "unofficial",
@@ -193,14 +268,17 @@
     },
     "batchSize": {
       "type": "integer",
-      "format": "int32"
+      "description": "Number of locations to process in each batch",
+      "format": "int32",
+      "minimum": 100.0
     },
     "checkLinkedPanoramas": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Check linked panoramas for better coverage"
     },
     "badCamStrategy": {
       "type": "string",
-      "description": "Strategy for handling bad camera generations",
+      "description": "How to handle bad camera generations (e.g., gen1/gen2 cameras)",
       "enum": [
         "Skip",
         "Include"
@@ -210,15 +288,19 @@
   "definitions": {
     "LocationDistribution": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "minMinDistance": {
           "type": "integer",
-          "format": "int32"
+          "description": "Minimum distance in meters between generated locations",
+          "format": "int32",
+          "minimum": 0.0
         },
         "overshootFactor": {
           "type": "integer",
-          "format": "int32"
+          "description": "Multiplier for initial location count (e.g., 2 means generate 2x locations then filter down). Higher = better coverage but slower.",
+          "format": "int32",
+          "maximum": 10.0,
+          "minimum": 1.0
         }
       }
     }

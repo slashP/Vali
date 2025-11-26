@@ -385,8 +385,42 @@
       "properties": {
         "locationTags": {
           "type": "array",
+          "description": "Tags to add to generated locations",
           "items": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ArrowCount",
+              "Buildings10",
+              "Buildings100",
+              "Buildings200",
+              "Buildings25",
+              "ClosestCoast",
+              "ClosestLake",
+              "ClosestRailway",
+              "ClosestRiver",
+              "CountryCode",
+              "County",
+              "DescriptionLength",
+              "DrivingDirectionAngle",
+              "Elevation",
+              "Elevation500",
+              "HighwayType",
+              "IsResidential",
+              "IsScout",
+              "Month",
+              "Roads0",
+              "Roads10",
+              "Roads100",
+              "Roads200",
+              "Roads25",
+              "Roads50",
+              "Season",
+              "SubdivisionCode",
+              "Surface",
+              "WayId",
+              "Year",
+              "YearMonth"
+            ]
           }
         },
         "panoIdCountryCodes": {
