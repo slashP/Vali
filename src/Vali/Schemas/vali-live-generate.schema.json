@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Vali Live Generate Map Definition",
+  "type": "object",
+  "description": "Configuration for live-generating GeoGuessr maps using Google API",
+  "properties": {
+    "countries": {
+      "type": "object",
+      "description": "Countries with their location count goals (e.g., {\"NO\": 1000, \"SE\": 2000})",
+      "additionalProperties": {
+        "type": "integer",
+        "format": "int32"
+      }
+    },
+    "distribution": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/LocationDistribution"
+        }
+      ]
+    },
+    "locationTags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fromDate": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "toDate": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "headingMode": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "enum": [
+        "Default",
+        "Random",
+        "InDrivingDirection",
+        "AwayFromDrivingDirection"
+      ]
+    },
+    "headingDelta": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int32"
+    },
+    "pitchMode": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "enum": [
+        "Default",
+        "Fixed",
+        "Random"
+      ]
+    },
+    "pitch": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int32"
+    },
+    "randomPitchMin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int32"
+    },
+    "randomPitchMax": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int32"
+    },
+    "zoomMode": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "enum": [
+        "Default",
+        "Fixed",
+        "Random"
+      ]
+    },
+    "zoom": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int32"
+    },
+    "randomZoomMin": {
+      "type": [
+        "null",
+        "number"
+      ],
+      "format": "double"
+    },
+    "randomZoomMax": {
+      "type": [
+        "null",
+        "number"
+      ],
+      "format": "double"
+    },
+    "boxPrecision": {
+      "type": "integer",
+      "format": "int32"
+    },
+    "parallelRequests": {
+      "type": "integer",
+      "format": "int32"
+    },
+    "radius": {
+      "type": "integer",
+      "format": "int32"
+    },
+    "locationFilter": {
+      "type": "string"
+    },
+    "panoSelectionStrategy": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Strategy for selecting panorama IDs",
+      "enum": [
+        "Newest",
+        "Random",
+        "RandomNotNewest",
+        "RandomAvoidNewest",
+        "RandomNotOldest",
+        "RandomAvoidOldest",
+        "SecondNewest",
+        "Oldest",
+        "SecondOldest"
+      ]
+    },
+    "panoVerificationStart": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date"
+    },
+    "panoVerificationEnd": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date"
+    },
+    "geoJsonFiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rejectLocationsWithoutDescription": {
+      "type": "boolean"
+    },
+    "acceptedCoverage": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Type of coverage to accept",
+      "enum": [
+        "official",
+        "unofficial",
+        "all"
+      ]
+    },
+    "batchSize": {
+      "type": "integer",
+      "format": "int32"
+    },
+    "checkLinkedPanoramas": {
+      "type": "boolean"
+    },
+    "badCamStrategy": {
+      "type": "string",
+      "description": "Strategy for handling bad camera generations",
+      "enum": [
+        "Skip",
+        "Include"
+      ]
+    }
+  },
+  "definitions": {
+    "LocationDistribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minMinDistance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "overshootFactor": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    }
+  }
+}
