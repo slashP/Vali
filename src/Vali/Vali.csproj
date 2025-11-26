@@ -17,8 +17,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Vali.Core\Vali.Core.csproj" />
 	  <None Include="readme.md" Pack="true" PackagePath="\" />
-	  <None Include="Schemas\*.json" Pack="true" PackagePath="schemas" CopyToOutputDirectory="PreserveNewest" />
-	  <EmbeddedResource Include="Schemas\*.json" />
+	  <None Include="Schemas\*.json" Pack="true" PackagePath="schemas" />
 	</ItemGroup>
 
 	<Target Name="GenerateSchemas" BeforeTargets="BeforeBuild">
