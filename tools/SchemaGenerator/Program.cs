@@ -3,6 +3,7 @@ using NJsonSchema.Generation;
 using Vali.Core;
 using Vali.Core.Data;
 using Vali.Core.Google;
+using static Vali.Core.Google.GoogleApi;
 
 Console.WriteLine("Generating JSON schemas for Vali...");
 
@@ -94,9 +95,10 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
         {
             key.Description = "Distribution algorithm to use";
             key.Enumeration.Clear();
-            key.Enumeration.Add("FixedCountByMaxMinDistance");
-            key.Enumeration.Add("MaxCountByFixedMinDistance");
-            key.Enumeration.Add("EvenlyByDistanceWithinCountry");
+            foreach (var strategy in DistributionStrategies.ValidStrategyKeys)
+            {
+                key.Enumeration.Add(strategy);
+            }
         }
 
         if (distStrategyDef.Properties.TryGetValue("locationCountGoal", out var locationCountGoal))
@@ -121,7 +123,7 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
         {
             countryDist.Description = "Use country distribution from a famous map";
             countryDist.Enumeration.Clear();
-            foreach (var dist in new[] { "aarw", "aaw", "acw", "abw", "aiw", "proworld", "aow", "rainboltworld", "geotime", "lerg" })
+            foreach (var dist in new[] { "aarw", "aaw", "acw", "abw", "aiw", "proworld", "aow", "rainboltworld", "geotime", "lerg" }) // #ENUM
             {
                 countryDist.Enumeration.Add(dist);
             }
@@ -175,9 +177,12 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
         {
             panoStrategy.Description = "Strategy for selecting panorama IDs";
             panoStrategy.Enumeration.Clear();
-            foreach (var strat in new[] { "Newest", "Random", "RandomNotNewest", "RandomAvoidNewest", "RandomNotOldest", "RandomAvoidOldest", "SecondNewest", "Oldest", "SecondOldest" })
+            foreach (var strat in Enum.GetValues<PanoStrategy>())
             {
-                panoStrategy.Enumeration.Add(strat);
+                if (strat != PanoStrategy.None)
+                {
+                    panoStrategy.Enumeration.Add(strat.ToString());
+                }
             }
         }
 
@@ -225,7 +230,7 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
         {
             bound.Description = "How many neighbors must match the expression";
             bound.Enumeration.Clear();
-            foreach (var b in new[] { "gte", "lte", "all", "none", "some", "percentage-gte", "percentage-lte" })
+            foreach (var b in new[] { "gte", "lte", "all", "none", "some", "percentage-gte", "percentage-lte" }) // #ENUM
             {
                 bound.Enumeration.Add(b);
             }
@@ -260,16 +265,20 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
         {
             inclusionMode.Description = "Whether to include or exclude locations in this area";
             inclusionMode.Enumeration.Clear();
-            inclusionMode.Enumeration.Add("include");
-            inclusionMode.Enumeration.Add("exclude");
+            foreach (var mode in new[] { "include", "exclude" }) // #ENUM
+            {
+                inclusionMode.Enumeration.Add(mode);
+            }
         }
 
         if (geometryFilterDef.Properties.TryGetValue("combinationMode", out var combinationMode))
         {
             combinationMode.Description = "How to combine multiple geometry filters (first filter only)";
             combinationMode.Enumeration.Clear();
-            combinationMode.Enumeration.Add("intersection");
-            combinationMode.Enumeration.Add("union");
+            foreach (var mode in new[] { "intersection", "union" }) // #ENUM
+            {
+                combinationMode.Enumeration.Add(mode);
+            }
         }
     }
 }
@@ -370,9 +379,12 @@ static void AddLiveGenerateConstraints(JsonSchema schema)
     {
         panoStrategy.Description = "Strategy for selecting panorama IDs";
         panoStrategy.Enumeration.Clear();
-        foreach (var strat in new[] { "Newest", "Random", "RandomNotNewest", "RandomAvoidNewest", "RandomNotOldest", "RandomAvoidOldest", "SecondNewest", "Oldest", "SecondOldest" })
+        foreach (var strat in Enum.GetValues<PanoStrategy>())
         {
-            panoStrategy.Enumeration.Add(strat);
+            if (strat != PanoStrategy.None)
+            {
+                panoStrategy.Enumeration.Add(strat.ToString());
+            }
         }
     }
 
@@ -380,27 +392,30 @@ static void AddLiveGenerateConstraints(JsonSchema schema)
     {
         coverage.Description = "Type of coverage to accept from Google Street View";
         coverage.Enumeration.Clear();
-        coverage.Enumeration.Add("official");
-        coverage.Enumeration.Add("unofficial");
-        coverage.Enumeration.Add("all");
+        foreach (var type in new[] { "official", "unofficial", "all" }) // #ENUM
+        {
+            coverage.Enumeration.Add(type);
+        }
     }
 
     if (schema.Properties.TryGetValue("badCamStrategy", out var badCamStrategy))
     {
         badCamStrategy.Description = "How to handle bad camera generations (e.g., gen1/gen2 cameras)";
         badCamStrategy.Enumeration.Clear();
-        badCamStrategy.Enumeration.Add("Skip");
-        badCamStrategy.Enumeration.Add("Include");
+        foreach (var strat in Enum.GetValues<BadCamStrategy>())
+        {
+            badCamStrategy.Enumeration.Add(strat.ToString());
+        }
     }
 
     if (schema.Properties.TryGetValue("headingMode", out var headingMode))
     {
         headingMode.Description = "How to set the camera heading/direction";
         headingMode.Enumeration.Clear();
-        headingMode.Enumeration.Add("Default");
-        headingMode.Enumeration.Add("Random");
-        headingMode.Enumeration.Add("InDrivingDirection");
-        headingMode.Enumeration.Add("AwayFromDrivingDirection");
+        foreach (var mode in new[] { "Default", "Random", "InDrivingDirection", "AwayFromDrivingDirection" }) // #ENUM
+        {
+            headingMode.Enumeration.Add(mode);
+        }
     }
 
     if (schema.Properties.TryGetValue("headingDelta", out var headingDelta))
@@ -414,9 +429,10 @@ static void AddLiveGenerateConstraints(JsonSchema schema)
     {
         pitchMode.Description = "How to set the camera pitch/tilt";
         pitchMode.Enumeration.Clear();
-        pitchMode.Enumeration.Add("Default");
-        pitchMode.Enumeration.Add("Fixed");
-        pitchMode.Enumeration.Add("Random");
+        foreach (var mode in new[] { "Default", "Fixed", "Random" }) // #ENUM
+        {
+            pitchMode.Enumeration.Add(mode);
+        }
     }
 
     if (schema.Properties.TryGetValue("pitch", out var pitch))
@@ -444,9 +460,10 @@ static void AddLiveGenerateConstraints(JsonSchema schema)
     {
         zoomMode.Description = "How to set the camera zoom level";
         zoomMode.Enumeration.Clear();
-        zoomMode.Enumeration.Add("Default");
-        zoomMode.Enumeration.Add("Fixed");
-        zoomMode.Enumeration.Add("Random");
+        foreach (var mode in new[] { "Default", "Fixed", "Random" }) // #ENUM
+        {
+            zoomMode.Enumeration.Add(mode);
+        }
     }
 
     if (schema.Properties.TryGetValue("zoom", out var zoom))
