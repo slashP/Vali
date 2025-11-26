@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "Vali Map Definition",
   "type": "object",
-  "description": "Configuration for generating GeoGuessr maps using Vali",
+  "description": "Configuration for generating maps",
   "properties": {
     "countryCodes": {
       "type": "array",
@@ -403,11 +403,13 @@
               "DescriptionLength",
               "DrivingDirectionAngle",
               "Elevation",
-              "Elevation500",
+              "Heading",
               "HighwayType",
+              "HighwayTypeCount",
               "IsResidential",
               "IsScout",
               "Month",
+              "ResolutionHeight",
               "Roads0",
               "Roads10",
               "Roads100",
@@ -417,6 +419,8 @@
               "Season",
               "SubdivisionCode",
               "Surface",
+              "Tunnels10",
+              "Tunnels200",
               "WayId",
               "Year",
               "YearMonth"
@@ -477,7 +481,8 @@
             "RandomAvoidOldest",
             "SecondNewest",
             "Oldest",
-            "SecondOldest"
+            "SecondOldest",
+            "YearMonthPeriod"
           ]
         },
         "countryPanoVerificationPanning": {

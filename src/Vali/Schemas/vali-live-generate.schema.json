@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "Vali Live Generate Map Definition",
   "type": "object",
-  "description": "Configuration for live-generating GeoGuessr maps using Google API",
+  "description": "Configuration for live-generating maps using Google API",
   "properties": {
     "countries": {
       "type": "object",
@@ -42,11 +42,13 @@
           "DescriptionLength",
           "DrivingDirectionAngle",
           "Elevation",
-          "Elevation500",
+          "Heading",
           "HighwayType",
+          "HighwayTypeCount",
           "IsResidential",
           "IsScout",
           "Month",
+          "ResolutionHeight",
           "Roads0",
           "Roads10",
           "Roads100",
@@ -56,6 +58,8 @@
           "Season",
           "SubdivisionCode",
           "Surface",
+          "Tunnels10",
+          "Tunnels200",
           "WayId",
           "Year",
           "YearMonth"
@@ -224,7 +228,8 @@
         "RandomAvoidOldest",
         "SecondNewest",
         "Oldest",
-        "SecondOldest"
+        "SecondOldest",
+        "YearMonthPeriod"
       ]
     },
     "panoVerificationStart": {
@@ -280,8 +285,8 @@
       "type": "string",
       "description": "How to handle bad camera generations (e.g., gen1/gen2 cameras)",
       "enum": [
-        "Skip",
-        "Include"
+        "DisallowInCountriesWithDecentOtherCoverage",
+        "AllowForAll"
       ]
     }
   },

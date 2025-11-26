@@ -21,16 +21,18 @@ var settings = new SystemTextJsonSchemaGeneratorSettings
 
 var mapDefinitionSchema = JsonSchema.FromType<MapDefinition>(settings);
 mapDefinitionSchema.Title = "Vali Map Definition";
-mapDefinitionSchema.Description = "Configuration for generating GeoGuessr maps using Vali";
+mapDefinitionSchema.Description = "Configuration for generating maps";
 mapDefinitionSchema.AllowAdditionalProperties = true;
 AddMapDefinitionConstraints(mapDefinitionSchema);
 
 var liveGenerateSchema = JsonSchema.FromType<LiveGenerateMapDefinition>(settings);
 liveGenerateSchema.Title = "Vali Live Generate Map Definition";
-liveGenerateSchema.Description = "Configuration for live-generating GeoGuessr maps using Google API";
+liveGenerateSchema.Description = "Configuration for live-generating maps using Google API";
 liveGenerateSchema.AllowAdditionalProperties = true;
 AddLiveGenerateConstraints(liveGenerateSchema);
-var outputDir = Path.Combine("..", "..", "src", "Vali", "Schemas");
+
+var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+var outputDir = Path.Combine(repoRoot, "src", "Vali", "Schemas");
 Directory.CreateDirectory(outputDir);
 
 var mapDefinitionPath = Path.Combine(outputDir, "vali.schema.json");
@@ -45,31 +47,48 @@ Console.WriteLine("Schemas generated successfully!");
 
 static string[] GetValidLocationTags()
 {
-    var readmePath = Path.Combine("..", "..", "readme.md");
-    var readme = File.ReadAllText(readmePath);
-
-    var taggingSection = readme.Substring(readme.IndexOf("## Tagging locations"));
-    var nextSection = taggingSection.IndexOf("# ", 10);
-    if (nextSection > 0)
-    {
-        taggingSection = taggingSection.Substring(0, nextSection);
-    }
-
     var tags = new HashSet<string>();
-    var lines = taggingSection.Split('\n');
-    foreach (var line in lines)
-    {
-        if (line.TrimStart().StartsWith("* "))
-        {
-            var tagLine = line.TrimStart().Substring(2).Trim();
-            var tagName = tagLine.Split(new[] { ' ', '-' }, 2)[0];
 
-            if (!string.IsNullOrEmpty(tagName))
-            {
-                tags.Add(tagName);
-            }
+    // internal data not exposed as tags
+    var excludedProperties = new HashSet<string>
+    {
+        "Lat",
+        "Lng",
+        "PanoId",
+        "CheckedAt",
+        "DefaultHeading",
+        "RoadType",
+        "WayIds"
+    };
+
+    foreach (var prop in typeof(OsmData).GetProperties())
+    {
+        if (!excludedProperties.Contains(prop.Name))
+        {
+            tags.Add(prop.Name);
         }
     }
+
+    foreach (var prop in typeof(GoogleData).GetProperties())
+    {
+        if (!excludedProperties.Contains(prop.Name))
+        {
+            tags.Add(prop.Name);
+        }
+    }
+
+    foreach (var prop in typeof(NominatimData).GetProperties())
+    {
+        if (!excludedProperties.Contains(prop.Name))
+        {
+            tags.Add(prop.Name);
+        }
+    }
+
+    //derived tags
+    tags.Add("Season");
+    tags.Add("YearMonth");
+    tags.Add("HighwayType");
 
     return tags.OrderBy(t => t).ToArray();
 }
