@@ -33,9 +33,7 @@ public static class DistributionStrategies
 
         var neighborLocationBuckets = LocationLookupService.Bucketize(deserializeFromFile, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
         var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
-        var locationsFromFile = File.Exists(proximityFilter.LocationsPath)
-            ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-            : [];
+        var locationsFromFile = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath);
         var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
         var filteredLocations = FilteredLocations(countryCode, mapDefinition, subdivision, deserializeFromFile, neighborLocationBuckets, proximityLocationBuckets);
         var regionGoalCount = mapDefinition.SubdivisionDistribution.TryGetValue(countryCode, out var subdivisionWeights) ?
@@ -59,7 +57,7 @@ public static class DistributionStrategies
             return (Array.Empty<Loc>(), 0, 0);
         }
 
-        var tuple = ByMaxMinDistance(filteredLocations, regionGoalCount, neighborLocationBuckets, proximityLocationBuckets, minDistance, mapDefinition, countryCode, subdivision);
+        var tuple = ByMaxMinDistance(filteredLocations, regionGoalCount, neighborLocationBuckets, minDistance, mapDefinition, countryCode, subdivision);
         var diff = regionGoalCount - tuple.locations.Count;
         var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,4} locations short.[/]" : "";
         AnsiConsole.MarkupLine($"[lightseagreen]{tuple.locations.Count,6:N0} locations in {subdivision,7}. At least {tuple.minDistance,7:N0}m. between each location.[/]{notEnoughLocationsMessage}");
@@ -102,9 +100,7 @@ public static class DistributionStrategies
 
         var neighborLocationBuckets = LocationLookupService.Bucketize(allLocations, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
         var proximityFilter = ProximityFilter(countryCode, mapDefinition, "N/A");
-        var locationsFromFile = File.Exists(proximityFilter.LocationsPath)
-            ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-            : [];
+        var locationsFromFile = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath);
         var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
         var locations = FilteredLocations(countryCode, mapDefinition, "", allLocations, neighborLocationBuckets, proximityLocationBuckets);
         if (locations.Length == 0)
@@ -119,7 +115,7 @@ public static class DistributionStrategies
             .AsParallel()
             .SelectMany(x => LocationDistributor.GetSome<Loc, long>([.. x], (120_000m/files.Length).RoundToInt(), minDistance / 2, locationProbability))
             .ToArray();
-        var tuple = ByMaxMinDistance(filteredLocations, goalCount, neighborLocationBuckets, proximityLocationBuckets, minDistance, mapDefinition, countryCode, "");
+        var tuple = ByMaxMinDistance(filteredLocations, goalCount, neighborLocationBuckets, minDistance, mapDefinition, countryCode, "");
         var diff = goalCount - tuple.locations.Count;
         var notEnoughLocationsMessage = diff > 0 ? $"[olive]{diff,4} locations short.[/]" : "";
         AnsiConsole.MarkupLine($"[lightseagreen]Generated {tuple.locations.Count,6:N0} locations in {countryCode}. At least {tuple.minDistance,7:N0}m. between each location.[/]{notEnoughLocationsMessage}");
@@ -148,9 +144,7 @@ public static class DistributionStrategies
             var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
 
             neighborLocationsBuckets[subdivision] = LocationLookupService.Bucketize(deserializeFromFile, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
-            var locationsFromFile = File.Exists(proximityFilter.LocationsPath)
-                ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-                : [];
+            var locationsFromFile = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath);
             var proximityLocationBucket = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
             proximityLocationBuckets[subdivision] = proximityLocationBucket;
             var geometryFilters = GeometryFilters(countryCode, mapDefinition, subdivision).GetApplicableGeometryFilters();
@@ -225,7 +219,7 @@ public static class DistributionStrategies
                 : SubdivisionWeights.GoalForSubdivision(countryCode, x.Key, maxLocationCountSatisfyingFixedMinDistance,
                     availableSubdivisions));
         return locations.Select(x =>
-            (ByMaxMinDistance(allAvailableLocations[x.Key], subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], neighborLocationsBuckets[x.Key], proximityLocationBuckets[x.Key], subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], mapDefinition, countryCode, x.Key).locations,
+            (ByMaxMinDistance(allAvailableLocations[x.Key], subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], neighborLocationsBuckets[x.Key], subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], mapDefinition, countryCode, x.Key).locations,
                 subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], fixedMinDistance)).ToArray();
 
         int LargestSuccessCount()
@@ -252,9 +246,7 @@ public static class DistributionStrategies
 
             var locationFilter = LocationFilter(countryCode, mapDefinition, subdivision);
             var proximityFilter = ProximityFilter(countryCode, mapDefinition, subdivision);
-            var locationsFromFile = File.Exists(proximityFilter.LocationsPath)
-                ? LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath)
-                : [];
+            var locationsFromFile = LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath);
             var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(locationsFromFile, proximityFilter.HashPrecisionFromProximityFilter());
 
             var neighborLocationBuckets = LocationLookupService.Bucketize(deserializeFromFile, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
@@ -274,7 +266,6 @@ public static class DistributionStrategies
         Loc[] filteredLocations,
         int regionGoalCount,
         Dictionary<string, List<Loc>> neighborLocationBuckets,
-        Dictionary<string, List<ILatLng>> proximityLocationBuckets,
         int minDistance,
         MapDefinition mapDefinition,
         string countryCode,
@@ -302,6 +293,7 @@ public static class DistributionStrategies
             foreach (var locationPreferenceFilter in preferenceFilters)
             {
                 var proximityFilter = locationPreferenceFilter.ProximityFilter;
+                var proximityLocationBuckets = LocationLookupService.Bucketize<ILatLng>(LocationReader.DeserializeLocationsFromFile(proximityFilter.LocationsPath), proximityFilter.HashPrecisionFromProximityFilter());
                 var neighbourFilters = locationPreferenceFilter.NeighborFilters.Concat(mapDefinition.NeighborFilters).ToArray();
                 var geometryFilters = locationPreferenceFilter.GeometryFilters.GetApplicableGeometryFilters();
                 var filtered = LocationLakeFilterer.Filter(filteredLocations, neighborLocationBuckets, proximityLocationBuckets, locationPreferenceFilter.Expression, proximityFilter, geometryFilters, neighbourFilters, mapDefinition);

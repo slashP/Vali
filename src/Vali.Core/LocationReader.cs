@@ -10,6 +10,11 @@ public class LocationReader
 
     public static LocationLakeMapGenerator.GeoMapLocation[] DeserializeLocationsFromFile(string path)
     {
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
         if (Locations.TryGetValue(path, out var cachedLocations))
         {
             return cachedLocations;
