@@ -43,6 +43,18 @@ public class LocationLakeMapGenerator
                         locationCountGoal,
                         subDivisions,
                         mapDefinition), parallelism)).ToArray(),
+                DistributionStrategies.FixedCountByCoverageDensity when mapDefinition.DistributionStrategy.TreatCountriesAsSingleSubdivision.Contains(countryCode) => DistributionStrategies.CountryByCoverageDensity(
+                    countryCode,
+                    subdivisionFiles,
+                    locationCountGoal,
+                    mapDefinition),
+                DistributionStrategies.FixedCountByCoverageDensity => (await subdivisionFiles.RunLimitedNumberAtATime(f =>
+                    DistributionStrategies.SubdivisionByCoverageDensity(
+                        countryCode,
+                        f,
+                        locationCountGoal,
+                        subDivisions,
+                        mapDefinition), parallelism)).ToArray(),
                 DistributionStrategies.MaxCountByFixedMinDistance => DistributionStrategies.MaxLocationsInSubdivisionsByFixedMinDistance(
                     countryCode,
                     subdivisionFiles,
@@ -200,6 +212,7 @@ public class LocationLakeMapGenerator
                 panoId = output.PanoIdCountryCodes.Contains(l.Loc.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") || isPanoSpecificCheckActive ? l.MapCheckrLoc.panoId : null,
                 countryCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.CountryCode : null,
                 subdivisionCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.SubdivisionCode : null,
+                locationId = includeAdditionalLocationInfo ? l.Loc.LocationId.ToString() : null,
             }).ToArray();
         await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
         ConsoleLogger.Info($"{locations.Length, 6:N0} locations saved to {new FileInfo(locationsPath).FullName}");
@@ -255,6 +268,7 @@ public class LocationLakeMapGenerator
         public double Lat => lat;
         [JsonIgnore]
         public double Lng => lng;
+        public string? locationId { get; set; }
     }
 
     public record GeoMapLocationExtra

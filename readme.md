@@ -63,6 +63,17 @@ Option 2 is `MaxCountByFixedMinDistance` where you specify how far you want each
   }
 }
 ```
+
+Option 3 is `FixedCountByCoverageDensity` where you specify how many locations you want in total and each subdivision will get their locations spread according to how much coverage there is in "some surrounding area". There are two properties available you can tune: `CoverageDensityTuningFactor` must be between 0.01 and 1, defaults to 0.6. 0.05 is close to 'no tuning', 0.5 favors areas with less coverage by letting the distance between locations be lower. `coverageDensityClusterSize` must be between 1 and 6. 1 is roughly 5000x5000 km, 2 is roughly 1250x625 km, 3 is roughly 156x156 km, 4 is roughly 39x20 km, 5 is roughly 5x5 km, 6 is roughly 1x1 km. Default is 3. Example:
+```json
+{
+  "distributionStrategy": {
+    "key": "FixedCountByCoverageDensity",
+    "locationCountGoal": 45000,
+    "minMinDistance": 200
+  }
+}
+```
 ## Specific country distribution
 You can specify a country distribution of your choice. All numbers are relative (not representing location counts) and must be integers. Example:
 ```json

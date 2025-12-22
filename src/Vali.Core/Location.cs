@@ -20,6 +20,7 @@ public record Location : IDistributionLocation<long>
     public required NominatimData Nominatim { get; set; }
     public long LocationId => NodeId;
     public string? Tag { get; init; }
+    public Dictionary<string, string> ExternalData { get; set; } = [];
 }
 
 public interface IDistributionLocation<T> : ILatLng

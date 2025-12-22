@@ -207,7 +207,8 @@
           "enum": [
             "FixedCountByMaxMinDistance",
             "MaxCountByFixedMinDistance",
-            "EvenlyByDistanceWithinCountry"
+            "EvenlyByDistanceWithinCountry",
+            "FixedCountByCoverageDensity"
           ]
         },
         "locationCountGoal": {
@@ -255,6 +256,26 @@
             "yellowbelly",
             "5kable"
           ]
+        },
+        "coverageDensityTuningFactor": {
+          "type": [
+            "null",
+            "number"
+          ],
+          "description": "Adjust if lower coverage areas should be upweighted/have lower distance between locations than higher coverage areas. Defaults to 0.6. 1 is absurd, 0.01 is almost no adjustment compared to linearly weighted according to number of locations available.",
+          "format": "double",
+          "maximum": 1.0,
+          "minimum": 0.01
+        },
+        "coverageDensityClusterSize": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Adjust the size of clusters when calculating coverage density. 1 is roughly 5000x5000 km, 2 is roughly 1250x625 km, 3 is roughly 156x156 km, 4 is roughly 39x20 km, 5 is roughly 5x5 km, 6 is roughly 1x1 km. Default is 3.",
+          "format": "int32",
+          "maximum": 6.0,
+          "minimum": 1.0
         }
       }
     },
@@ -415,6 +436,7 @@
                   "IsResidential",
                   "IsScout",
                   "Month",
+                  "ResolutionHeight",
                   "Roads0",
                   "Roads10",
                   "Roads100",
@@ -433,7 +455,7 @@
               },
               {
                 "type": "string",
-                "pattern": "^(ArrowCount|Buildings10|Buildings100|Buildings200|Buildings25|ClosestCoast|ClosestLake|ClosestRailway|ClosestRiver|DescriptionLength|DrivingDirectionAngle|Elevation|Heading|HighwayTypeCount|Month|Roads0|Roads10|Roads100|Roads200|Roads25|Roads50|Tunnels10|Tunnels200|Year)-\\d+$"
+                "pattern": "^(ArrowCount|Buildings10|Buildings100|Buildings200|Buildings25|ClosestCoast|ClosestLake|ClosestRailway|ClosestRiver|DescriptionLength|DrivingDirectionAngle|Elevation|Heading|HighwayTypeCount|Month|ResolutionHeight|Roads0|Roads10|Roads100|Roads200|Roads25|Roads50|Tunnels10|Tunnels200|Year)-\\d+$"
               }
             ]
           }

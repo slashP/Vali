@@ -19,7 +19,19 @@ var settings = new SystemTextJsonSchemaGeneratorSettings
     }
 };
 
+var excludedProperties = new[]
+{
+    nameof(MapDefinition.GlobalExternalDataFiles).Prop(),
+    nameof(MapDefinition.CountryExternalDataFiles).Prop(),
+    nameof(MapDefinition.SubdivisionExternalDataFiles).Prop(),
+};
+
 var mapDefinitionSchema = JsonSchema.FromType<MapDefinition>(settings);
+foreach (var excludedProperty in excludedProperties)
+{
+    mapDefinitionSchema.Properties.Remove(excludedProperty);
+}
+
 mapDefinitionSchema.Title = "Vali Map Definition";
 mapDefinitionSchema.Description = "Configuration for generating maps";
 mapDefinitionSchema.AllowAdditionalProperties = true;
@@ -45,54 +57,17 @@ Console.WriteLine($"✓ Generated: {Path.GetFullPath(mapDefinitionPath)}");
 Console.WriteLine($"✓ Generated: {Path.GetFullPath(liveGeneratePath)}");
 Console.WriteLine("Schemas generated successfully!");
 
-static string[] GetValidLocationTags(bool isLiveGenerate = false)
-{
-    var tags = new HashSet<string>();
+static string[] GetValidLocationTags() =>
+    LocationLakeFilterer.ValidProperties().Except(["Lat", "Lng"]).Concat(["Season", "YearMonth"]).OrderBy(t =>  t).ToArray();
 
-    // Properties excluded - either internal data or context-specific
-    var excludedProperties = new HashSet<string>
-    {
-        "Lat",
-        "Lng",
-    };
-
-    // ResolutionHeight only excluded from regular map definitions (not populated in pre-processed data)
-    if (!isLiveGenerate)
-    {
-        excludedProperties.Add("ResolutionHeight");
-    }
-
-    foreach (var validProperty in LocationLakeFilterer.ValidProperties().Where(x => !excludedProperties.Contains(x)))
-    {
-        tags.Add(validProperty);
-    }
-
-    //derived tags
-    tags.Add("Season");
-    tags.Add("YearMonth");
-    tags.Add("HighwayType");
-
-    return tags.OrderBy(t => t).ToArray();
-}
-
-static string[] GetBucketableLocationTags(bool isLiveGenerate = false)
-{
-    var bucketable = new HashSet<string>();
-    foreach (var prop in typeof(OsmData).GetProperties()
-                 .Concat(typeof(GoogleData).GetProperties())
-                 .Where(prop => (Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType) == typeof(int)))
-    {
-        bucketable.Add(prop.Name);
-    }
-
-    // ResolutionHeight only available in live-generate
-    if (!isLiveGenerate)
-    {
-        bucketable.Remove("ResolutionHeight");
-    }
-
-    return bucketable.OrderBy(t => t).ToArray();
-}
+static string[] GetBucketableLocationTags() =>
+    typeof(OsmData).GetProperties()
+        .Concat(typeof(GoogleData).GetProperties())
+        .Where(prop => (Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType) == typeof(int))
+        .Select(t =>  t.Name)
+        .Distinct()
+        .OrderBy(t => t)
+        .ToArray();
 
 static void AddMapDefinitionConstraints(JsonSchema schema)
 {
@@ -126,6 +101,16 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
     fixedMinDistance.Description = "Fixed minimum distance in meters between locations (used with MaxCountByFixedMinDistance)";
     fixedMinDistance.Minimum = 1;
 
+    var tuningFactor = distStrategyDef.Properties[nameof(DistributionStrategy.CoverageDensityTuningFactor).Prop()];
+    tuningFactor.Description = "Adjust if lower coverage areas should be upweighted/have lower distance between locations than higher coverage areas. Defaults to 0.6. 1 is absurd, 0.01 is almost no adjustment compared to linearly weighted according to number of locations available.";
+    tuningFactor.Minimum = 0.01m;
+    tuningFactor.Maximum = 1;
+
+    var clusterSize = distStrategyDef.Properties[nameof(DistributionStrategy.CoverageDensityClusterSize).Prop()];
+    clusterSize.Description = "Adjust the size of clusters when calculating coverage density. 1 is roughly 5000x5000 km, 2 is roughly 1250x625 km, 3 is roughly 156x156 km, 4 is roughly 39x20 km, 5 is roughly 5x5 km, 6 is roughly 1x1 km. Default is 3.";
+    clusterSize.Minimum = 1;
+    clusterSize.Maximum = 6;
+
     var countryDist = distStrategyDef.Properties[nameof(DistributionStrategy.CountryDistributionFromMap).Prop()];
     countryDist.Description = "Use country distribution from a famous map";
     countryDist.Enumeration.Clear();
@@ -156,8 +141,8 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
     outputLocationTags.Description = "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).";
     if (outputLocationTags.Item != null)
     {
-        var validTags = GetValidLocationTags(isLiveGenerate: false);
-        var bucketableTags = GetBucketableLocationTags(isLiveGenerate: false);
+        var validTags = GetValidLocationTags();
+        var bucketableTags = GetBucketableLocationTags();
 
         // Create oneOf schema: enum for base tags OR pattern for bucketed variants
         var enumSchema = new JsonSchema { Type = JsonObjectType.String };
@@ -263,8 +248,8 @@ static void AddLiveGenerateConstraints(JsonSchema schema)
     locationTags.Description = "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).";
     if (locationTags.Item != null)
     {
-        var validTags = GetValidLocationTags(isLiveGenerate: true);
-        var bucketableTags = GetBucketableLocationTags(isLiveGenerate: true);
+        var validTags = GetValidLocationTags();
+        var bucketableTags = GetBucketableLocationTags();
 
         // Create oneOf schema: enum for base tags OR pattern for bucketed variants
         var enumSchema = new JsonSchema { Type = JsonObjectType.String };

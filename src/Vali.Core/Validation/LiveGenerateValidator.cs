@@ -251,7 +251,7 @@ public static class LiveGenerateValidator
 
         try
         {
-            DryRun(definition.LocationFilter);
+            DryRun(definition.LocationFilter, definition);
         }
         catch (Exception)
         {
@@ -261,7 +261,7 @@ public static class LiveGenerateValidator
 
         return definition;
 
-        static void DryRun(string filter)
+        static void DryRun<T>(string filter, T definition)
         {
             var expression = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(filter, true);
             var locations = new[] { ExampleMapCheckrLocation() }.Where(expression).ToArray();

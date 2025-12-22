@@ -64,7 +64,7 @@ public class GoogleApi
             BadCamStrategy badCamStrategy) =>
         silent
             ? await locations.RunLimitedNumberAtATime(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy), chunkSize)
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy), chunkSize, null)
             : await locations.RunLimitedNumberAtATimeWithProgressBar(
                 x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy),
                 chunkSize,

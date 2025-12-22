@@ -81,7 +81,7 @@ public static class Extensions
     }
 
     public static string? SafeSubstring(this string value, int length) => value?.Length > length ? value.Substring(0, length) : value;
-
+    public static string AsStringFromCharArray(this IEnumerable<char> characters) => new string(characters.ToArray());
     public static string Format(this decimal d) => d.ToString(CultureInfo.InvariantCulture);
     public static string Format(this double d) => d.ToString(CultureInfo.InvariantCulture);
     public static decimal Round(this decimal d, int precision) => decimal.Round(d, precision);
@@ -304,7 +304,8 @@ public static class Extensions
     public static async Task<IReadOnlyCollection<T1>> RunLimitedNumberAtATime<T1, T2>(
         this IEnumerable<T2> inputList,
         Func<T2, Task<T1>> asyncFunc,
-        int numberOfTasksConcurrent)
+        int numberOfTasksConcurrent,
+        Action<T1>? onTaskCompleted)
     {
         var results = new List<T1>();
         var inputQueue = new Queue<T2>(inputList);
@@ -320,10 +321,20 @@ public static class Extensions
             runningTasks.Remove(task);
             runningTasks.Add(asyncFunc(inputQueue.Dequeue()));
             results.Add(task.Result);
+            onTaskCompleted?.Invoke(task.Result);
         }
 
         await Task.WhenAll(runningTasks);
         results.AddRange(runningTasks.Select(task => task.Result));
+        if (onTaskCompleted == null)
+        {
+            return results;
+        }
+
+        foreach (var t in runningTasks.Select(t => t.Result))
+        {
+            onTaskCompleted?.Invoke(t);
+        }
 
         return results;
     }

@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+	<Configurations>Debug;Release;Experiment;LocalDebug</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +14,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.3.0" />
-		<PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
 		<PackageReference Include="geohash-dotnet" Version="2.2.0" />
 		<PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="4.0.0" />
 		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.11.2" />

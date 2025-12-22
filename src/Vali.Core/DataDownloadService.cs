@@ -1,10 +1,9 @@
-﻿using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using ICSharpCode.SharpZipLib.BZip2;
+﻿using ICSharpCode.SharpZipLib.BZip2;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Net.Http.Json;
 using Vali.Core.Data;
 
 namespace Vali.Core;
@@ -12,6 +11,11 @@ namespace Vali.Core;
 public static class DataDownloadService
 {
     private const string FileExtension = ".bin";
+
+    private static readonly HttpClient R2BucketClient = new()
+    {
+        BaseAddress = new Uri("https://vali-download.slashp.workers.dev")
+    };
 
     public static async Task DownloadFiles(string? countryCode, bool full, bool updates)
     {
@@ -24,17 +28,17 @@ public static class DataDownloadService
         var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
 
         var downloadOperations =
-            new (BlobContainerClient client,
+            new (string bucketName,
                 Action<string, RunMode> preDownloadAction,
                 Action<string, RunMode, DownloadMetadata.File> deleteAction,
-                Func<BlobContainerClient, string, IReadOnlyCollection<BlobFile>, RunMode, ProgressTask, Task> downloadAction,
-                Func<BlobFile, string> groupBy,
+                Func<string, string, IReadOnlyCollection<R2Object>, RunMode, ProgressTask, Task> downloadAction,
+                Func<R2Object, string> groupBy,
                 string downloadConsoleSuffix,
-                Func<string, RunMode, IReadOnlyCollection<BlobFile>, Task> downloadedAction,
+                Func<string, RunMode, IReadOnlyCollection<R2Object>, Task> downloadedAction,
                 bool force)[]
                 {
-                    (CreateBlobServiceClient(), (_, _) => {}, DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
-                    (CreateBlobServiceClientForUpdates(), RemoveUpdateFiles, (_, _, _) => {}, DownloadUpdateFile, f => f.BlobName.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
+                    ("countries-v2", (_, _) => {}, DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
+                    ("country-updates-v2", RemoveUpdateFiles, (_, _, _) => {}, DownloadUpdateFile, f => f.Key.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
                 };
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
             CountryCodes.Countries.Keys.ToArray() :
@@ -55,18 +59,18 @@ public static class DataDownloadService
                     foreach (var code in countryCodes)
                     {
                         downloadOperation.preDownloadAction(code, runMode);
-                        var filesFromBlob = await GetFilesFrom(code, downloadOperation.client);
+                        var filesFromR2 = await GetFilesFrom(code, downloadOperation.bucketName);
 
                         var localFiles = ExistingFilesInMetadata(code, runMode);
-                        var filesToDownload = filesFromBlob.Where(blobFile =>
+                        var filesToDownload = filesFromR2.Where(r2File =>
                         {
-                            var localFile = localFiles.FirstOrDefault(file => Path.GetFileNameWithoutExtension(file.Name) == Path.GetFileNameWithoutExtension(blobFile.BlobName));
-                            return localFile == null || localFile.LastWriteTimeUtc < blobFile.LastModified || downloadOperation.force;
+                            var localFile = localFiles.FirstOrDefault(file => Path.GetFileNameWithoutExtension(file.Name) == Path.GetFileNameWithoutExtension(r2File.Key));
+                            return localFile == null || localFile.LastWriteTimeUtc < r2File.Uploaded || downloadOperation.force;
                         }).ToArray();
                         var filesToDelete = localFiles.Where(diskFile =>
                         {
-                            var matchingFileFromBlob = filesFromBlob.FirstOrDefault(blobFile => Path.GetFileNameWithoutExtension(blobFile.BlobName) == Path.GetFileNameWithoutExtension(diskFile.Name));
-                            return matchingFileFromBlob == null;
+                            var matchingFileFromR2 = filesFromR2.FirstOrDefault(r2File => Path.GetFileNameWithoutExtension(r2File.Key) == Path.GetFileNameWithoutExtension(diskFile.Name));
+                            return matchingFileFromR2 == null;
                         }).ToArray();
                         foreach (var diskFile in filesToDelete)
                         {
@@ -78,10 +82,10 @@ public static class DataDownloadService
                             continue;
                         }
 
-                        var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}{downloadOperation.downloadConsoleSuffix}[/]", maxValue: filesToDownload.Sum(f => f.ContentLength ?? 0));
+                        var task = ctx.AddTask($"[green]{CountryCodes.Name(code)}{downloadOperation.downloadConsoleSuffix}[/]", maxValue: filesToDownload.Sum(f => f.Size ?? 0));
                         await Task.Delay(5);
-                        var blobFilesDownloaded = new List<BlobFile>();
-                        foreach (var blobFiles in filesToDownload.GroupBy(downloadOperation.groupBy))
+                        var r2FilesDownloaded = new List<R2Object>();
+                        foreach (var r2Files in filesToDownload.GroupBy(downloadOperation.groupBy))
                         {
                             exitRequested = Console.KeyAvailable && Console.ReadKey().KeyChar == 's';
                             if (exitRequested)
@@ -90,12 +94,12 @@ public static class DataDownloadService
                                 break;
                             }
 
-                            var blobFilesToDownload = blobFiles.ToArray();
-                            await downloadOperation.downloadAction(downloadOperation.client, code, blobFilesToDownload, runMode, task);
-                            blobFilesDownloaded.AddRange(blobFilesToDownload);
+                            var r2FilesToDownload = r2Files.ToArray();
+                            await downloadOperation.downloadAction(downloadOperation.bucketName, code, r2FilesToDownload, runMode, task);
+                            r2FilesDownloaded.AddRange(r2FilesToDownload);
                         }
 
-                        await downloadOperation.downloadedAction(code, runMode, blobFilesDownloaded);
+                        await downloadOperation.downloadedAction(code, runMode, r2FilesDownloaded);
                         task.StopTask();
                         if (exitRequested)
                         {
@@ -109,17 +113,17 @@ public static class DataDownloadService
         logger.FilesDownloaded(countryCode, sw.Elapsed, exitRequested);
     }
 
-    private static async Task SaveDataFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<BlobFile> files)
+    private static async Task SaveDataFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<R2Object> files)
     {
         var metadataPath = DownloadMetadataPath(countryCode, runMode);
         var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
         var newFiles = files.Select(f => new DownloadMetadata.File
             {
-                Name = Path.GetFileNameWithoutExtension(f.BlobName),
-                LastWriteTimeUtc = (f.LastModified ?? DateTimeOffset.UtcNow).UtcDateTime
+                Name = Path.GetFileNameWithoutExtension(f.Key),
+                LastWriteTimeUtc = f.Uploaded
             })
             .Concat(metadata.Files
-                .Where(f => files.All(x => Path.GetFileNameWithoutExtension(x.BlobName) != Path.GetFileNameWithoutExtension(f.Name.RemoveDatePrefix()))))
+                .Where(f => files.All(x => Path.GetFileNameWithoutExtension(x.Key) != Path.GetFileNameWithoutExtension(f.Name.RemoveDatePrefix()))))
             .DistinctBy(f => f.Name)
             .ToArray();
         metadata = metadata with
@@ -129,14 +133,14 @@ public static class DataDownloadService
         await Extensions.PrettyJsonSerializeToFile(metadataPath, metadata);
     }
 
-    private static async Task SaveUpdateFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<BlobFile> files)
+    private static async Task SaveUpdateFilesDownloaded(string countryCode, RunMode runMode, IReadOnlyCollection<R2Object> files)
     {
         var metadataPath = DownloadMetadataPath(countryCode, runMode);
         var metadata = Extensions.TryJsonDeserializeFromFile(metadataPath, new DownloadMetadata());
         var newFiles = files.Select(f => new DownloadMetadata.File
             {
-                Name = Path.GetFileNameWithoutExtension(f.BlobName),
-                LastWriteTimeUtc = (f.LastModified ?? DateTimeOffset.UtcNow).UtcDateTime
+                Name = Path.GetFileNameWithoutExtension(f.Key),
+                LastWriteTimeUtc = f.Uploaded
             })
             .Concat(metadata.Files)
             .DistinctBy(f => f.Name)
@@ -172,40 +176,22 @@ public static class DataDownloadService
         }
     }
 
-    private static async Task DownloadDataFiles(BlobContainerClient blobContainerClient, string countryCode, IReadOnlyCollection<BlobFile> filesToDownload, RunMode runMode, ProgressTask? task)
+    private static async Task DownloadDataFiles(string bucketName, string countryCode, IReadOnlyCollection<R2Object> filesToDownload, RunMode runMode, ProgressTask? task)
     {
-        var maxFileSize = filesToDownload.Any() ? filesToDownload.Max(x => x.ContentLength) : 0;
-        var chunkSize = (maxFileSize / 1024 / 1024) switch
-        {
-            > 100 => 1,
-            < 5 => 6,
-            _ => 3
-        };
-
         var folder = CountryFolder(countryCode, runMode);
-        foreach (var fileGroup in filesToDownload.Chunk(chunkSize))
-        {
-            await Task.WhenAll(fileGroup.Select(file => DownloadFile(blobContainerClient, file.BlobName, folder)));
-            task?.Increment(fileGroup.Sum(x => x.ContentLength ?? 0));
-        }
+        await filesToDownload.RunLimitedNumberAtATime(file => DownloadFile(bucketName, file, folder), 10, t => task?.Increment(t.file.Size ?? 0));
     }
 
-    private static async Task DownloadUpdateFile(BlobContainerClient blobContainerClient, string countryCode, IReadOnlyCollection<BlobFile> blobFiles, RunMode runMode, ProgressTask task)
+    private static async Task DownloadUpdateFile(string bucketName, string countryCode, IReadOnlyCollection<R2Object> r2Files, RunMode runMode, ProgressTask task)
     {
         var updatesFolder = UpdatesFolder(countryCode, runMode);
         var newLocations = new List<Location>();
-        var updateFilePath = "";
         var chunkSize = 20;
-        foreach (var fileChunk in blobFiles.Chunk(chunkSize))
+        var uploadedFiles = await r2Files.RunLimitedNumberAtATime(file => DownloadFile(bucketName, file, updatesFolder), chunkSize, (t) => task.Increment(t.file.Size ?? 0));
+        var updateFilePath = uploadedFiles.LastOrDefault().filePath ?? "";
+        foreach (var uploadedFile in uploadedFiles)
         {
-            var updateFilePaths = await fileChunk.RunLimitedNumberAtATime(f => DownloadFile(blobContainerClient, f.BlobName, updatesFolder), chunkSize);
-            foreach (var updateFile in updateFilePaths)
-            {
-                newLocations.AddRange(Extensions.ProtoDeserializeFromFile<Location[]>(updateFile));
-                updateFilePath = updateFile;
-            }
-
-            task.Increment(fileChunk.Sum(f => f.ContentLength ?? 0));
+            newLocations.AddRange(Extensions.ProtoDeserializeFromFile<Location[]>(uploadedFile.filePath));
         }
 
         var countryFolder = CountryFolder(countryCode, runMode);
@@ -213,19 +199,25 @@ public static class DataDownloadService
         await ApplyUpdatesToDataFile(dataFilePath, newLocations);
     }
 
-    private static async Task<string> DownloadFile(BlobContainerClient blobContainerClient, string blobName, string folder)
+    private static async Task<(string filePath, R2Object file)> DownloadFile(string bucketName, R2Object file, string folder)
     {
-        var blobClient = blobContainerClient.GetBlobClient(blobName);
         Directory.CreateDirectory(folder);
-        var destinationFileName = Path.GetFileNameWithoutExtension(blobName) + FileExtension;
+        var key = file.Key;
+        var destinationFileName = Path.GetFileNameWithoutExtension(key) + FileExtension;
         var filePath = Path.Combine(folder, destinationFileName);
         var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
+        
+        var r2Url = $"{bucketName}/{key}";
+        
         await using var fileOnDiskStream = new FileStream(filePath, fileMode);
+        using var response = await R2BucketClient.GetAsync(r2Url);
+        response.EnsureSuccessStatusCode();
+        
         using var memoryStream = new MemoryStream();
-        await blobClient.DownloadToAsync(memoryStream);
+        await response.Content.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
         BZip2.Decompress(memoryStream, fileOnDiskStream, true);
-        return filePath;
+        return (filePath, file);
     }
 
     private static async Task ApplyUpdatesToDataFile(string dataFilePath, IEnumerable<Location> updateLocations)
@@ -233,14 +225,6 @@ public static class DataDownloadService
         var newLocations = updateLocations.ToArray();
         await Extensions.ProtoAppendSerializeToFile(dataFilePath, newLocations);
     }
-
-    private static BlobContainerClient CreateBlobServiceClient() => GetBlobServiceClient("countries-v1");
-
-    private static BlobContainerClient CreateBlobServiceClientForUpdates() => GetBlobServiceClient("countries-updates-v1");
-
-    private static BlobContainerClient CreateBlobServiceClientForRoadData() => GetBlobServiceClient("roads-v2");
-
-    private static BlobContainerClient GetBlobServiceClient(string blobContainerName) => new BlobServiceClient(new Uri("https://valistorage.blob.core.windows.net/")).GetBlobContainerClient(blobContainerName);
 
     private static string RemoveDatePrefix(this string filename) =>
         new string(filename.SkipWhile(c => char.IsNumber(c) || c == '-').ToArray());
@@ -317,21 +301,13 @@ public static class DataDownloadService
         return Path.Combine(countryFolder, "updates");
     }
 
-    private static async Task<IReadOnlyCollection<BlobFile>> GetFilesFrom(string countryCode, BlobContainerClient blobContainerClient)
+    private static async Task<R2Object[]> GetFilesFrom(string countryCode, string bucketName)
     {
-        var resultSegment = blobContainerClient.GetBlobsAsync(BlobTraits.Metadata, prefix: countryCode).AsPages(default, 10);
-        var files = new List<BlobFile>();
-        await foreach (var blobPage in resultSegment)
-        {
-            files.AddRange(blobPage.Values.Select(blobItem => new BlobFile
-            {
-                BlobName = blobItem.Name,
-                LastModified = blobItem.Properties.LastModified,
-                ContentLength = blobItem.Properties.ContentLength
-            }));
-        }
-
-        return files;
+        var listingName = bucketName.Contains("updates", StringComparison.InvariantCultureIgnoreCase)
+            ? "list-country-updates"
+            : "list-countries";
+        var r2ApiUrl = $"{listingName}/{countryCode}";
+        return await R2BucketClient.GetFromJsonAsync<R2Object[]>(r2ApiUrl) ?? [];
     }
 
     public static async Task EnsureFilesDownloaded(string countryCode, string[] subdivisionFiles)
@@ -341,27 +317,24 @@ public static class DataDownloadService
             return;
         }
 
-        BlobContainerClient? blobContainerClient = null;
-
         foreach (var subdivisionFile in subdivisionFiles)
         {
             if (!File.Exists(subdivisionFile))
             {
-                blobContainerClient ??= CreateBlobServiceClient();
                 var fileName = Path.GetFileName(subdivisionFile);
-                var blobFileName = Path.GetFileNameWithoutExtension(fileName) + ".zip";
-                var blobName = $"{countryCode}/{blobFileName}";
+                var r2FileName = Path.GetFileNameWithoutExtension(fileName) + ".zip";
+                var r2Key = $"{countryCode}/{r2FileName}";
                 ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
                 var filesToDownload = new[]
                 {
-                    new BlobFile
+                    new R2Object
                     {
-                        BlobName = blobName,
-                        LastModified = DateTimeOffset.MinValue,
-                        ContentLength = 0
+                        Key = r2Key,
+                        Uploaded = DateTime.MinValue,
+                        Size = 0
                     }
                 };
-                await DownloadDataFiles(blobContainerClient, countryCode, filesToDownload, RunMode.Default, null);
+                await DownloadDataFiles("countries-v1", countryCode, filesToDownload, RunMode.Default, null);
             }
         }
     }
@@ -409,10 +382,14 @@ public static class DataDownloadService
         }
 
         ConsoleLogger.Info("Downloading roads data.");
-        var blobClient = CreateBlobServiceClientForRoadData().GetBlobClient("roads.zip");
         Directory.CreateDirectory(roadsFolder);
+        
+        var r2Url = "roads-v2/roads.zip";
+        using var response = await R2BucketClient.GetAsync(r2Url);
+        response.EnsureSuccessStatusCode();
+        
         using var memoryStream = new MemoryStream();
-        await blobClient.DownloadToAsync(memoryStream);
+        await response.Content.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
         ZipFile.ExtractToDirectory(memoryStream, roadsFolder);
         ConsoleLogger.Info("Downloaded roads data.");
@@ -421,7 +398,10 @@ public static class DataDownloadService
         {
             var currentDownloadFolder = DownloadFolder(RunMode.Default);
             var oldRoadsFolder = Path.Combine(currentDownloadFolder, oldRoadsDataFolderName);
-            Directory.Delete(oldRoadsFolder, true);
+            if (Directory.Exists(oldRoadsFolder))
+            {
+                Directory.Delete(oldRoadsFolder, true);
+            }
         }
     }
 
@@ -446,11 +426,11 @@ internal record DownloadMetadata
     }
 }
 
-internal record BlobFile
+internal record R2Object
 {
-    public required string BlobName { get; init; }
-    public required DateTimeOffset? LastModified { get; init; }
-    public long? ContentLength { get; init; }
+    public required string Key { get; init; }
+    public required DateTime Uploaded { get; init; }
+    public long? Size { get; init; }
 }
 
 public enum RunMode
