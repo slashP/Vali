@@ -200,6 +200,7 @@ public class LocationLakeMapGenerator
                 panoId = output.PanoIdCountryCodes.Contains(l.Loc.Nominatim.CountryCode) || output.PanoIdCountryCodes.Contains("*") || isPanoSpecificCheckActive ? l.MapCheckrLoc.panoId : null,
                 countryCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.CountryCode : null,
                 subdivisionCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.SubdivisionCode : null,
+                locationId = includeAdditionalLocationInfo ? l.Loc.LocationId.ToString() : null,
             }).ToArray();
         await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
         ConsoleLogger.Info($"{locations.Length, 6:N0} locations saved to {new FileInfo(locationsPath).FullName}");
@@ -255,6 +256,7 @@ public class LocationLakeMapGenerator
         public double Lat => lat;
         [JsonIgnore]
         public double Lng => lng;
+        public string? locationId { get; set; }
     }
 
     public record GeoMapLocationExtra

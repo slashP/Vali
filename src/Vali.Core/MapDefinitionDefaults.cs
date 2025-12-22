@@ -121,26 +121,21 @@ public static class MapDefinitionDefaults
         definition.CountryCodes switch
         {
             ["europe"] => definition.SubdivisionInclusions
-                .Concat(new[]
-                {
+                .Concat(
+                [
                     EuropeanTurkiye(),
-                    EuropeanKazakhstan(),
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
+                    EuropeanKazakhstan()
+                ])
+                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             ["africa"] => definition.SubdivisionInclusions
-                .Concat(new[]
-                {
-                    AfricanSpain(),
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
+                .Concat([AfricanSpain()])
+                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             ["asia"] => definition.SubdivisionInclusions
-                .Concat(new[]
-                {
-                    AsianRussia(),
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
+                .Concat([AsianRussia()])
+                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             ["oceania"] => definition.SubdivisionInclusions
-                .Concat(new[]
-                {
-                    new KeyValuePair<string, string[]>("US", ["US-HI"])
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
+                .Concat([new KeyValuePair<string, string[]>("US", ["US-HI"])])
+                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
             _ => definition.SubdivisionInclusions
         };
 

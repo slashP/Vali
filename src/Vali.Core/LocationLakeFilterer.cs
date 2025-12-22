@@ -149,7 +149,7 @@ public static class LocationLakeFilterer
             .Split(' ');
         var validProperties = typeof(TLoc).Name switch
         {
-            nameof(Location) => ValidProperties(),
+            nameof(Location) => ValidProperties().Concat(componentsInExpression.Where(x => x.StartsWith("external:"))),
             nameof(MapCheckrLocation) => ValidMapCheckrLocationProperties(),
             _ => throw new ArgumentOutOfRangeException()
         };
@@ -195,10 +195,11 @@ public static class LocationLakeFilterer
         const string parentLambdaParameterName = "current:";
         var validProperties = (typeof(TLoc).Name switch
             {
-                nameof(Location) => ValidProperties(),
+                nameof(Location) => ValidProperties().Concat(componentsInExpression.Where(x => x.StartsWith("external:"))),
                 nameof(MapCheckrLocation) => ValidMapCheckrLocationProperties(),
                 _ => throw new ArgumentOutOfRangeException()
-            }).SelectMany(x => new (string PropertyName, string LambdaParameterName)[]
+            })
+            .SelectMany(x => new (string PropertyName, string LambdaParameterName)[]
             {
                 (PropertyName: x, primaryLambdaParameterName),
                 ($"{parentLambdaParameterName}{x}", parentLambdaParameterName)
@@ -349,6 +350,7 @@ public static class LocationLakeFilterer
             nameof(Loc.Nominatim.SubdivisionCode) =>
                 $"{resultLambdaParameterName}.Nominatim.{nameof(Loc.Nominatim.SubdivisionCode)}",
             nameof(Loc.Nominatim.County) => $"{resultLambdaParameterName}.Nominatim.{nameof(Loc.Nominatim.County)}",
+            _ when property.StartsWith("external:") => $"{resultLambdaParameterName}.ExternalData[\"{property.SkipWhile(c => c != ':').Skip(1).AsStringFromCharArray()}\"]",
             _ => throw new ArgumentOutOfRangeException(nameof(property), property, null)
         };
     }

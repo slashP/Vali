@@ -66,6 +66,15 @@ public class LocationLakeFiltererTests
         Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], "", new(), [], neighborFilters, mapDefinition));
     }
 
+    [Theory]
+    [InlineData("external:HasPoles eq 'Yes'")]
+    public void Should_compile_expression_with_external_data(string expression)
+    {
+        var locations = LocationArray();
+        locations.First().ExternalData["HasPoles"] = "Yes";
+        LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new()).Length.ShouldBe(1);
+    }
+
     private static Location[] LocationArray() =>
         new[]
         {

@@ -50,7 +50,7 @@ public static class FilterValidation
             }
         }
 
-        static void DryRunNeighborFilter(string filter)
+        static void DryRunNeighborFilter(string filter, MapDefinition definition)
         {
             var expression = LocationLakeFilterer.CompileParentBoolLocationExpression(filter);
             var locations = EmptyLocationArray().Where(l => EmptyLocationArray().Any(l2 => expression(l2, l))).ToArray();
@@ -280,7 +280,9 @@ public static class FilterValidation
         return definition;
     }
 
-    public static T? ValidateExpression<T>(this T definition, string filter, Action<string> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties, IReadOnlyCollection<string> outputVisibleValidProperties)
+    public static T? ValidateExpression<T>(this T definition, string filter,
+        Action<string, T> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties,
+        IReadOnlyCollection<string> outputVisibleValidProperties)
     {
         if (filter == "")
         {
@@ -309,9 +311,11 @@ public static class FilterValidation
             var properties = validProperties.Select(x => x.Trim()).ToArray();
             if (!operators.Contains(expressionValue.Trim(), StringComparer.InvariantCultureIgnoreCase) &&
                 !properties.Contains(expressionValue.Trim()) &&
+                !expressionValue.StartsWith("external:") &&
                 !double.TryParse(expressionValue, NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
                 !bool.TryParse(expressionValue, out _) &&
                 !IsSingleQuoteWord(expressionValue) &&
+                !expressionValue.StartsWith("$$") &&
                 expressionValue != "null")
             {
                 if (expressionValue.Contains("'"))
@@ -334,7 +338,7 @@ public static class FilterValidation
 
         try
         {
-            dryRun(filter);
+            dryRun(filter, definition);
         }
         catch (Exception e)
         {
@@ -395,16 +399,44 @@ public static class FilterValidation
         return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue || c == '_');
     }
 
-    static void DryRun(string filter)
+    static void DryRun(string filter, MapDefinition mapDefinition)
     {
         var expression = LocationLakeFilterer.CompileExpression<Location, bool>(filter, true);
-        var locations = EmptyLocationArray().Where(expression).ToArray();
+        var locations = EmptyLocationArray();
+        if (mapDefinition.GlobalExternalDataFiles.Length > 0)
+        {
+            SetExternalData(locations, mapDefinition.GlobalExternalDataFiles);
+        }
+
+        foreach (var keyValuePair in mapDefinition.CountryExternalDataFiles)
+        {
+            SetExternalData(locations, keyValuePair.Value);
+        }
+
+        var filtered = locations.Where(expression).ToArray();
+        
+        static void SetExternalData(Location[] locations, string[] externalFiles)
+        {
+            foreach (var externalDataFile in externalFiles)
+            {
+                var externalData = Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(externalDataFile, []);
+                if (externalData.Count == 0)
+                {
+                    continue;
+                }
+
+                var defaultDictionary = externalData.First().Value.ToDictionary(x => x.Key, _ => "");
+                foreach (var location in locations)
+                {
+                    location.ExternalData = externalData.GetValueOrDefault(location.LocationId.ToString(), defaultDictionary);
+                }
+            }
+        }
     }
 
-    public static IEnumerable<Location> EmptyLocationArray() =>
-        new[]
-        {
-            new Location
+    public static Location[] EmptyLocationArray() =>
+    [
+        new Location
             {
                 Osm = new OsmData(),
                 Google = new GoogleData
@@ -418,5 +450,5 @@ public static class FilterValidation
                     SubdivisionCode = "NO-03"
                 }
             }
-        };
+    ];
 }

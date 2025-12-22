@@ -11,7 +11,7 @@ public static class OutputValidation
                      .Concat(new[] { definition.Output.GlobalHeadingExpression })
                      .Where(x => !string.IsNullOrEmpty(x)))
         {
-            static void DryRun(string expression)
+            static void DryRun(string expression, MapDefinition definition)
             {
                 var selector = LocationLakeFilterer.CompileIntLocationExpression(expression);
                 var locations = FilterValidation.EmptyLocationArray().Select(selector).ToArray();
@@ -52,7 +52,7 @@ public static class OutputValidation
                 return null;
             }
 
-            static void DryRunMapCheckrExpression(string filter)
+            static void DryRunMapCheckrExpression(string filter, MapDefinition definition)
             {
                 var expression = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(filter, true);
                 var locations = new[] { ExampleMapCheckrLocation() }.Where(expression).ToArray();

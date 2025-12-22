@@ -30,6 +30,9 @@ public record MapDefinition
     public LocationProbability GlobalLocationProbability { get; set; } = new();
     public Dictionary<string, LocationProbability> CountryLocationProbabilities { get; set; } = new();
     public Dictionary<string, Dictionary<string, LocationProbability>> SubdivisionLocationProbabilities { get; set; } = new();
+    public string[] GlobalExternalDataFiles { get; set; } = [];
+    public Dictionary<string, string[]> CountryExternalDataFiles { get; set; } = [];
+    public Dictionary<string, Dictionary<string, string[]>> SubdivisionExternalDataFiles { get; set; } = [];
 }
 
 public record ProximityFilter

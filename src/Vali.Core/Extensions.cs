@@ -81,7 +81,7 @@ public static class Extensions
     }
 
     public static string? SafeSubstring(this string value, int length) => value?.Length > length ? value.Substring(0, length) : value;
-
+    public static string AsStringFromCharArray(this IEnumerable<char> characters) => new string(characters.ToArray());
     public static string Format(this decimal d) => d.ToString(CultureInfo.InvariantCulture);
     public static string Format(this double d) => d.ToString(CultureInfo.InvariantCulture);
     public static decimal Round(this decimal d, int precision) => decimal.Round(d, precision);

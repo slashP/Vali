@@ -24,7 +24,7 @@ public static class DistributionStrategies
         string[] availableSubdivisions,
         MapDefinition mapDefinition)
     {
-        var deserializeFromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
+        var deserializeFromFile = ReadFromFile(file, mapDefinition, countryCode);
         var subdivision = deserializeFromFile.FirstOrDefault()?.Nominatim.SubdivisionCode ?? "";
         if (!availableSubdivisions.Contains(subdivision))
         {
@@ -89,7 +89,7 @@ public static class DistributionStrategies
         var allLocations = new List<Loc>();
         foreach (var file in files)
         {
-            var fromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
+            var fromFile = ReadFromFile(file, mapDefinition, countryCode);
             allLocations.AddRange(fromFile);
         }
 
@@ -133,7 +133,7 @@ public static class DistributionStrategies
         Dictionary<string, Dictionary<string, List<ILatLng>>> proximityLocationBuckets = new();
         foreach (var file in files)
         {
-            var deserializeFromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
+            var deserializeFromFile = ReadFromFile(file, mapDefinition, countryCode);
             var subdivision = deserializeFromFile.First().Nominatim.SubdivisionCode;
             if (string.IsNullOrEmpty(subdivision))
             {
@@ -237,7 +237,7 @@ public static class DistributionStrategies
         var allAvailableLocations = new List<Loc>();
         foreach (var file in files)
         {
-            var deserializeFromFile = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
+            var deserializeFromFile = ReadFromFile(file, mapDefinition, countryCode);
             var subdivision = deserializeFromFile.First().Nominatim.SubdivisionCode;
             if (string.IsNullOrEmpty(subdivision))
             {
@@ -323,15 +323,62 @@ public static class DistributionStrategies
 
     private static string? LocationFilter(string countryCode, MapDefinition mapDefinition, string subdivision)
     {
-        var locationFilter = mapDefinition switch
-        {
-            _ when
-                mapDefinition.SubdivisionLocationFilters.TryGetValue(countryCode, out var countrySubdivisionFilters) &&
-                countrySubdivisionFilters.TryGetValue(subdivision, out var subdivisionFilter) => subdivisionFilter,
-            _ when mapDefinition.CountryLocationFilters.TryGetValue(countryCode, out var countryFilter) => countryFilter,
-            _ => mapDefinition.GlobalLocationFilter
-        };
+        var subdivisionFilter =
+            mapDefinition.SubdivisionLocationFilters.TryGetValue(countryCode, out var countrySubdivisionFilters) &&
+            countrySubdivisionFilters.TryGetValue(subdivision, out var s)
+                ? s
+                : "";
+        var countryFilter = mapDefinition.CountryLocationFilters.GetValueOrDefault(countryCode, "");
+        var globalFilter = mapDefinition.GlobalLocationFilter;
+        var locationFilter = new[] { globalFilter, countryFilter, subdivisionFilter }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => $"({x})")
+            .Merge(" and ");
         return locationFilter;
+    }
+
+    private static Loc[] ReadFromFile(string file, MapDefinition mapDefinition, string countryCode)
+    {
+        var locations = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
+        if (mapDefinition.GlobalExternalDataFiles.Length > 0)
+        {
+            SetExternalData(locations, mapDefinition.GlobalExternalDataFiles);
+        }
+
+        if (mapDefinition.CountryExternalDataFiles.TryGetValue(countryCode, out var externalFiles) && externalFiles.Length > 0)
+        {
+            SetExternalData(locations, externalFiles);
+        }
+        
+        if ((mapDefinition.GlobalExternalDataFiles.Length > 0 || mapDefinition.CountryExternalDataFiles.Count > 0) && (locations.Length > 0 && locations.First().ExternalData.Count == 0))
+        {
+            var fileWithDictionaryValues = mapDefinition.CountryExternalDataFiles
+                .SelectMany(x => x.Value)
+                .Select(f => (dictionary: Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(f, []), file: f))
+                .First(x => x.dictionary.Values.Count > 0)
+                .file;
+            SetExternalData(locations, [fileWithDictionaryValues]);
+        }
+
+        return locations;
+
+        static void SetExternalData(Loc[] locations, string[] externalFiles)
+        {
+            foreach (var externalDataFile in externalFiles)
+            {
+                var externalData = Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(externalDataFile, []);
+                if (externalData.Count == 0)
+                {
+                    continue;
+                }
+
+                var defaultDictionary = externalData.First().Value.ToDictionary(x => x.Key, _ => "");
+                foreach (var location in locations)
+                {
+                    location.ExternalData = externalData.GetValueOrDefault(location.LocationId.ToString(), defaultDictionary);
+                }
+            }
+        }
     }
 
     private static ProximityFilter ProximityFilter(string countryCode, MapDefinition mapDefinition, string subdivision) =>

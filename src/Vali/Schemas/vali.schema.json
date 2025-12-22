@@ -192,6 +192,33 @@
           "$ref": "#/definitions/LocationProbability"
         }
       }
+    },
+    "globalExternalDataFiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "countryExternalDataFiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "subdivisionExternalDataFiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "definitions": {
