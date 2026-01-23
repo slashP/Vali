@@ -11,6 +11,8 @@ namespace Vali.Core;
 public static class DataDownloadService
 {
     private const string FileExtension = ".bin";
+    private const string CountriesBucketName = "countries-v2";
+    private const string CountryUpdatesBucketName = "country-updates-v2";
 
     private static readonly HttpClient R2BucketClient = new()
     {
@@ -37,8 +39,8 @@ public static class DataDownloadService
                 Func<string, RunMode, IReadOnlyCollection<R2Object>, Task> downloadedAction,
                 bool force)[]
                 {
-                    ("countries-v2", (_, _) => {}, DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
-                    ("country-updates-v2", RemoveUpdateFiles, (_, _, _) => {}, DownloadUpdateFile, f => f.Key.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
+                    (CountriesBucketName, (_, _) => {}, DeleteDataFile, DownloadDataFiles, _ => "", "", SaveDataFilesDownloaded, full),
+                    (CountryUpdatesBucketName, RemoveUpdateFiles, (_, _, _) => {}, DownloadUpdateFile, f => f.Key.RemoveDatePrefix(), " updates", SaveUpdateFilesDownloaded, updates),
                 };
         var countryCodes = string.IsNullOrEmpty(countryCode) ?
             CountryCodes.Countries.Keys.ToArray() :
@@ -317,25 +319,22 @@ public static class DataDownloadService
             return;
         }
 
-        foreach (var subdivisionFile in subdivisionFiles)
+        if (subdivisionFiles.All(File.Exists))
         {
-            if (!File.Exists(subdivisionFile))
-            {
-                var fileName = Path.GetFileName(subdivisionFile);
-                var r2FileName = Path.GetFileNameWithoutExtension(fileName) + ".zip";
-                var r2Key = $"{countryCode}/{r2FileName}";
-                ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
-                var filesToDownload = new[]
-                {
-                    new R2Object
-                    {
-                        Key = r2Key,
-                        Uploaded = DateTime.MinValue,
-                        Size = 0
-                    }
-                };
-                await DownloadDataFiles("countries-v1", countryCode, filesToDownload, RunMode.Default, null);
-            }
+            return;
+        }
+
+        var filesFromR2 = await GetFilesFrom(countryCode, CountriesBucketName);
+        var localFiles = ExistingFilesInMetadata(countryCode, RunMode.Default);
+        var filesToDownload = filesFromR2.Where(r2File =>
+        {
+            var localFile = localFiles.FirstOrDefault(file => Path.GetFileNameWithoutExtension(file.Name) == Path.GetFileNameWithoutExtension(r2File.Key));
+            return localFile == null || localFile.LastWriteTimeUtc < r2File.Uploaded;
+        }).ToArray();
+        if (filesToDownload.Length > 0)
+        {
+            ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
+            await DownloadDataFiles(CountriesBucketName, countryCode, filesToDownload, RunMode.Default, null);
         }
     }
 
