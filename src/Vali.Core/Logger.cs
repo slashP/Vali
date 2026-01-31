@@ -4,11 +4,26 @@ namespace Vali.Core;
 
 public static class ConsoleLogger
 {
-    public static void Success(string message) => AnsiConsole.MarkupLine($"[green]{message.Escape()}[/]");
-    public static void Info(string message) => AnsiConsole.MarkupLine($"[blue]{message.Escape()}[/]");
-    public static void Warn(string message) => AnsiConsole.MarkupLine($"[darkorange3]{message.Escape()}[/]");
-    public static void Error(string message) => AnsiConsole.MarkupLine($"[red]{message.Escape()}[/]");
+    public static bool Silent = false;
+
+    public static void Success(string message) => Log(message, "green");
+
+    public static void Info(string message) => Log(message, "blue");
+
+    public static void Warn(string message) => Log(message, "darkorange3");
+
+    public static void Error(string message) => Log(message, "red");
 
     private static string Escape(this string message) =>
         message.Replace("[", "[[").Replace("]", "]]");
+
+    private static void Log(string message, string color)
+    {
+        if (Silent)
+        {
+            return;
+        }
+
+        AnsiConsole.MarkupLine($"[{color}]{message.Escape()}[/]");
+    }
 }

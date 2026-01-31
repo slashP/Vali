@@ -1,7 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using System.Collections.Frozen;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.Geometries.Prepared;
 using Vali.Core.Google;
 using Loc = Vali.Core.Location;
 
@@ -9,21 +11,21 @@ namespace Vali.Core;
 
 public static class LocationLakeFilterer
 {
-    public static readonly string[] CountryCodesAcceptableWithoutDescription =
-    [
+    public static readonly FrozenSet<string> CountryCodesAcceptableWithoutDescription = new[]
+    {
         "CX", "CC", "MP", "GU", "EG", "ML", "MG", "PN", "GL", "MN", "KR", "FO", "UG", "KG", "RW", "LB", "RE",
         "MQ", "NP", "PK", "BY", "UM"
-    ];
+    }.ToFrozenSet();
 
-    public static readonly string[] SubdivisionCodesAcceptableWithoutDescription =
-    [
+    public static readonly FrozenSet<string> SubdivisionCodesAcceptableWithoutDescription = new[]
+    {
         "NO-21", "CA-NU", "US-AK", "BR-PE"
-    ];
+    }.ToFrozenSet();
 
     public static Loc[] Filter(
         IReadOnlyCollection<Loc> locationsFromFile,
-        Dictionary<string, List<Loc>> neighborLocationBuckets,
-        Dictionary<string, List<ILatLng>> proximityLocationBuckets,
+        Dictionary<ulong, List<Loc>> neighborLocationBuckets,
+        Dictionary<ulong, List<ILatLng>> proximityLocationBuckets,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
         (GeometryFilter filter, Geometry[] geometries)[] geometryFilters,
@@ -232,7 +234,7 @@ public static class LocationLakeFilterer
         return typedExpression;
     }
 
-    public static IReadOnlyCollection<string> ValidProperties() =>
+    private static readonly IReadOnlyCollection<string> _validProperties =
     [
         nameof(Loc.Osm.Surface),
         nameof(Loc.Osm.Buildings10),
@@ -271,7 +273,9 @@ public static class LocationLakeFilterer
         nameof(Loc.Nominatim.County)
     ];
 
-    public static IReadOnlyCollection<string> ValidMapCheckrLocationProperties() =>
+    public static IReadOnlyCollection<string> ValidProperties() => _validProperties;
+
+    private static readonly IReadOnlyCollection<string> _validMapCheckrLocationProperties =
     [
         nameof(MapCheckrLocation.lat),
         nameof(MapCheckrLocation.lng),
@@ -289,7 +293,9 @@ public static class LocationLakeFilterer
         nameof(MapCheckrLocation.elevation),
     ];
 
-    public static IEnumerable<string> ValidOperators() =>
+    public static IReadOnlyCollection<string> ValidMapCheckrLocationProperties() => _validMapCheckrLocationProperties;
+
+    private static readonly string[] _validOperators =
     [
         "eq",
         "neq",
@@ -305,6 +311,8 @@ public static class LocationLakeFilterer
         "*",
         "modulo"
     ];
+
+    public static IEnumerable<string> ValidOperators() => _validOperators;
 
     private static string LocationLambdaExpressionFromProperty(string property, string lambdaParameterName)
     {
@@ -378,35 +386,53 @@ public static class LocationLakeFilterer
     private static IEnumerable<Loc> FilterByProximity(
         IEnumerable<Loc> locations,
         ProximityFilter proximityFilter,
-        Dictionary<string, List<ILatLng>> proximityLocationBuckets)
+        Dictionary<ulong, List<ILatLng>> proximityLocationBuckets)
     {
         var precision = proximityFilter.HashPrecisionFromProximityFilter()!.Value;
-        var proximityFilterRadius = proximityFilter.Radius;
+        var proximityFilterRadiusSquared = (double)proximityFilter.Radius * proximityFilter.Radius;
         return locations.Where(l =>
         {
             var hash = Hasher.Encode(l.Lat, l.Lng, precision);
-            return proximityLocationBuckets.TryGetValue(hash, out var p) && p.Any(x => Extensions.ApproximateDistance(l.Lat, l.Lng, x.Lat, x.Lng) < proximityFilterRadius);
+            return LocationLookupService.GetNearbyLocations(proximityLocationBuckets, hash).Any(x => Extensions.PointsAreCloserThan(l.Lat, l.Lng, x.Lat, x.Lng, proximityFilterRadiusSquared));
         });
     }
 
     private static IEnumerable<Loc> FilterByGeometries(IEnumerable<Loc> locations, (GeometryFilter filter, Geometry[] geometries)[] geometryFilters)
     {
         var combinationMode = geometryFilters.First().filter.CombinationMode;
+        var preparedFilters = geometryFilters
+            .Select(gf => (gf.filter, geometries: gf.geometries.Select(PreparedGeometryFactory.Prepare).ToArray()))
+            .ToArray();
+        var globalEnvelope = new Envelope();
+        foreach (var gf in geometryFilters)
+            foreach (var g in gf.geometries)
+                globalEnvelope.ExpandToInclude(g.EnvelopeInternal);
+
         return combinationMode switch
         {
             "union" => locations
                 .Where(l =>
                 {
+                    if (!globalEnvelope.Covers(l.Lng, l.Lat))
+                    {
+                        return preparedFilters.Any(gf => !gf.filter.LocationsInside);
+                    }
+
                     var point = new Point(l.Lng, l.Lat);
-                    return geometryFilters
+                    return preparedFilters
                         .Any(gf => gf.geometries
                             .Any(g => g.Covers(point)) == gf.filter.LocationsInside);
                 }),
             "intersection" => locations
                 .Where(l =>
                 {
+                    if (!globalEnvelope.Covers(l.Lng, l.Lat))
+                    {
+                        return preparedFilters.All(gf => !gf.filter.LocationsInside);
+                    }
+
                     var point = new Point(l.Lng, l.Lat);
-                    return geometryFilters
+                    return preparedFilters
                         .All(gf => gf.geometries
                             .Any(g => g.Covers(point)) == gf.filter.LocationsInside);
                 }),
