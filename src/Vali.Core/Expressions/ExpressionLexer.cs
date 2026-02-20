@@ -39,6 +39,27 @@ public static class ExpressionLexer
                 continue;
             }
 
+            if (expression[i] == '[')
+            {
+                tokens.Add(new Token(TokenKind.OpenBracket, "[", i, 1));
+                i++;
+                continue;
+            }
+
+            if (expression[i] == ']')
+            {
+                tokens.Add(new Token(TokenKind.CloseBracket, "]", i, 1));
+                i++;
+                continue;
+            }
+
+            if (expression[i] == ',')
+            {
+                tokens.Add(new Token(TokenKind.Comma, ",", i, 1));
+                i++;
+                continue;
+            }
+
             if (expression[i] == '+')
             {
                 tokens.Add(new Token(TokenKind.Plus, "+", i, 1));
@@ -63,7 +84,7 @@ public static class ExpressionLexer
             if (expression[i] == '-')
             {
                 var isUnaryMinus = tokens.Count == 0 ||
-                    tokens[^1].Kind is TokenKind.OpenParen or
+                    tokens[^1].Kind is TokenKind.OpenParen or TokenKind.OpenBracket or TokenKind.Comma or
                         TokenKind.Eq or TokenKind.Neq or TokenKind.Lt or TokenKind.Lte or
                         TokenKind.Gt or TokenKind.Gte or TokenKind.And or TokenKind.Or or
                         TokenKind.Plus or TokenKind.Minus or TokenKind.Multiply or
@@ -186,6 +207,7 @@ public static class ExpressionLexer
             "and" => TokenKind.And,
             "or" => TokenKind.Or,
             "modulo" => TokenKind.Modulo,
+            "in" => TokenKind.In,
             "true" => TokenKind.BooleanLiteral,
             "false" => TokenKind.BooleanLiteral,
             "null" => TokenKind.NullLiteral,

@@ -60,6 +60,48 @@ public static class ExpressionParser
             var right = ParseAddition(tokens, ref pos, expr);
             left = new BinaryNode(left, op, right);
         }
+        else if (tokens[pos].Kind == TokenKind.In)
+        {
+            var inToken = tokens[pos];
+            pos++;
+            if (tokens[pos].Kind != TokenKind.OpenBracket)
+            {
+                throw new ExpressionCompilationException(expr, tokens[pos].Position, tokens[pos].Length,
+                    $"Expected '[' after 'in' at position {tokens[pos].Position}.");
+            }
+            pos++; // skip '['
+
+            var values = new List<LiteralNode>();
+            while (true)
+            {
+                var token = tokens[pos];
+                if (token.Kind is not (TokenKind.IntegerLiteral or TokenKind.DecimalLiteral or TokenKind.StringLiteral or TokenKind.BooleanLiteral or TokenKind.NullLiteral))
+                {
+                    throw new ExpressionCompilationException(expr, token.Position, token.Length,
+                        $"Expected a literal value in 'in' list at position {token.Position}.");
+                }
+                pos++;
+                values.Add(new LiteralNode(token));
+
+                if (tokens[pos].Kind == TokenKind.Comma)
+                {
+                    pos++;
+                    continue;
+                }
+                break;
+            }
+
+            if (tokens[pos].Kind != TokenKind.CloseBracket)
+            {
+                throw new ExpressionCompilationException(expr, tokens[pos].Position, tokens[pos].Length,
+                    $"Expected ']' to close 'in' list at position {tokens[pos].Position}.");
+            }
+            var closePos = tokens[pos].Position;
+            pos++; // skip ']'
+
+            var span = new TextSpan(left.Span.Start, closePos + 1 - left.Span.Start);
+            left = new InNode(left, inToken, values.ToArray(), span);
+        }
 
         return left;
     }

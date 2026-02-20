@@ -23,8 +23,12 @@ public enum TokenKind
     Multiply,
     Divide,
     Modulo,
+    In,
     OpenParen,
     CloseParen,
+    OpenBracket,
+    CloseBracket,
+    Comma,
     Wildcard,
     EndOfExpression
 }
