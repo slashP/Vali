@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Spectre.Console;
 using System.Globalization;
 using System.Reflection;
@@ -12,6 +12,15 @@ namespace Vali.Core;
 
 public static class Extensions
 {
+    /// <summary>
+    /// Calculates the great-circle distance between two points on Earth using the haversine formula.
+    /// This is the most accurate method for calculating distances between geographical coordinates.
+    /// </summary>
+    /// <param name="lat1">Latitude of first point in decimal degrees</param>
+    /// <param name="lon1">Longitude of first point in decimal degrees</param>
+    /// <param name="lat2">Latitude of second point in decimal degrees</param>
+    /// <param name="lon2">Longitude of second point in decimal degrees</param>
+    /// <returns>Distance between points in meters</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
     {
@@ -20,6 +29,15 @@ public static class Extensions
         return 12745.6 * Math.Asin(Math.Sqrt(havf(lat2 - lat1) + Math.Cos(rad(lat1)) * Math.Cos(rad(lat2)) * havf(lon2 - lon1))) * 1000; // earth radius 6.372,8‬km x 2 = 12745.6
     }
 
+/// <summary>
+    /// Calculates the great-circle distance between two points on Earth using the haversine formula (decimal version).
+    /// This is the most accurate method for calculating distances between geographical coordinates.
+    /// </summary>
+    /// <param name="lat1">Latitude of first point in decimal degrees</param>
+    /// <param name="lon1">Longitude of first point in decimal degrees</param>
+    /// <param name="lat2">Latitude of second point in decimal degrees</param>
+    /// <param name="lon2">Longitude of second point in decimal degrees</param>
+    /// <returns>Distance between points in meters</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static decimal CalculateDistance(decimal lat1, decimal lon1, decimal lat2, decimal lon2)
     {
@@ -29,6 +47,15 @@ public static class Extensions
         return asin; // earth radius 6.372,8‬km x 2 = 12745.6
     }
 
+/// <summary>
+    /// Calculates approximate distance between two points using equirectangular projection.
+    /// Faster than haversine but less accurate, suitable for small distances.
+    /// </summary>
+    /// <param name="lat1">Latitude of first point in decimal degrees</param>
+    /// <param name="lon1">Longitude of first point in decimal degrees</param>
+    /// <param name="lat2">Latitude of second point in decimal degrees</param>
+    /// <param name="lon2">Longitude of second point in decimal degrees</param>
+    /// <returns>Approximate distance between points in meters</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ApproximateDistance(double lat1, double lon1, double lat2, double lon2)
     {
@@ -47,6 +74,17 @@ public static class Extensions
     private static readonly double[] LatitudeDifferenceArray =
         Enumerable.Range(0, MaxDistance / LatitudeBucketSize + 1).Select(i => i * LatitudeBucketSize / (double)110000).ToArray();
 
+/// <summary>
+    /// Optimized proximity check that uses latitude pre-filtering for performance.
+    /// First checks if points are definitely farther apart based on latitude difference,
+    /// then uses approximate distance calculation for final verification.
+    /// </summary>
+    /// <param name="lat1">Latitude of first point in decimal degrees</param>
+    /// <param name="lon1">Longitude of first point in decimal degrees</param>
+    /// <param name="lat2">Latitude of second point in decimal degrees</param>
+    /// <param name="lon2">Longitude of second point in decimal degrees</param>
+    /// <param name="meters">Maximum distance in meters</param>
+    /// <returns>True if points are closer than specified distance</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool PointsAreCloserThan(double lat1, double lon1, double lat2, double lon2, int meters)
     {
@@ -65,6 +103,17 @@ public static class Extensions
         return ApproximateDistance(lat1, lon1, lat2, lon2) < meters;
     }
 
+/// <summary>
+    /// Decimal proximity check optimized for short distances (max 1000m).
+    /// Uses fast coordinate difference filtering followed by accurate haversine calculation.
+    /// </summary>
+    /// <param name="lat1">Latitude of first point in decimal degrees</param>
+    /// <param name="lon1">Longitude of first point in decimal degrees</param>
+    /// <param name="lat2">Latitude of second point in decimal degrees</param>
+    /// <param name="lon2">Longitude of second point in decimal degrees</param>
+    /// <param name="meters">Maximum distance in meters (max 1000)</param>
+    /// <returns>True if points are closer than specified distance</returns>
+    /// <exception cref="ArgumentException">Thrown when distance exceeds 1000 meters</exception>
     public static bool PointsAreCloserThan(decimal lat1, decimal lon1, decimal lat2, decimal lon2, int meters)
     {
         if (meters > 1000)

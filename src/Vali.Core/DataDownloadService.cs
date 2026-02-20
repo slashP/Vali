@@ -16,7 +16,8 @@ public static class DataDownloadService
 
     private static readonly HttpClient R2BucketClient = new()
     {
-        BaseAddress = new Uri("https://vali-download.slashp.workers.dev")
+        BaseAddress = new Uri("https://vali-download.slashp.workers.dev"),
+        Timeout = TimeSpan.FromMinutes(10)
     };
 
     public static async Task DownloadFiles(string? countryCode, bool full, bool updates)
@@ -203,23 +204,48 @@ public static class DataDownloadService
 
     private static async Task<(string filePath, R2Object file)> DownloadFile(string bucketName, R2Object file, string folder)
     {
+        const int maxRetries = 3;
         Directory.CreateDirectory(folder);
         var key = file.Key;
         var destinationFileName = Path.GetFileNameWithoutExtension(key) + FileExtension;
         var filePath = Path.Combine(folder, destinationFileName);
-        var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
-        
         var r2Url = $"{bucketName}/{key}";
-        
-        await using var fileOnDiskStream = new FileStream(filePath, fileMode);
-        using var response = await R2BucketClient.GetAsync(r2Url);
-        response.EnsureSuccessStatusCode();
-        
-        using var memoryStream = new MemoryStream();
-        await response.Content.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
-        BZip2.Decompress(memoryStream, fileOnDiskStream, true);
-        return (filePath, file);
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
+                await using var fileOnDiskStream = new FileStream(filePath, fileMode);
+                using var response = await R2BucketClient.GetAsync(r2Url, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+
+                using var memoryStream = new MemoryStream();
+                await response.Content.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+                BZip2.Decompress(memoryStream, fileOnDiskStream, true);
+                return (filePath, file);
+            }
+            catch (Exception ex) when (attempt < maxRetries && ex is HttpRequestException or TaskCanceledException or IOException)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                await Task.Delay(delay);
+            }
+        }
+
+        // Final attempt — let exceptions propagate
+        {
+            var fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.CreateNew;
+            await using var fileOnDiskStream = new FileStream(filePath, fileMode);
+            using var response = await R2BucketClient.GetAsync(r2Url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            using var memoryStream = new MemoryStream();
+            await response.Content.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+            BZip2.Decompress(memoryStream, fileOnDiskStream, true);
+            return (filePath, file);
+        }
     }
 
     private static async Task ApplyUpdatesToDataFile(string dataFilePath, IEnumerable<Location> updateLocations)
@@ -334,7 +360,15 @@ public static class DataDownloadService
         if (filesToDownload.Length > 0)
         {
             ConsoleLogger.Warn($"Downloading {CountryCodes.Name(countryCode)} data.");
-            await DownloadDataFiles(CountriesBucketName, countryCode, filesToDownload, RunMode.Default, null);
+            try
+            {
+                await DownloadDataFiles(CountriesBucketName, countryCode, filesToDownload, RunMode.Default, null);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or AggregateException)
+            {
+                ConsoleLogger.Error($"Failed to download {CountryCodes.Name(countryCode)} data. Check your internet connection and try again, or run 'vali download {countryCode}' manually.");
+                throw;
+            }
         }
     }
 
