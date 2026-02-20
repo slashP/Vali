@@ -465,40 +465,30 @@ public static class DistributionStrategies
         var locations = Extensions.ProtoDeserializeFromFile<Loc[]>(file);
         if (mapDefinition.GlobalExternalDataFiles.Length > 0)
         {
-            SetExternalData(locations, mapDefinition.GlobalExternalDataFiles);
+            MergeExternalData(locations, mapDefinition.GlobalExternalDataFiles);
         }
 
         if (mapDefinition.CountryExternalDataFiles.TryGetValue(countryCode, out var externalFiles) && externalFiles.Length > 0)
         {
-            SetExternalData(locations, externalFiles);
-        }
-        
-        if ((mapDefinition.GlobalExternalDataFiles.Length > 0 || mapDefinition.CountryExternalDataFiles.Count > 0) && (locations.Length > 0 && locations.First().ExternalData.Count == 0))
-        {
-            var fileWithDictionaryValues = mapDefinition.CountryExternalDataFiles
-                .SelectMany(x => x.Value)
-                .Select(f => (dictionary: Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(f, []), file: f))
-                .First(x => x.dictionary.Values.Count > 0)
-                .file;
-            SetExternalData(locations, [fileWithDictionaryValues]);
+            MergeExternalData(locations, externalFiles);
         }
 
         return locations;
 
-        static void SetExternalData(Loc[] locations, string[] externalFiles)
+        static void MergeExternalData(Loc[] locations, string[] externalFiles)
         {
             foreach (var externalDataFile in externalFiles)
             {
                 var externalData = Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(externalDataFile, []);
-                if (externalData.Count == 0)
-                {
-                    continue;
-                }
-
-                var defaultDictionary = externalData.First().Value.ToDictionary(x => x.Key, _ => "");
                 foreach (var location in locations)
                 {
-                    location.ExternalData = externalData.GetValueOrDefault(location.LocationId.ToString(), defaultDictionary);
+                    if (externalData.TryGetValue(location.LocationId.ToString(), out var data))
+                    {
+                        foreach (var kvp in data)
+                        {
+                            location.ExternalData[kvp.Key] = kvp.Value;
+                        }
+                    }
                 }
             }
         }

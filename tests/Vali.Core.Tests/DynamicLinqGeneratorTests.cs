@@ -98,7 +98,7 @@ public class DynamicLinqGeneratorTests
     public void Should_generate_external_property()
     {
         var result = Generate("external:HasPoles eq 'Yes'");
-        result.ShouldBe("(x.ExternalData[\"HasPoles\"] == \"Yes\")");
+        result.ShouldBe("((x.ExternalData.ContainsKey(\"HasPoles\") ? x.ExternalData[\"HasPoles\"] : \"\") == \"Yes\")");
     }
 
     [Fact]

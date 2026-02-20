@@ -35,7 +35,7 @@ public sealed class DynamicLinqGenerator
                 GenerateProperty(prop, sb);
                 break;
             case ExternalPropertyNode ext:
-                sb.Append($"{_primaryParam}.ExternalData[\"{ext.Key}\"]");
+                sb.Append($"({_primaryParam}.ExternalData.ContainsKey(\"{ext.Key}\") ? {_primaryParam}.ExternalData[\"{ext.Key}\"] : \"\")");
                 break;
             case ParentPropertyNode parent:
                 GenerateParentProperty(parent, sb);
