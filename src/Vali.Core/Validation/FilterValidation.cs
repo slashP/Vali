@@ -1,5 +1,5 @@
-﻿using System.Globalization;
-using Vali.Core.Data;
+﻿using Vali.Core.Data;
+using Vali.Core.Expressions;
 
 namespace Vali.Core.Validation;
 
@@ -306,45 +306,13 @@ public static class FilterValidation
             return definition;
         }
 
-        foreach (var dotIndex in filter.AllIndexesOf("."))
+        var resolver = PropertyResolver.ForLocation();
+        var allowParentProperties = validProperties.Any(p => p.StartsWith("current:"));
+        var validationError = ExpressionCompiler.Validate(filter, resolver, allowParentProperties);
+        if (validationError != null)
         {
-            if (dotIndex == 0 || dotIndex == filter.Length - 1 || !char.IsNumber(filter[dotIndex - 1]) || !char.IsNumber(filter[dotIndex + 1]))
-            {
-                ConsoleLogger.Error($"Only numbers can have the character '.': {filter}");
-                return default;
-            }
-        }
-
-        var removeStringsInSingleQuotes = filter.ReplaceValuesInSingleQuotesWithPlaceHolders().expressionWithPlaceholders;
-        foreach (var expressionValue in removeStringsInSingleQuotes.RemoveMultipleSpaces().RemoveParentheses().Split(' '))
-        {
-            var operators = LocationLakeFilterer.ValidOperators().Select(x => x.Trim()).ToArray();
-            var properties = validProperties.Select(x => x.Trim()).ToArray();
-            if (!operators.Contains(expressionValue.Trim(), StringComparer.InvariantCultureIgnoreCase) &&
-                !properties.Contains(expressionValue.Trim()) &&
-                !expressionValue.StartsWith("external:") &&
-                !double.TryParse(expressionValue, NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
-                !bool.TryParse(expressionValue, out _) &&
-                !IsSingleQuoteWord(expressionValue) &&
-                !expressionValue.StartsWith("$$") &&
-                expressionValue != "null")
-            {
-                if (expressionValue.Contains("'"))
-                {
-                    ConsoleLogger.Error("Using single quotes inside single quotes requires escaping by putting a backslash (\\) in front of it");
-                    return default;
-                }
-
-                ConsoleLogger.Error($"""
-                                     Expression value {expressionValue} is not valid. Must be
-                                     * A number.
-                                     * A value in single quotes like 'gravel'.
-                                     * One of the operators [{operators.Merge(", ")}]
-                                     * One of the properties [{outputVisibleValidProperties.Select(x => x.Trim()).Merge(", ")}]
-                                     * null
-                                     """);
-                return default;
-            }
+            ConsoleLogger.Error(validationError.Message);
+            return default;
         }
 
         try
@@ -394,20 +362,6 @@ public static class FilterValidation
         }
 
         return definition;
-    }
-
-    private static bool IsSingleQuoteWord(string expression)
-    {
-        const char singleQuote = '\'';
-        if (expression.Length < 3 ||
-            expression[0] != singleQuote ||
-            expression[^1] != singleQuote ||
-            expression.Count(c => c == singleQuote) > 2)
-        {
-            return false;
-        }
-
-        return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue || c == '_');
     }
 
     static void DryRun(string filter, MapDefinition mapDefinition)

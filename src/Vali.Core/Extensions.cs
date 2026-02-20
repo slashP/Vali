@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Vali.Core.Google;
 
 namespace Vali.Core;
@@ -130,7 +129,6 @@ public static class Extensions
     }
 
     public static string? SafeSubstring(this string value, int length) => value?.Length > length ? value.Substring(0, length) : value;
-    public static string AsStringFromCharArray(this IEnumerable<char> characters) => new string(characters.ToArray());
     public static string Format(this decimal d) => d.ToString(CultureInfo.InvariantCulture);
     public static string Format(this double d) => d.ToString(CultureInfo.InvariantCulture);
     public static decimal Round(this decimal d, int precision) => decimal.Round(d, precision);
@@ -273,34 +271,6 @@ public static class Extensions
             yield return index;
         }
     }
-
-    public const char PlaceholderValue = '$';
-
-    public static (string expressionWithPlaceholders, List<(string oldValue, string newValue)>) ReplaceValuesInSingleQuotesWithPlaceHolders(this string input)
-    {
-        var counter = 0;
-        var list = new List<(string oldValue, string newValue)>();
-        input = input.Replace("\\'", "$900001");
-        var matches = Regex.Matches(input, "'([^']*)'");
-        foreach (Match match in matches)
-        {
-            var matchedValue = match.Groups[1].Value;
-            var i = (counter++).ToString().PadLeft(7, '0');
-            var newValue = $"{PlaceholderValue}{i}";
-            list.Add((matchedValue, newValue));
-            input = input.Replace($"'{matchedValue}'", $"'{newValue}'");
-        }
-
-        list.Add(("\\'", "$900001"));
-        return (input, list);
-    }
-
-    public static string RemoveMultipleSpaces(this string input) => Regex.Replace(input, @"\s+", " ");
-    public static string RemoveParentheses(this string input) => input.Replace("(", "").Replace(")", "");
-    public static string SpacePad(this string input) => $" {input} ";
-
-    public static string SpacePadParentheses(this string input) =>
-        input.Replace("(", "(".SpacePad()).Replace(")", ")".SpacePad());
 
     public static string? Truncate(this string? value, int length)
         => (value != null && value.Length > length) ? value[..length] : value;

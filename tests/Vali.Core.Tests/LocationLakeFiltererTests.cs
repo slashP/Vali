@@ -1,4 +1,6 @@
 using Shouldly;
+using Vali.Core.Expressions;
+using Vali.Core.Google;
 using Xunit;
 
 namespace Vali.Core.Tests;
@@ -435,6 +437,154 @@ public class LocationLakeFiltererTests
             }
         }
     ];
+
+    [Theory]
+    [InlineData("Buildings100 / 2 gt 1", 1)]
+    [InlineData("Roads100 / 3 eq 1", 1)]
+    [InlineData("Buildings200 / 4 eq 3", 1)]
+    [InlineData("Buildings200 / 4 eq 2", 0)]
+    public void Should_filter_with_division_operator(string expression, int expectedCount)
+    {
+        var locations = LocationArrayWithData();
+        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        result.Length.ShouldBe(expectedCount);
+    }
+
+    [Theory]
+    [InlineData("year eq 2023")]
+    [InlineData("arrowCount gte 1")]
+    [InlineData("month eq 6")]
+    [InlineData("elevation gt 50")]
+    [InlineData("lat gt 50.0")]
+    [InlineData("heading gt 0")]
+    [InlineData("resolutionHeight gte 6656")]
+    [InlineData("isScout eq false")]
+    [InlineData("descriptionLength gt 0")]
+    [InlineData("drivingDirectionAngle eq 180")]
+    public void Should_compile_mapcheckr_expressions(string expression)
+    {
+        var location = CreateMapCheckrLocation();
+        var compiled = LocationLakeFilterer.CompileBoolMapCheckrExpression(expression, true);
+        Should.NotThrow(() => compiled(location));
+    }
+
+    [Fact]
+    public void Should_evaluate_mapcheckr_expression_correctly()
+    {
+        var location = CreateMapCheckrLocation();
+        var compiled = LocationLakeFilterer.CompileBoolMapCheckrExpression("year eq 2023", true);
+        compiled(location).ShouldBeTrue();
+
+        var compiledFalse = LocationLakeFilterer.CompileBoolMapCheckrExpression("year eq 2020", true);
+        compiledFalse(location).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("DescriptionLength eq null", 0)]
+    [InlineData("DescriptionLength neq null", 1)]
+    public void Should_filter_with_null_comparison(string expression, int expectedCount)
+    {
+        var locations = LocationArrayWithData();
+        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        result.Length.ShouldBe(expectedCount);
+    }
+
+    [Theory]
+    [InlineData("County eq 'Saint-Tropez'")]
+    [InlineData("County eq 'New York'")]
+    [InlineData("Surface eq 'semi-paved'")]
+    public void Should_compile_expressions_with_special_chars_in_strings(string expression)
+    {
+        var locations = LocationArray();
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new()));
+    }
+
+    [Fact]
+    public void Should_handle_escaped_single_quotes_in_strings()
+    {
+        var locations = LocationArrayWithData();
+        locations.Single().Nominatim.County = "O'Brien";
+        var result = LocationLakeFilterer.Filter(locations, [], [], @"County eq 'O\'Brien'", new(), [], [], new());
+        result.Length.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Should_cache_compiled_parent_expressions()
+    {
+        var expression = "current:Year eq Year";
+        var first = LocationLakeFilterer.CompileParentBoolLocationExpression(expression);
+        var second = LocationLakeFilterer.CompileParentBoolLocationExpression(expression);
+        first.ShouldBeSameAs(second);
+    }
+
+    [Fact]
+    public void Should_throw_on_invalid_property_name()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(
+            () => LocationLakeFilterer.CompileExpression<Location, bool>("Bildings100 gt 5", true));
+        ex.Message.ShouldContain("Unknown property 'Bildings100'");
+        ex.Message.ShouldContain("Did you mean 'Buildings100'");
+        ex.Position.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Should_throw_on_malformed_expression()
+    {
+        Should.Throw<ExpressionCompilationException>(
+            () => LocationLakeFilterer.CompileExpression<Location, bool>("Buildings100 gt and", true));
+    }
+
+    [Fact]
+    public void Should_throw_on_unterminated_string()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(
+            () => LocationLakeFilterer.CompileExpression<Location, bool>("Surface eq 'gravel", true));
+        ex.Message.ShouldContain("Unterminated string");
+    }
+
+    [Fact]
+    public void Should_throw_on_unmatched_paren()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(
+            () => LocationLakeFilterer.CompileExpression<Location, bool>("(Year gt 2020", true));
+        ex.Message.ShouldContain("Unmatched '('");
+    }
+
+    [Fact]
+    public void Should_throw_with_positional_error_for_unknown_property()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(
+            () => LocationLakeFilterer.CompileExpression<Location, bool>("Buildings100 gt Bildings200", true));
+        ex.Position.ShouldBe(16);
+        ex.Length.ShouldBe(11);
+        ex.Message.ShouldContain("Unknown property 'Bildings200'");
+    }
+
+    [Theory]
+    [InlineData("Elevation gt -100", 1)]
+    [InlineData("Elevation lt -100", 0)]
+    [InlineData("Elevation gt -200 and Elevation lt 200", 1)]
+    public void Should_filter_with_negative_numbers(string expression, int expectedCount)
+    {
+        var locations = LocationArrayWithData();
+        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        result.Length.ShouldBe(expectedCount);
+    }
+
+    private static MapCheckrLocation CreateMapCheckrLocation() => new()
+    {
+        lat = 59.9,
+        lng = 10.7,
+        heading = 90,
+        year = 2023,
+        month = 6,
+        arrowCount = 1,
+        drivingDirectionAngle = 180,
+        elevation = 100,
+        descriptionLength = 15,
+        resolutionHeight = 6656,
+        panoId = "abc123",
+    };
 
     private static long _nextNodeId = 1000;
 
