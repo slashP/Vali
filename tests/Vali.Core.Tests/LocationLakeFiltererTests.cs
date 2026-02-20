@@ -319,6 +319,14 @@ public class LocationLakeFiltererTests
     }
 
     [Fact]
+    public void Should_exclude_location_with_missing_external_key()
+    {
+        var locations = LocationArrayWithData();
+        var result = LocationLakeFilterer.Filter(locations, [], [], "external:HasPoles eq 'Yes'", new(), [], [], new());
+        result.Length.ShouldBe(0);
+    }
+
+    [Fact]
     public void Should_filter_with_empty_expression()
     {
         var locations = LocationArrayWithData();

@@ -54,16 +54,6 @@ public static class FilterValidation
         {
             var expression = LocationLakeFilterer.CompileParentBoolLocationExpression(filter);
             var locations = EmptyLocationArray();
-            if (definition.GlobalExternalDataFiles.Length > 0)
-            {
-                SetExternalData(locations, definition.GlobalExternalDataFiles);
-            }
-
-            foreach (var keyValuePair in definition.CountryExternalDataFiles)
-            {
-                SetExternalData(locations, keyValuePair.Value);
-            }
-
             var filtered = locations.Where(l => locations.Any(l2 => expression(l2, l))).ToArray();
         }
 
@@ -368,35 +358,7 @@ public static class FilterValidation
     {
         var expression = LocationLakeFilterer.CompileExpression<Location, bool>(filter, true);
         var locations = EmptyLocationArray();
-        if (mapDefinition.GlobalExternalDataFiles.Length > 0)
-        {
-            SetExternalData(locations, mapDefinition.GlobalExternalDataFiles);
-        }
-
-        foreach (var keyValuePair in mapDefinition.CountryExternalDataFiles)
-        {
-            SetExternalData(locations, keyValuePair.Value);
-        }
-
         var filtered = locations.Where(expression).ToArray();
-    }
-
-    static void SetExternalData(Location[] locations, string[] externalFiles)
-    {
-        foreach (var externalDataFile in externalFiles)
-        {
-            var externalData = Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(externalDataFile, []);
-            if (externalData.Count == 0)
-            {
-                continue;
-            }
-
-            var defaultDictionary = externalData.First().Value.ToDictionary(x => x.Key, _ => "");
-            foreach (var location in locations)
-            {
-                location.ExternalData = externalData.GetValueOrDefault(location.LocationId.ToString(), defaultDictionary);
-            }
-        }
     }
 
     public static Location[] EmptyLocationArray() =>
