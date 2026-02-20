@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Canary Islands" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-18.5, 27.5],
+          [-13.0, 27.5],
+          [-13.0, 29.5],
+          [-18.5, 29.5],
+          [-18.5, 27.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Ceuta" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-5.40, 35.87],
+          [-5.26, 35.87],
+          [-5.26, 35.92],
+          [-5.40, 35.92],
+          [-5.40, 35.87]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Melilla" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-3.02, 35.26],
+          [-2.91, 35.26],
+          [-2.91, 35.32],
+          [-3.02, 35.32],
+          [-3.02, 35.26]
+        ]]
+      }
+    }
+  ]
+}

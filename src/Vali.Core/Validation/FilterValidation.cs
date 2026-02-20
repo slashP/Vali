@@ -232,6 +232,11 @@ public static class FilterValidation
             .ToArray();
         foreach (var geometryFilter in geometryFilters)
         {
+            if (geometryFilter.PreloadedGeometries is { Length: > 0 })
+            {
+                continue;
+            }
+
             if (!File.Exists(geometryFilter.FilePath))
             {
                 ConsoleLogger.Error($"File {geometryFilter.FilePath} used in a {nameof(geometryFilter)} does not exist.");
