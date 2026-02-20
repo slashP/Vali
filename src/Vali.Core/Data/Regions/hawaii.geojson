@@ -1,0 +1,14 @@
+{
+  "type": "Feature",
+  "properties": { "name": "Hawaiian Islands" },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-161.0, 18.5],
+      [-154.5, 18.5],
+      [-154.5, 22.5],
+      [-161.0, 22.5],
+      [-161.0, 18.5]
+    ]]
+  }
+}

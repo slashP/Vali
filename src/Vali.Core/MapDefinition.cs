@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using NetTopologySuite.Geometries;
 
 namespace Vali.Core;
 
@@ -57,6 +58,8 @@ public record GeometryFilter
     [JsonIgnore]
     public bool LocationsInside => InclusionMode != "exclude";
     public string CombinationMode { get; init; } = "";
+    [JsonIgnore]
+    public Geometry[]? PreloadedGeometries { get; init; }
 }
 
 public record LiveGenerateMapDefinition

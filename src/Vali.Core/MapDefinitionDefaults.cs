@@ -32,14 +32,14 @@ public static class MapDefinitionDefaults
                 PanoVerificationStart = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearStart, yearMonthStrategy.monthStart, 1) : null,
                 PanoVerificationEnd = isYearMonthPanoVerificationStrategy ? new DateOnly(yearMonthStrategy.yearEnd, yearMonthStrategy.monthEnd, 1) : null,
             },
-            SubdivisionInclusions = Inclusions(definition),
-            SubdivisionExclusions = Exclusions(definition),
+            SubdivisionInclusions = definition.SubdivisionInclusions,
+            SubdivisionExclusions = definition.SubdivisionExclusions,
             CountryDistribution = countryDistribution,
             DistributionStrategy = definition.DistributionStrategy with
             {
                 TreatCountriesAsSingleSubdivision = MapCountryCodes(definition.DistributionStrategy.TreatCountriesAsSingleSubdivision, definition.DistributionStrategy)
             },
-            CountryLocationFilters = ExpandCountryDictionary(definition.CountryLocationFilters).ApplyContinentBorderFilters(definition)
+            CountryLocationFilters = ExpandCountryDictionary(definition.CountryLocationFilters)
                 .ToDictionary(x => x.Key, x => ExpressionDefaults.Expand(namedExpressions, x.Value)),
             CountryLocationPreferenceFilters = ExpandCountryDictionary(definition.CountryLocationPreferenceFilters)
                 .ToDictionary(x => x.Key, x => x.Value.Select(y => y with
@@ -99,7 +99,7 @@ public static class MapDefinitionDefaults
             CountryGeometryFilters = definition.CountryGeometryFilters.ToDictionary(cgf => cgf.Key, cgf => cgf.Value.Select(g => g with
             {
                 CombinationMode = cgf.Value.FirstCombinationModeOrDefault()
-            }).ToArray()),
+            }).ToArray()).ApplyContinentBorderGeometryFilters(definition),
             SubdivisionGeometryFilters = definition.SubdivisionGeometryFilters.ToDictionary(sgf => sgf.Key, sgf => sgf.Value.ToDictionary(gf => gf.Key, gf => gf.Value.Select(g => g with
             {
                 CombinationMode = gf.Value.FirstCombinationModeOrDefault()
@@ -117,82 +117,56 @@ public static class MapDefinitionDefaults
                 .GroupBy(x => x.y)
                 .ToDictionary(x => x.Key, x => x.First().Value);
 
-    private static Dictionary<string, string[]> Inclusions(MapDefinition definition) =>
-        definition.CountryCodes switch
+    private static Dictionary<string, GeometryFilter[]> ApplyContinentBorderGeometryFilters(
+        this Dictionary<string, GeometryFilter[]> countryGeometryFilters,
+        MapDefinition definition)
+    {
+        var continentFilters = definition.CountryCodes switch
         {
-            ["europe"] => definition.SubdivisionInclusions
-                .Concat(
-                [
-                    EuropeanTurkiye(),
-                    EuropeanKazakhstan()
-                ])
-                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            ["africa"] => definition.SubdivisionInclusions
-                .Concat([AfricanSpain()])
-                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            ["asia"] => definition.SubdivisionInclusions
-                .Concat([AsianRussia()])
-                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            ["oceania"] => definition.SubdivisionInclusions
-                .Concat([new KeyValuePair<string, string[]>("US", ["US-HI"])])
-                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            _ => definition.SubdivisionInclusions
+            ["europe"] => new Dictionary<string, GeometryFilter[]>
+            {
+                ["TR"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanTurkey }],
+                ["RU"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanRussia }],
+                ["KZ"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanKazakhstan }],
+                ["ES"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.AfricanSpain }],
+            },
+            ["asia"] => new Dictionary<string, GeometryFilter[]>
+            {
+                ["TR"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanTurkey }],
+                ["RU"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanRussia }],
+                ["KZ"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanKazakhstan }],
+            },
+            ["africa"] => new Dictionary<string, GeometryFilter[]>
+            {
+                ["ES"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.AfricanSpain }],
+            },
+            ["oceania"] => new Dictionary<string, GeometryFilter[]>
+            {
+                ["US"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.Hawaii }],
+            },
+            ["northamerica"] => new Dictionary<string, GeometryFilter[]>
+            {
+                ["US"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.Hawaii }],
+            },
+            _ => []
         };
 
-    private static Dictionary<string, string[]> Exclusions(MapDefinition definition) =>
-        definition.CountryCodes switch
+        return MergeGeometryFilters(countryGeometryFilters, continentFilters);
+    }
+
+    private static Dictionary<string, GeometryFilter[]> MergeGeometryFilters(
+        Dictionary<string, GeometryFilter[]> existing,
+        Dictionary<string, GeometryFilter[]> additional)
+    {
+        var result = new Dictionary<string, GeometryFilter[]>(existing);
+        foreach (var (countryCode, filters) in additional)
         {
-            ["europe"] => definition.SubdivisionExclusions
-                .Concat(new[]
-                {
-                    AfricanSpain(),
-                    AsianRussia()
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            ["asia"] => definition.SubdivisionExclusions
-                .Concat(new[]
-                {
-                    EuropeanTurkiye(),
-                    EuropeanKazakhstan(),
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            ["northamerica"] => definition.SubdivisionExclusions
-                .Concat(new[]
-                {
-                    new KeyValuePair<string, string[]>("US", ["US-HI"])
-                }).GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            _ => definition.SubdivisionExclusions
-        };
-
-    private static Dictionary<string, string> ApplyContinentBorderFilters(this Dictionary<string, string> countryFilters, MapDefinition definition) =>
-        definition.CountryCodes switch
-        {
-            ["europe"] => countryFilters
-                .Concat(new[]
-                {
-                    new KeyValuePair<string, string>("RU", "Lng lt 61"),
-                    new KeyValuePair<string, string>("TR", "Lng lt 29"),
-                    new KeyValuePair<string, string>("KZ", "(Lat lt 51.17 and Lat gt 49.92 and Lng lt 51.38) or (Lat lt 47.16 and Lat gt 47.10 and Lng lt 51.92) or (Lat gt 51.22 and Lng lt 51.83)"),
-                })
-                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            ["asia"] => countryFilters
-                .Concat(new[]
-                {
-                    new KeyValuePair<string, string>("KZ", "((SubdivisionCode eq 'KZ-27' or SubdivisionCode eq 'KZ-47') and ((Lat lt 51.17 and Lat gt 49.92 and Lng gt 51.38) or (Lat lt 47.16 and Lat gt 47.10 and Lng gt 51.92) or (Lat gt 51.22 and Lng gt 51.83))) or (SubdivisionCode neq 'KZ-27' and SubdivisionCode neq 'KZ-47')"),
-                })
-                .GroupBy(x => x.Key, x => x.Value).ToDictionary(x => x.Key, x => x.First()),
-            _ => countryFilters
-        };
-
-    private static KeyValuePair<string, string[]> EuropeanTurkiye() =>
-        new("TR", ["TR-22", "TR-39", "TR-59", "TR-34"]);
-
-    private static KeyValuePair<string, string[]> EuropeanKazakhstan() =>
-        new("KZ", ["KZ-23", "KZ-27"]);
-
-    private static KeyValuePair<string, string[]> AsianRussia() =>
-        new("RU", [ "RU-AL", "RU-BU", "RU-KK", "RU-SA", "RU-TY", "RU-ALT", "RU-KAM", "RU-KHA", "RU-KYA", "RU-PRI", "RU-ZAB", "RU-AMU", "RU-IRK", "RU-KEM", "RU-KGN", "RU-MAG", "RU-NVS", "RU-OMS", "RU-SAK", "RU-TOM", "RU-TYU", "RU-YEV", "RU-KHM", "RU-YAN" ]);
-
-    private static KeyValuePair<string, string[]> AfricanSpain() =>
-        new("ES", [ "ES-CN", "ES-CE", "ES-ML" ]);
+            result[countryCode] = result.TryGetValue(countryCode, out var existingFilters)
+                ? existingFilters.Concat(filters).ToArray()
+                : filters;
+        }
+        return result;
+    }
 
     public static string[] MapCountryCodes(string[] countryCodes, DistributionStrategy distributionStrategy) =>
         countryCodes
