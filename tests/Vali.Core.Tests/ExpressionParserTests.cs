@@ -214,6 +214,10 @@ public class ExpressionParserTests
     [InlineData("Elevation gt -100")]
     [InlineData("DescriptionLength eq null")]
     [InlineData("Buildings100 / 2 gt 1")]
+    [InlineData("Surface in ['gravel', 'sand', 'dirt']")]
+    [InlineData("ArrowCount in [1, 2]")]
+    [InlineData("Surface in ['gravel', 'sand'] and Year gt 2020")]
+    [InlineData("Elevation in [-100, 0, 100]")]
     public void Should_parse_all_existing_test_expressions(string expression)
     {
         Should.NotThrow(() => Parse(expression));
@@ -226,5 +230,59 @@ public class ExpressionParserTests
         var binary = node.ShouldBeOfType<BinaryNode>();
         binary.Span.Start.ShouldBe(0);
         binary.Span.Length.ShouldBe(12);
+    }
+
+    [Fact]
+    public void Should_parse_in_with_strings()
+    {
+        var node = Parse("Surface in ['gravel', 'sand', 'dirt']");
+        var inNode = node.ShouldBeOfType<InNode>();
+        inNode.Operand.ShouldBeOfType<PropertyNode>().PropertyName.ShouldBe("Surface");
+        inNode.Values.Length.ShouldBe(3);
+        inNode.Values[0].Token.Value.ShouldBe("gravel");
+        inNode.Values[1].Token.Value.ShouldBe("sand");
+        inNode.Values[2].Token.Value.ShouldBe("dirt");
+    }
+
+    [Fact]
+    public void Should_parse_in_with_integers()
+    {
+        var node = Parse("ArrowCount in [1, 2]");
+        var inNode = node.ShouldBeOfType<InNode>();
+        inNode.Operand.ShouldBeOfType<PropertyNode>().PropertyName.ShouldBe("ArrowCount");
+        inNode.Values.Length.ShouldBe(2);
+        inNode.Values[0].Token.Value.ShouldBe("1");
+        inNode.Values[1].Token.Value.ShouldBe("2");
+    }
+
+    [Fact]
+    public void Should_parse_in_combined_with_and()
+    {
+        var node = Parse("Surface in ['gravel', 'sand'] and Year gt 2020");
+        var binary = node.ShouldBeOfType<BinaryNode>();
+        binary.Operator.Kind.ShouldBe(TokenKind.And);
+        binary.Left.ShouldBeOfType<InNode>();
+        binary.Right.ShouldBeOfType<BinaryNode>();
+    }
+
+    [Fact]
+    public void Should_throw_on_in_without_bracket()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(() => Parse("Surface in 'gravel'"));
+        ex.Message.ShouldContain("Expected '['");
+    }
+
+    [Fact]
+    public void Should_throw_on_in_with_unclosed_bracket()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(() => Parse("Surface in ['gravel'"));
+        ex.Message.ShouldContain("Expected ']'");
+    }
+
+    [Fact]
+    public void Should_throw_on_in_with_non_literal()
+    {
+        var ex = Should.Throw<ExpressionCompilationException>(() => Parse("Surface in [Year]"));
+        ex.Message.ShouldContain("Expected a literal value");
     }
 }

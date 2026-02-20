@@ -176,7 +176,8 @@ public static class LocationLakeFilterer
         "-",
         "/",
         "*",
-        "modulo"
+        "modulo",
+        "in"
     ];
 
     private static IEnumerable<Loc> FilterByProximity(

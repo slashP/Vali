@@ -218,4 +218,38 @@ public class ExpressionLexerTests
         tokens.Count(t => t.Kind == TokenKind.OpenParen).ShouldBe(3);
         tokens.Count(t => t.Kind == TokenKind.CloseParen).ShouldBe(3);
     }
+
+    [Fact]
+    public void Should_tokenize_in_operator()
+    {
+        var tokens = ExpressionLexer.Tokenize("Surface in ['gravel', 'sand']");
+        tokens[0].Kind.ShouldBe(TokenKind.Property);
+        tokens[1].Kind.ShouldBe(TokenKind.In);
+        tokens[2].Kind.ShouldBe(TokenKind.OpenBracket);
+        tokens[3].Kind.ShouldBe(TokenKind.StringLiteral);
+        tokens[4].Kind.ShouldBe(TokenKind.Comma);
+        tokens[5].Kind.ShouldBe(TokenKind.StringLiteral);
+        tokens[6].Kind.ShouldBe(TokenKind.CloseBracket);
+    }
+
+    [Fact]
+    public void Should_tokenize_in_with_integers()
+    {
+        var tokens = ExpressionLexer.Tokenize("ArrowCount in [1, 2]");
+        tokens[0].Kind.ShouldBe(TokenKind.Property);
+        tokens[1].Kind.ShouldBe(TokenKind.In);
+        tokens[2].Kind.ShouldBe(TokenKind.OpenBracket);
+        tokens[3].Kind.ShouldBe(TokenKind.IntegerLiteral);
+        tokens[4].Kind.ShouldBe(TokenKind.Comma);
+        tokens[5].Kind.ShouldBe(TokenKind.IntegerLiteral);
+        tokens[6].Kind.ShouldBe(TokenKind.CloseBracket);
+    }
+
+    [Fact]
+    public void Should_tokenize_negative_number_in_bracket_list()
+    {
+        var tokens = ExpressionLexer.Tokenize("Elevation in [-100, 0, 100]");
+        tokens[3].Kind.ShouldBe(TokenKind.IntegerLiteral);
+        tokens[3].Value.ShouldBe("-100");
+    }
 }

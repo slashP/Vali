@@ -48,6 +48,9 @@ public sealed class DynamicLinqGenerator
                 GenerateNode(unary.Operand, sb);
                 sb.Append(')');
                 break;
+            case InNode inNode:
+                GenerateIn(inNode, sb);
+                break;
             case GroupNode group:
                 sb.Append('(');
                 GenerateNode(group.Inner, sb);
@@ -111,6 +114,24 @@ public sealed class DynamicLinqGenerator
         }
 
         sb.Append(_resolver.Resolve(parent.PropertyName, _parentParam));
+    }
+
+    private void GenerateIn(InNode inNode, StringBuilder sb)
+    {
+        sb.Append('(');
+        for (var i = 0; i < inNode.Values.Length; i++)
+        {
+            if (i > 0)
+            {
+                sb.Append(" || ");
+            }
+            sb.Append('(');
+            GenerateNode(inNode.Operand, sb);
+            sb.Append(" == ");
+            GenerateLiteral(inNode.Values[i], sb);
+            sb.Append(')');
+        }
+        sb.Append(')');
     }
 
     private void GenerateBinary(BinaryNode binary, StringBuilder sb)

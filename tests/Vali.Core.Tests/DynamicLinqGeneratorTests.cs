@@ -146,6 +146,34 @@ public class DynamicLinqGeneratorTests
     }
 
     [Fact]
+    public void Should_generate_in_with_strings()
+    {
+        var result = Generate("Surface in ['gravel', 'sand', 'dirt']");
+        result.ShouldBe("((x.Osm.Surface == \"gravel\") || (x.Osm.Surface == \"sand\") || (x.Osm.Surface == \"dirt\"))");
+    }
+
+    [Fact]
+    public void Should_generate_in_with_integers()
+    {
+        var result = Generate("ArrowCount in [1, 2]");
+        result.ShouldBe("((x.Google.ArrowCount == 1) || (x.Google.ArrowCount == 2))");
+    }
+
+    [Fact]
+    public void Should_generate_in_single_value()
+    {
+        var result = Generate("Surface in ['gravel']");
+        result.ShouldBe("((x.Osm.Surface == \"gravel\"))");
+    }
+
+    [Fact]
+    public void Should_generate_in_combined_with_and()
+    {
+        var result = Generate("Surface in ['gravel', 'sand'] and Year gt 2020");
+        result.ShouldBe("(((x.Osm.Surface == \"gravel\") || (x.Osm.Surface == \"sand\")) && (x.Google.Year > 2020))");
+    }
+
+    [Fact]
     public void Should_throw_on_unknown_property()
     {
         var ex = Should.Throw<ExpressionCompilationException>(() => Generate("Bildings100 eq 1"));
@@ -184,6 +212,10 @@ public class DynamicLinqGeneratorTests
     [InlineData("IsResidential eq true")]
     [InlineData("Buildings100 / 2 gt 1")]
     [InlineData("Elevation gt -100")]
+    [InlineData("Surface in ['gravel', 'sand', 'dirt']")]
+    [InlineData("ArrowCount in [1, 2]")]
+    [InlineData("Surface in ['gravel'] and Year gt 2020")]
+    [InlineData("Elevation in [-100, 0, 100]")]
     public void Should_generate_all_existing_expressions(string expression)
     {
         Should.NotThrow(() => Generate(expression));

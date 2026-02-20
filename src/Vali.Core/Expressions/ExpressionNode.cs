@@ -17,3 +17,5 @@ public sealed record UnaryMinusNode(Token Operator, ExpressionNode Operand)
     : ExpressionNode(new TextSpan(Operator.Position, Operand.Span.Start + Operand.Span.Length - Operator.Position));
 
 public sealed record GroupNode(ExpressionNode Inner, TextSpan GroupSpan) : ExpressionNode(GroupSpan);
+
+public sealed record InNode(ExpressionNode Operand, Token InToken, LiteralNode[] Values, TextSpan InSpan) : ExpressionNode(InSpan);
