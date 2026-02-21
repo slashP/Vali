@@ -186,6 +186,7 @@ public static class Weights
         ("UA", 2866),
         ("KZ", 120),
         ("LI", 95),
+        ("BY", 0),
     ];
 
     public static readonly (string, int)[] Asia =
@@ -224,6 +225,7 @@ public static class Weights
         ("VN", 140),
         ("IN", 220),
         ("QA", 45),
+        ("PK", 0),
     ];
 
     public static readonly (string, int)[] Africa =

@@ -1,5 +1,4 @@
-﻿using Geohash;
-using Spectre.Console;
+﻿using Spectre.Console;
 using System.Linq;
 using Vali.Core.Hash;
 
@@ -33,7 +32,6 @@ public class SubdivisionSuggester
             .ToArray();
 
         var entries = new List<SubdivisionDistributionEntry>();
-        var geoHasher = new Geohasher();
         if (!lightWeight)
         {
             AnsiConsole.Progress()

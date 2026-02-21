@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
-using Geohash;
 using Spectre.Console;
 using Vali.Core.Data;
 using Vali.Core.Google;
@@ -313,13 +312,11 @@ public class LiveGenerate
                 var random = Random.Shared.NextDouble();
                 var geometry = geometries.First(x => random >= x.Start && random < x.End).Envelope;
                 var (lat, lng) =
-                    RandomPointInPoly(new BoundingBox
-                    {
-                        MaxLat = geometry.Coordinates.Max(c => c.Y),
-                        MinLat = geometry.Coordinates.Min(c => c.Y),
-                        MaxLng = geometry.Coordinates.Max(c => c.X),
-                        MinLng = geometry.Coordinates.Min(c => c.X),
-                    });
+                    RandomPointInPoly(new BoundingBox(
+                        MinLat: geometry.Coordinates.Min(c => c.Y),
+                        MaxLat: geometry.Coordinates.Max(c => c.Y),
+                        MinLng: geometry.Coordinates.Min(c => c.X),
+                        MaxLng: geometry.Coordinates.Max(c => c.X)));
                 return new MapCheckrLocation
                 {
                     lat = lat,

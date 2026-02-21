@@ -10,7 +10,7 @@ using Vali.Core.Google;
 
 namespace Vali.Core;
 
-public static class Extensions
+public static partial class Extensions
 {
     /// <summary>
     /// Calculates the great-circle distance between two points on Earth using the haversine formula.
@@ -67,12 +67,10 @@ public static class Extensions
         return R * Math.Sqrt(x * x + y * y);
     }
 
-    private static readonly int MaxDistance = LocationDistributor.Distances.Max();
-
-    public static readonly int LatitudeBucketSize = 5;
-
-    private static readonly double[] LatitudeDifferenceArray =
-        Enumerable.Range(0, MaxDistance / LatitudeBucketSize + 1).Select(i => i * LatitudeBucketSize / (double)110000).ToArray();
+    private const double DegToRad = 0.017453292519943295769236907684886127d;
+    private const double HalfDegToRad = DegToRad * 0.5;
+    private const double MetersPerDegreeSquared = 6371137.0 * DegToRad * (6371137.0 * DegToRad);
+    private const double InverseLatMetersSquared = 1.0 / (110000.0 * 110000.0);
 
 /// <summary>
     /// Optimized proximity check that uses latitude pre-filtering for performance.
@@ -86,21 +84,18 @@ public static class Extensions
     /// <param name="meters">Maximum distance in meters</param>
     /// <returns>True if points are closer than specified distance</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool PointsAreCloserThan(double lat1, double lon1, double lat2, double lon2, int meters)
+    public static bool PointsAreCloserThan(double lat1, double lon1, double lat2, double lon2, double metersSquared)
     {
-        if (meters > MaxDistance)
-        {
-            return ApproximateDistance(lat1, lon1, lat2, lon2) < meters;
-        }
-
-        var latitudeDifference = LatitudeDifferenceArray[meters / LatitudeBucketSize];
-        var isDefinitelyFartherAway = Math.Abs(lat1 - lat2) > latitudeDifference;
-        if (isDefinitelyFartherAway)
+        var dlat = lat2 - lat1;
+        if (dlat * dlat > metersSquared * InverseLatMetersSquared)
         {
             return false;
         }
 
-        return ApproximateDistance(lat1, lon1, lat2, lon2) < meters;
+        var dlon = lon2 - lon1;
+        var cosLat = Math.Cos((lat1 + lat2) * HalfDegToRad);
+        var x = dlon * cosLat;
+        return MetersPerDegreeSquared * (x * x + dlat * dlat) < metersSquared;
     }
 
 /// <summary>
@@ -212,8 +207,19 @@ public static class Extensions
         }
     }
 
-    public static IEnumerable<T> TakeRandom<T>(this IEnumerable<T> collection, int take) =>
-        collection == null ? [] : collection.Count() <= take ? collection : collection.OrderBy(_ => Random.Shared.Next()).Take(take);
+    public static IEnumerable<T> TakeRandom<T>(this IEnumerable<T> collection, int take)
+    {
+        if (collection == null) return [];
+        var array = collection as T[] ?? collection.ToArray();
+        if (array.Length <= take) return array;
+        for (var i = 0; i < take; i++)
+        {
+            var j = Random.Shared.Next(i, array.Length);
+            (array[i], array[j]) = (array[j], array[i]);
+        }
+
+        return array[..take];
+    }
 
     public static T ProtoDeserializeFromFile<T>(string path)
     {
@@ -281,7 +287,7 @@ public static class Extensions
         var counter = 0;
         var list = new List<(string oldValue, string newValue)>();
         input = input.Replace("\\'", "$900001");
-        var matches = Regex.Matches(input, "'([^']*)'");
+        var matches = SingleQuotesRegex().Matches(input);
         foreach (Match match in matches)
         {
             var matchedValue = match.Groups[1].Value;
@@ -295,7 +301,13 @@ public static class Extensions
         return (input, list);
     }
 
-    public static string RemoveMultipleSpaces(this string input) => Regex.Replace(input, @"\s+", " ");
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex MultipleSpacesRegex();
+
+    [GeneratedRegex("'([^']*)'")]
+    private static partial Regex SingleQuotesRegex();
+
+    public static string RemoveMultipleSpaces(this string input) => MultipleSpacesRegex().Replace(input, " ");
     public static string RemoveParentheses(this string input) => input.Replace("(", "").Replace(")", "");
     public static string SpacePad(this string input) => $" {input} ";
 
