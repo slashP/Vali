@@ -1,4 +1,5 @@
 ﻿using Vali.Core.Data;
+using Vali.Core.Expressions;
 using Vali.Core.Google;
 
 namespace Vali.Core.Validation;
@@ -80,7 +81,8 @@ public static class OutputValidation
                     DryRunMapCheckrExpression,
                     $"Invalid panningExpression expression {panningExpression.Expression}",
                     validProperties,
-                    validProperties);
+                    validProperties,
+                    PropertyResolver.ForMapCheckrLocation());
                 if (validatedDefinition == null)
                 {
                     return null;

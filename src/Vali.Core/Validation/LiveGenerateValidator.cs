@@ -2,6 +2,7 @@
 using Spectre.Console;
 using System.Text.Json;
 using Vali.Core.Data;
+using Vali.Core.Expressions;
 using Vali.Core.Google;
 
 namespace Vali.Core.Validation;
@@ -244,7 +245,8 @@ public static class LiveGenerateValidator
                 DryRun,
                 $"Invalid filter {definition.LocationFilter}",
                 LocationLakeFilterer.ValidMapCheckrLocationProperties(),
-                LocationLakeFilterer.ValidMapCheckrLocationProperties()) == null)
+                LocationLakeFilterer.ValidMapCheckrLocationProperties(),
+                PropertyResolver.ForMapCheckrLocation()) == null)
         {
             return null;
         }

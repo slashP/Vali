@@ -288,7 +288,7 @@ public static class FilterValidation
 
     public static T? ValidateExpression<T>(this T definition, string filter,
         Action<string, T> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties,
-        IReadOnlyCollection<string> outputVisibleValidProperties)
+        IReadOnlyCollection<string> outputVisibleValidProperties, PropertyResolver? resolver = null)
     {
         if (filter == "")
         {
@@ -301,7 +301,7 @@ public static class FilterValidation
             return definition;
         }
 
-        var resolver = PropertyResolver.ForLocation();
+        resolver ??= PropertyResolver.ForLocation();
         var allowParentProperties = validProperties.Any(p => p.StartsWith("current:"));
         var validationError = ExpressionCompiler.Validate(filter, resolver, allowParentProperties);
         if (validationError != null)
