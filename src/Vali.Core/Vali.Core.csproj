@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data\*.json" />
+    <EmbeddedResource Include="Data\Regions\*.geojson" />
   </ItemGroup>
 
 	<ItemGroup>

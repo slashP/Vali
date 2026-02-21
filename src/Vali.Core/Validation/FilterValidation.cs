@@ -1,5 +1,5 @@
-﻿using System.Globalization;
-using Vali.Core.Data;
+﻿using Vali.Core.Data;
+using Vali.Core.Expressions;
 
 namespace Vali.Core.Validation;
 
@@ -54,16 +54,6 @@ public static class FilterValidation
         {
             var expression = LocationLakeFilterer.CompileParentBoolLocationExpression(filter);
             var locations = EmptyLocationArray();
-            if (definition.GlobalExternalDataFiles.Length > 0)
-            {
-                SetExternalData(locations, definition.GlobalExternalDataFiles);
-            }
-
-            foreach (var keyValuePair in definition.CountryExternalDataFiles)
-            {
-                SetExternalData(locations, keyValuePair.Value);
-            }
-
             var filtered = locations.Where(l => locations.Any(l2 => expression(l2, l))).ToArray();
         }
 
@@ -242,6 +232,11 @@ public static class FilterValidation
             .ToArray();
         foreach (var geometryFilter in geometryFilters)
         {
+            if (geometryFilter.PreloadedGeometries is { Length: > 0 })
+            {
+                continue;
+            }
+
             if (!File.Exists(geometryFilter.FilePath))
             {
                 ConsoleLogger.Error($"File {geometryFilter.FilePath} used in a {nameof(geometryFilter)} does not exist.");
@@ -293,7 +288,7 @@ public static class FilterValidation
 
     public static T? ValidateExpression<T>(this T definition, string filter,
         Action<string, T> dryRun, string dryRunExceptionMessage, IReadOnlyCollection<string> validProperties,
-        IReadOnlyCollection<string> outputVisibleValidProperties)
+        IReadOnlyCollection<string> outputVisibleValidProperties, PropertyResolver? resolver = null)
     {
         if (filter == "")
         {
@@ -306,45 +301,13 @@ public static class FilterValidation
             return definition;
         }
 
-        foreach (var dotIndex in filter.AllIndexesOf("."))
+        resolver ??= PropertyResolver.ForLocation();
+        var allowParentProperties = validProperties.Any(p => p.StartsWith("current:"));
+        var validationError = ExpressionCompiler.Validate(filter, resolver, allowParentProperties);
+        if (validationError != null)
         {
-            if (dotIndex == 0 || dotIndex == filter.Length - 1 || !char.IsNumber(filter[dotIndex - 1]) || !char.IsNumber(filter[dotIndex + 1]))
-            {
-                ConsoleLogger.Error($"Only numbers can have the character '.': {filter}");
-                return default;
-            }
-        }
-
-        var removeStringsInSingleQuotes = filter.ReplaceValuesInSingleQuotesWithPlaceHolders().expressionWithPlaceholders;
-        foreach (var expressionValue in removeStringsInSingleQuotes.RemoveMultipleSpaces().RemoveParentheses().Split(' '))
-        {
-            var operators = LocationLakeFilterer.ValidOperators().Select(x => x.Trim()).ToArray();
-            var properties = validProperties.Select(x => x.Trim()).ToArray();
-            if (!operators.Contains(expressionValue.Trim(), StringComparer.InvariantCultureIgnoreCase) &&
-                !properties.Contains(expressionValue.Trim()) &&
-                !expressionValue.StartsWith("external:") &&
-                !double.TryParse(expressionValue, NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
-                !bool.TryParse(expressionValue, out _) &&
-                !IsSingleQuoteWord(expressionValue) &&
-                !expressionValue.StartsWith("$$") &&
-                expressionValue != "null")
-            {
-                if (expressionValue.Contains("'"))
-                {
-                    ConsoleLogger.Error("Using single quotes inside single quotes requires escaping by putting a backslash (\\) in front of it");
-                    return default;
-                }
-
-                ConsoleLogger.Error($"""
-                                     Expression value {expressionValue} is not valid. Must be
-                                     * A number.
-                                     * A value in single quotes like 'gravel'.
-                                     * One of the operators [{operators.Merge(", ")}]
-                                     * One of the properties [{outputVisibleValidProperties.Select(x => x.Trim()).Merge(", ")}]
-                                     * null
-                                     """);
-                return default;
-            }
+            ConsoleLogger.Error(validationError.Message);
+            return default;
         }
 
         try
@@ -396,53 +359,11 @@ public static class FilterValidation
         return definition;
     }
 
-    private static bool IsSingleQuoteWord(string expression)
-    {
-        const char singleQuote = '\'';
-        if (expression.Length < 3 ||
-            expression[0] != singleQuote ||
-            expression[^1] != singleQuote ||
-            expression.Count(c => c == singleQuote) > 2)
-        {
-            return false;
-        }
-
-        return expression.TrimStart(singleQuote).TrimEnd(singleQuote).All(c => char.IsAsciiLetterOrDigit(c) || c == Extensions.PlaceholderValue || c == '_');
-    }
-
     static void DryRun(string filter, MapDefinition mapDefinition)
     {
         var expression = LocationLakeFilterer.CompileExpression<Location, bool>(filter, true);
         var locations = EmptyLocationArray();
-        if (mapDefinition.GlobalExternalDataFiles.Length > 0)
-        {
-            SetExternalData(locations, mapDefinition.GlobalExternalDataFiles);
-        }
-
-        foreach (var keyValuePair in mapDefinition.CountryExternalDataFiles)
-        {
-            SetExternalData(locations, keyValuePair.Value);
-        }
-
         var filtered = locations.Where(expression).ToArray();
-    }
-
-    static void SetExternalData(Location[] locations, string[] externalFiles)
-    {
-        foreach (var externalDataFile in externalFiles)
-        {
-            var externalData = Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(externalDataFile, []);
-            if (externalData.Count == 0)
-            {
-                continue;
-            }
-
-            var defaultDictionary = externalData.First().Value.ToDictionary(x => x.Key, _ => "");
-            foreach (var location in locations)
-            {
-                location.ExternalData = externalData.GetValueOrDefault(location.LocationId.ToString(), defaultDictionary);
-            }
-        }
     }
 
     public static Location[] EmptyLocationArray() =>

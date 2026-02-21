@@ -36,8 +36,11 @@ public static class GeometryReader
 
     public static (GeometryFilter filter, Geometry[] geometries)[] GetApplicableGeometryFilters(this GeometryFilter[] filters) =>
         filters
-            .Where(f => File.Exists(f.FilePath))
-            .Select(f => (f, g: DeserializeGeometriesFromFile(f.FilePath)))
+            .Select(f => f.PreloadedGeometries is { Length: > 0 }
+                ? (f, g: f.PreloadedGeometries)
+                : File.Exists(f.FilePath)
+                    ? (f, g: DeserializeGeometriesFromFile(f.FilePath))
+                    : (f, g: []))
             .Where(r => r.g.Length > 0).Select(r => (r.f, r.g))
             .ToArray();
 }

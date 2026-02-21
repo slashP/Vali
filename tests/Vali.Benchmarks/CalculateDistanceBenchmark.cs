@@ -1,6 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
 using Vali.Core;
-using Vali.Core.Hash;
 
 namespace Vali.Benchmarks;
 

@@ -188,6 +188,7 @@ Locations can be filtered globally, per country or per subdivision.
 | /               | Divide
 | *               | Multiply
 | modulo          | Modulo
+| in              | Value is one of a list of values
 
 ## Road types
 * Motorway
@@ -218,6 +219,7 @@ With these building blocks we can write queries/expressions to filter out certai
 | `ClosestCoast lt 100`                             | Coastal coverage.
 | `Buildings25 gte 3 and Buildings100 gte 6`        | Urban-ish coverage?
 | `Surface eq 'gravel' or Surface eq 'fine_gravel'` | Gravel roads?
+| `Surface in ['gravel', 'sand', 'dirt']`            | Unpaved roads using `in` operator.
 
 ## Filter locations globally
 ```json
@@ -313,7 +315,7 @@ Sometimes filter expressions can get complicated and it would be nice to have a 
     "$$mainRoad": "HighwayType eq 'Motorway' or HighwayType eq 'Trunk' or HighwayType eq 'Primary'",
     "$$ruralSmallerRoad": "$$generallyRural and $$mainRoad eq false",
     "$$residential": "IsResidential or Buildings100 gt 4",
-    "$$dirty": "Surface eq 'dirt' or Surface eq 'gravel' or Surface eq 'unpaved' or Surface eq 'ground' or Surface eq 'sand'"
+    "$$dirty": "Surface in ['dirt', 'gravel', 'unpaved', 'ground', 'sand']"
   }
 }
 ```

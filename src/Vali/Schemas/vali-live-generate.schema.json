@@ -1,8 +1,12 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Vali Live Generate Map Definition",
   "type": "object",
   "description": "Configuration for live-generating maps using Google API",
+  "required": [
+    "countries",
+    "locationFilter"
+  ],
   "properties": {
     "countries": {
       "type": "object",
@@ -10,9 +14,13 @@
       "additionalProperties": {
         "type": "integer",
         "format": "int32"
+      },
+      "propertyNames": {
+        "pattern": "^[A-Z]{2}$"
       }
     },
     "distribution": {
+      "description": "Location distribution settings (minimum distance, overshoot factor)",
       "oneOf": [
         {
           "type": "null"
@@ -25,6 +33,7 @@
     "locationTags": {
       "type": "array",
       "description": "Tags to add to generated locations. Numeric tags can be extended with -<number> for bucketing (e.g., Buildings25-5, ClosestCoast-100).",
+      "uniqueItems": true,
       "items": {
         "type": "string",
         "oneOf": [
@@ -202,6 +211,7 @@
       "type": "integer",
       "description": "Geohash precision for subdividing areas (1-7, higher = smaller boxes)",
       "format": "int32",
+      "default": 4,
       "maximum": 7.0,
       "minimum": 1.0
     },
@@ -209,6 +219,7 @@
       "type": "integer",
       "description": "Number of parallel API requests to Google",
       "format": "int32",
+      "default": 100,
       "maximum": 200.0,
       "minimum": 1.0
     },
@@ -216,11 +227,17 @@
       "type": "integer",
       "description": "Search radius in meters for finding locations",
       "format": "int32",
+      "default": 100,
       "minimum": 1.0
     },
     "locationFilter": {
       "type": "string",
-      "description": "Filter expression for locations (e.g., 'ArrowCount gte 2 and Year gt 2015')"
+      "description": "Filter expression for locations. Operators: eq, neq, lt, lte, gt, gte, and, or, +, -, /, *, modulo, in. Properties: ArrowCount, Buildings10, Buildings100, Buildings200, Buildings25, ClosestCoast, ClosestLake, ClosestRailway, ClosestRiver, CountryCode, County, DescriptionLength, DrivingDirectionAngle, Elevation, Heading, HighwayType, HighwayTypeCount, IsResidential, IsScout, Month, ResolutionHeight, Roads0, Roads10, Roads100, Roads200, Roads25, Roads50, SubdivisionCode, Surface, Tunnels10, Tunnels200, WayId, Year. Use $$name to reference named expressions. String literals use single quotes.",
+      "examples": [
+        "ArrowCount gte 2 and Year gt 2015",
+        "Year gte 2020",
+        "*"
+      ]
     },
     "panoSelectionStrategy": {
       "type": [
@@ -260,13 +277,15 @@
     "geoJsonFiles": {
       "type": "array",
       "description": "Paths to GeoJSON files defining areas to search within",
+      "uniqueItems": true,
       "items": {
         "type": "string"
       }
     },
     "rejectLocationsWithoutDescription": {
       "type": "boolean",
-      "description": "Reject locations without a description field (filters out some unofficial coverage)"
+      "description": "Reject locations without a description field (filters out some unofficial coverage)",
+      "default": true
     },
     "acceptedCoverage": {
       "type": [
@@ -284,6 +303,7 @@
       "type": "integer",
       "description": "Number of locations to process in each batch",
       "format": "int32",
+      "default": 10000,
       "minimum": 100.0
     },
     "checkLinkedPanoramas": {
@@ -311,8 +331,9 @@
         },
         "overshootFactor": {
           "type": "integer",
-          "description": "Multiplier for initial location count (e.g., 2 means generate 2x locations then filter down). Higher = better coverage but slower.",
+          "description": "Multiplier for initial location count (e.g., 2 = generate 2x then filter down). Higher = better distribution but slower.",
           "format": "int32",
+          "default": 1,
           "maximum": 10.0,
           "minimum": 1.0
         }
