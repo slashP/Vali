@@ -186,6 +186,8 @@ public static class LocationLakeFilterer
         "in"
     ];
 
+    public static IEnumerable<string?> ValidOperators() => _validOperators;
+
     private static IEnumerable<Loc> FilterByProximity(
         IEnumerable<Loc> locations,
         ProximityFilter proximityFilter,

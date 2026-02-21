@@ -125,28 +125,28 @@ public static class MapDefinitionDefaults
         {
             ["europe"] => new Dictionary<string, GeometryFilter[]>
             {
-                ["TR"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanTurkey }],
-                ["RU"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanRussia }],
-                ["KZ"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanKazakhstan }],
-                ["ES"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.AfricanSpain }],
+                ["TR"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanTurkey, CombinationMode = DefaultGeometryFilterCombinationMode }],
+                ["RU"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanRussia, CombinationMode = DefaultGeometryFilterCombinationMode }],
+                ["KZ"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.EuropeanKazakhstan, CombinationMode = DefaultGeometryFilterCombinationMode }],
+                ["ES"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.AfricanSpain, CombinationMode = DefaultGeometryFilterCombinationMode }],
             },
             ["asia"] => new Dictionary<string, GeometryFilter[]>
             {
-                ["TR"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanTurkey }],
-                ["RU"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanRussia }],
-                ["KZ"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanKazakhstan }],
+                ["TR"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanTurkey, CombinationMode = DefaultGeometryFilterCombinationMode }],
+                ["RU"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanRussia, CombinationMode = DefaultGeometryFilterCombinationMode }],
+                ["KZ"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.EuropeanKazakhstan, CombinationMode = DefaultGeometryFilterCombinationMode }],
             },
             ["africa"] => new Dictionary<string, GeometryFilter[]>
             {
-                ["ES"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.AfricanSpain }],
+                ["ES"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.AfricanSpain, CombinationMode = DefaultGeometryFilterCombinationMode }],
             },
             ["oceania"] => new Dictionary<string, GeometryFilter[]>
             {
-                ["US"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.Hawaii }],
+                ["US"] = [new GeometryFilter { InclusionMode = "include", PreloadedGeometries = ContinentBoundaries.Hawaii, CombinationMode = DefaultGeometryFilterCombinationMode }],
             },
             ["northamerica"] => new Dictionary<string, GeometryFilter[]>
             {
-                ["US"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.Hawaii }],
+                ["US"] = [new GeometryFilter { InclusionMode = "exclude", PreloadedGeometries = ContinentBoundaries.Hawaii, CombinationMode = DefaultGeometryFilterCombinationMode }],
             },
             _ => []
         };

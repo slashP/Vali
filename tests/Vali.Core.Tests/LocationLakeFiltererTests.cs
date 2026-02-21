@@ -469,6 +469,7 @@ public class LocationLakeFiltererTests
     [InlineData("isScout eq false")]
     [InlineData("descriptionLength gt 0")]
     [InlineData("drivingDirectionAngle eq 180")]
+    [InlineData("resolutionHeight lt 8192")]
     public void Should_compile_mapcheckr_expressions(string expression)
     {
         var location = CreateMapCheckrLocation();
