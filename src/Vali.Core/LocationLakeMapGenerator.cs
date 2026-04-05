@@ -94,7 +94,7 @@ public class LocationLakeMapGenerator
             return;
         }
 
-        var locations = subdivisionGroups.SelectMany(x => x.locations).Select(x => new
+        var locations = subdivisionGroups.SelectMany(x => x.locations).DistinctBy(x => x.NodeId).Select(x => new
         {
             Loc = x,
             MapCheckrLoc = new MapCheckrLocation
