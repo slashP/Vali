@@ -136,14 +136,40 @@ public sealed class DynamicLinqGenerator
 
     private void GenerateBinary(BinaryNode binary, StringBuilder sb)
     {
+        // When an external-data property is compared against a numeric literal, coerce the
+        // external value to a number via Location.ExternalNumber (NaN when missing/non-numeric,
+        // which fails every comparison and so excludes the location). A string literal on the
+        // other side keeps the existing string-equality behavior.
+        var numericExternal = IsComparisonOperator(binary.Operator.Kind) &&
+            (ExternalComparedToNumericLiteral(binary.Left, binary.Right) ||
+             ExternalComparedToNumericLiteral(binary.Right, binary.Left));
+
         sb.Append('(');
-        GenerateNode(binary.Left, sb);
+        GenerateComparisonOperand(binary.Left, numericExternal, sb);
         sb.Append(' ');
         sb.Append(OperatorToString(binary.Operator.Kind));
         sb.Append(' ');
-        GenerateNode(binary.Right, sb);
+        GenerateComparisonOperand(binary.Right, numericExternal, sb);
         sb.Append(')');
     }
+
+    private void GenerateComparisonOperand(ExpressionNode node, bool numericExternal, StringBuilder sb)
+    {
+        if (numericExternal && node is ExternalPropertyNode ext)
+        {
+            sb.Append($"{_primaryParam}.ExternalNumber(\"{ext.Key}\")");
+            return;
+        }
+
+        GenerateNode(node, sb);
+    }
+
+    private static bool IsComparisonOperator(TokenKind kind) =>
+        kind is TokenKind.Eq or TokenKind.Neq or TokenKind.Lt or TokenKind.Lte or TokenKind.Gt or TokenKind.Gte;
+
+    private static bool ExternalComparedToNumericLiteral(ExpressionNode external, ExpressionNode other) =>
+        external is ExternalPropertyNode &&
+        other is LiteralNode { Token.Kind: TokenKind.IntegerLiteral or TokenKind.DecimalLiteral };
 
     private static string OperatorToString(TokenKind kind) => kind switch
     {

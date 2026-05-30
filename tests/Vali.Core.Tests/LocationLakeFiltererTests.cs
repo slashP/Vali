@@ -580,6 +580,51 @@ public class LocationLakeFiltererTests
         result.Length.ShouldBe(expectedCount);
     }
 
+    [Fact]
+    public void Should_filter_by_numeric_external_data_greater_than()
+    {
+        var locations = LocationArrayWithData();
+        locations.Single().ExternalData["Population"] = "6000";
+        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 5000", new(), [], [], new());
+        result.Length.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Should_exclude_when_numeric_external_below_threshold()
+    {
+        var locations = LocationArrayWithData();
+        locations.Single().ExternalData["Population"] = "3000";
+        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 5000", new(), [], [], new());
+        result.Length.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Should_exclude_when_numeric_external_key_missing()
+    {
+        var locations = LocationArrayWithData();
+        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 5000", new(), [], [], new());
+        result.Length.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Should_exclude_when_numeric_external_value_non_numeric()
+    {
+        var locations = LocationArrayWithData();
+        locations.Single().ExternalData["Population"] = "not-a-number";
+        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 0", new(), [], [], new());
+        result.Length.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Should_combine_numeric_and_string_external_data()
+    {
+        var locations = LocationArrayWithData();
+        locations.Single().ExternalData["PlaceNameSign"] = "Yes";
+        locations.Single().ExternalData["Population"] = "20000";
+        var result = LocationLakeFilterer.Filter(locations, [], [], "external:PlaceNameSign eq 'Yes' and external:Population gt 5000", new(), [], [], new());
+        result.Length.ShouldBe(1);
+    }
+
     private static MapCheckrLocation CreateMapCheckrLocation() => new()
     {
         lat = 59.9,

@@ -220,4 +220,32 @@ public class DynamicLinqGeneratorTests
     {
         Should.NotThrow(() => Generate(expression));
     }
+
+    [Fact]
+    public void Should_generate_numeric_external_property()
+    {
+        var result = Generate("external:Population gt 5000");
+        result.ShouldBe("(x.ExternalNumber(\"Population\") > 5000)");
+    }
+
+    [Fact]
+    public void Should_generate_numeric_external_property_reversed()
+    {
+        var result = Generate("5000 lt external:Population");
+        result.ShouldBe("(5000 < x.ExternalNumber(\"Population\"))");
+    }
+
+    [Fact]
+    public void Should_generate_numeric_external_with_decimal_literal()
+    {
+        var result = Generate("external:DistanceKm lte 12.5");
+        result.ShouldBe("(x.ExternalNumber(\"DistanceKm\") <= 12.5)");
+    }
+
+    [Fact]
+    public void Should_keep_string_external_property_for_string_literal()
+    {
+        var result = Generate("external:PlaceNameSign eq 'Yes'");
+        result.ShouldBe("((x.ExternalData.ContainsKey(\"PlaceNameSign\") ? x.ExternalData[\"PlaceNameSign\"] : \"\") == \"Yes\")");
+    }
 }

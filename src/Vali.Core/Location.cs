@@ -1,8 +1,14 @@
-﻿using System.Numerics;
+﻿using System.Globalization;
+using System.Linq.Dynamic.Core.CustomTypeProviders;
+using System.Numerics;
 using ProtoBuf;
 
 namespace Vali.Core;
 
+// [DynamicLinqType] makes Location's instance methods (e.g. ExternalNumber) callable from
+// compiled filter expressions; without it System.Linq.Dynamic.Core rejects method calls on
+// this user type with "Method '...' on type 'Location' is not accessible."
+[DynamicLinqType]
 [ProtoContract]
 public record Location : IDistributionLocation<long>
 {
@@ -21,6 +27,12 @@ public record Location : IDistributionLocation<long>
     public long LocationId => NodeId;
     public string? Tag { get; init; }
     public Dictionary<string, string> ExternalData { get; set; } = [];
+
+    public double ExternalNumber(string key) =>
+        ExternalData.TryGetValue(key, out var value) &&
+        double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var number)
+            ? number
+            : double.NaN;
 }
 
 public interface IDistributionLocation<T> : ILatLng
