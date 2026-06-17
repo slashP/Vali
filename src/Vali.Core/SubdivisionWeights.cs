@@ -3075,18 +3075,18 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> GE = new()
     {
-        { "GE-AB", (10, "Abkhazia") },
-        { "GE-AJ", (10, "Ajaria") },
-        { "GE-GU", (10, "Guria") },
-        { "GE-IM", (10, "Imereti") },
-        { "GE-KA", (10, "K'akheti") },
-        { "GE-KK", (10, "Kvemo Kartli") },
-        { "GE-MM", (10, "Mtskheta-Mtianeti") },
-        { "GE-RL", (10, "Rach'a-Lechkhumi-Kvemo Svaneti") },
-        { "GE-SZ", (10, "Samegrelo-Zemo Svaneti") },
-        { "GE-SJ", (10, "Samtskhe-Javakheti") },
-        { "GE-SK", (10, "Shida Kartli") },
-        { "GE-TB", (10, "Tbilisi") },
+        { "GE-AB", (0, "Abkhazia") },
+        { "GE-AJ", (103, "Ajaria") },
+        { "GE-GU", (58, "Guria") },
+        { "GE-IM", (321, "Imereti") },
+        { "GE-KA", (329, "K'akheti") },
+        { "GE-KK", (297, "Kvemo Kartli") },
+        { "GE-MM", (110, "Mtskheta-Mtianeti") },
+        { "GE-RL", (114, "Rach'a-Lechkhumi-Kvemo Svaneti") },
+        { "GE-SZ", (238, "Samegrelo-Zemo Svaneti") },
+        { "GE-SJ", (99, "Samtskhe-Javakheti") },
+        { "GE-SK", (126, "Shida Kartli") },
+        { "GE-TB", (71, "Tbilisi") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> AM = new()
@@ -3241,6 +3241,11 @@ public class SubdivisionWeights
         { "TV-VAI", (10, "Vaitupu") },
     };
 
+    private static readonly Dictionary<string, (int weight, string subdivisionName)> XK = new()
+    {
+        { "XK-1", (10, "") },
+    };
+
     private static readonly Dictionary<string, (int weight, string subdivisionName)> CY = new()
     {
         { "CY-06", (0, "Kyrenia") },
@@ -3380,6 +3385,7 @@ public class SubdivisionWeights
             { "BA", BA },
             { "CY", CY },
             { "PY", PY },
+            { "GE", GE },
         };
 
     public static readonly Dictionary<string, Dictionary<string, (int weight, string subdivisionName)>> NotQuiteThereYetCountryToSubdivision =
@@ -3406,7 +3412,6 @@ public class SubdivisionWeights
             { "SR", SR },
             { "GY", GY },
             { "VE", VE },
-            { "GE", GE },
             { "AM", AM },
             { "AZ", AZ },
             { "VU", VU },
@@ -3414,6 +3419,7 @@ public class SubdivisionWeights
             { "NC", NC },
             { "TO", TO },
             { "TV", TV },
+            { "XK", XK },
         };
 
     private static Dictionary<string, SubdivisionInfo[]>? _subdivisions;
