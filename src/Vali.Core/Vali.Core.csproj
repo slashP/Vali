@@ -19,7 +19,7 @@
 		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.11.2" />
 		<PackageReference Include="SharpZipLib" Version="1.4.2" />
 		<PackageReference Include="Spectre.Console.Json" Version="0.50.0" />
-		<PackageReference Include="protobuf-net" Version="3.2.52" />
+		<PackageReference Include="protobuf-net" Version="3.2.56" />
 		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0.2" />
 		<PackageReference Include="WeightedRandomizer" Version="2.0.1" />
 	</ItemGroup>

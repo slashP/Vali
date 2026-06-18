@@ -26,10 +26,19 @@ public record Location : IDistributionLocation<long>
     public required NominatimData Nominatim { get; set; }
     public long LocationId => NodeId;
     public string? Tag { get; init; }
-    public Dictionary<string, string> ExternalData { get; set; } = [];
+    private Dictionary<string, string>? _externalData;
+
+    public Dictionary<string, string> ExternalData
+    {
+        get => _externalData ??= new Dictionary<string, string>();
+        set => _externalData = value;
+    }
+
+    public bool HasExternalData => _externalData is { Count: > 0 };
 
     public double ExternalNumber(string key) =>
-        ExternalData.TryGetValue(key, out var value) &&
+        _externalData is not null &&
+        _externalData.TryGetValue(key, out var value) &&
         double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var number)
             ? number
             : double.NaN;
@@ -44,7 +53,7 @@ public interface IDistributionLocation<T> : ILatLng
 public record GoogleData
 {
     [ProtoMember(1)]
-    public required string PanoId { get; set; }
+    public string PanoId { get; set; } = "";
     [ProtoMember(2)]
     public double Lat { get; set; }
     [ProtoMember(3)]
@@ -53,7 +62,7 @@ public record GoogleData
     public double DefaultHeading { get; set; }
     public int Heading => DefaultHeading.RoundToInt();
     [ProtoMember(5)]
-    public required string CountryCode { get; set; }
+    public string CountryCode { get; set; } = "";
     [ProtoMember(6)]
     public DateTime CheckedAt { get; set; }
     [ProtoMember(7)]
@@ -126,9 +135,9 @@ public record OsmData
 public record NominatimData
 {
     [ProtoMember(1)]
-    public required string CountryCode { get; set; }
+    public string CountryCode { get; set; } = "";
     [ProtoMember(2)]
-    public required string SubdivisionCode { get; set; }
+    public string SubdivisionCode { get; set; } = "";
     [ProtoMember(3)]
     public string? County { get; set; }
 }

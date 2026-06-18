@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using Spectre.Console;
+using Vali.Core.Generation;
 using Vali.Core.Google;
 
 namespace Vali.Core;
@@ -10,76 +12,212 @@ public class LocationLakeMapGenerator
     public static async Task Generate(MapDefinition mapDefinition, string definitionPath, RunMode runMode, bool includeAdditionalLocationInfo = false)
     {
         var sw = Stopwatch.StartNew();
+        if (GenPerf.Enabled)
+        {
+            GenPerf.Reset();
+        }
+
         var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
-        var subdivisionGroups = new List<(IList<Location> locations, int regionGoalCount, int minDistance)>();
+        var progress = new GenerationProgress();
+
+        // Phase A — prep: resolve files/goals per country and emit one flat work-list.
+        var workItems = new List<GenerationWorkItem>();
         foreach (var countryCode in mapDefinition.CountryCodes)
         {
             var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, runMode);
-            var availableSubdivisions = allSubdivisions
-                .Select(x => x.subdivisionCode)
-                .ToArray();
+            var availableSubdivisions = allSubdivisions.Select(x => x.subdivisionCode).ToArray();
             var subDivisions = mapDefinition switch
             {
-                 _ when mapDefinition.SubdivisionInclusions.TryGetValue(countryCode, out var inclusions) => inclusions,
-                 _ when mapDefinition.SubdivisionExclusions.TryGetValue(countryCode, out var exclusions) => availableSubdivisions.Except(exclusions).ToArray(),
-                 _ => availableSubdivisions
+                _ when mapDefinition.SubdivisionInclusions.TryGetValue(countryCode, out var inclusions) => inclusions,
+                _ when mapDefinition.SubdivisionExclusions.TryGetValue(countryCode, out var exclusions) => availableSubdivisions.Except(exclusions).ToArray(),
+                _ => availableSubdivisions
             };
             var subdivisionFiles = subDivisions.Select(s => allSubdivisions.First(f => f.subdivisionCode == s).file).ToArray();
             await DataDownloadService.EnsureFilesDownloaded(countryCode, subdivisionFiles);
             var locationCountGoal = CountryLocationCountGoal(mapDefinition, countryCode);
-            var parallelism = ApplicationSettingsService.ReadApplicationSettings().Parallelism ?? 20;
-            var locationChunks = mapDefinition.DistributionStrategy.Key switch
+
+            // Locals captured by the work-item closures (one set per country iteration).
+            var cc = countryCode;
+            var subs = subDivisions;
+            var files = subdivisionFiles;
+            var treatAsSingle = mapDefinition.DistributionStrategy.TreatCountriesAsSingleSubdivision.Contains(cc);
+
+            var workItemsBefore = workItems.Count;
+            switch (mapDefinition.DistributionStrategy.Key)
             {
-                DistributionStrategies.FixedCountByMaxMinDistance when mapDefinition.DistributionStrategy.TreatCountriesAsSingleSubdivision.Contains(countryCode) => DistributionStrategies.CountryByMaxMinDistance(
-                    countryCode,
-                    subdivisionFiles,
-                    locationCountGoal,
-                    mapDefinition),
-                DistributionStrategies.FixedCountByMaxMinDistance => (await subdivisionFiles.RunLimitedNumberAtATime(f =>
-                    DistributionStrategies.SubdivisionByMaxMinDistance(
-                        countryCode,
-                        f,
-                        locationCountGoal,
-                        subDivisions,
-                        mapDefinition), parallelism)).ToArray(),
-                DistributionStrategies.FixedCountByCoverageDensity when mapDefinition.DistributionStrategy.TreatCountriesAsSingleSubdivision.Contains(countryCode) => DistributionStrategies.CountryByCoverageDensity(
-                    countryCode,
-                    subdivisionFiles,
-                    locationCountGoal,
-                    mapDefinition),
-                DistributionStrategies.FixedCountByCoverageDensity => (await subdivisionFiles.RunLimitedNumberAtATime(f =>
-                    DistributionStrategies.SubdivisionByCoverageDensity(
-                        countryCode,
-                        f,
-                        locationCountGoal,
-                        subDivisions,
-                        mapDefinition), parallelism)).ToArray(),
-                DistributionStrategies.MaxCountByFixedMinDistance => DistributionStrategies.MaxLocationsInSubdivisionsByFixedMinDistance(
-                    countryCode,
-                    subdivisionFiles,
-                    subDivisions,
-                    mapDefinition),
-                DistributionStrategies.EvenlyByDistanceWithinCountry => DistributionStrategies.EvenlyByDistanceInCountry(
-                    countryCode,
-                    subdivisionFiles,
-                    subDivisions,
-                    mapDefinition),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            subdivisionGroups.AddRange(locationChunks);
+                case DistributionStrategies.FixedCountByMaxMinDistance when treatAsSingle:
+                    workItems.Add(new GenerationWorkItem(cc, EstimateCostBytes(files), null,
+                        () => DistributionStrategies.CountryByMaxMinDistance(cc, files, locationCountGoal, mapDefinition)));
+                    break;
+                case DistributionStrategies.FixedCountByMaxMinDistance:
+                    foreach (var (subdivisionCode, file) in subs.Zip(files))
+                    {
+                        var f = file;
+                        workItems.Add(new GenerationWorkItem(cc, EstimateCostBytes([f]), subdivisionCode,
+                            () => [DistributionStrategies.SubdivisionByMaxMinDistance(cc, f, locationCountGoal, subs, mapDefinition)]));
+                    }
+                    break;
+                case DistributionStrategies.FixedCountByCoverageDensity when treatAsSingle:
+                    workItems.Add(new GenerationWorkItem(cc, EstimateCostBytes(files), null,
+                        () => DistributionStrategies.CountryByCoverageDensity(cc, files, locationCountGoal, mapDefinition)));
+                    break;
+                case DistributionStrategies.FixedCountByCoverageDensity:
+                    foreach (var (subdivisionCode, file) in subs.Zip(files))
+                    {
+                        var f = file;
+                        workItems.Add(new GenerationWorkItem(cc, EstimateCostBytes([f]), subdivisionCode,
+                            () => [DistributionStrategies.SubdivisionByCoverageDensity(cc, f, locationCountGoal, subs, mapDefinition)]));
+                    }
+                    break;
+                case DistributionStrategies.MaxCountByFixedMinDistance:
+                    workItems.Add(new GenerationWorkItem(cc, EstimateCostBytes(files), null,
+                        () => DistributionStrategies.MaxLocationsInSubdivisionsByFixedMinDistance(cc, files, subs, mapDefinition)));
+                    break;
+                case DistributionStrategies.EvenlyByDistanceWithinCountry:
+                    workItems.Add(new GenerationWorkItem(cc, EstimateCostBytes(files), null,
+                        () => DistributionStrategies.EvenlyByDistanceInCountry(cc, files, subs, mapDefinition)));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            progress.RegisterCountry(countryCode, workItems.Count - workItemsBefore, locationCountGoal);
+        }
+
+        // Phase B — one global memory-aware pass over all work items.
+        var cpuCap = ApplicationSettingsService.ReadApplicationSettings().Parallelism ?? Environment.ProcessorCount;
+        var budgetBytes = (long)(MemoryBudgetFraction * GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
+        var view = SelectView(progress, sw);
+        using var stopSignal = new CancellationTokenSource();
+        using var generationDone = new CancellationTokenSource();
+        var stopListener = ListenForStopKey(stopSignal, generationDone.Token);
+        var schedulerTask = MemoryAwareScheduler.RunWithMemoryBudget(
+            workItems,
+            item => item.EstimatedCostBytes,
+            item => Task.Run(() =>
+            {
+                var results = RunTimed(item);
+                progress.ReportCompleted(item.CountryCode, item.SubdivisionCode, results);
+                view.OnCompleted(item.CountryCode, item.SubdivisionCode, results);
+                return results;
+            }),
+            cpuCap,
+            budgetBytes,
+            stopSignal.Token);
+        await view.RunUntil(schedulerTask);
+        var chunkArrays = await schedulerTask; // observe results / propagate exceptions
+        generationDone.Cancel(); // the run is over — let the key listener exit
+        await stopListener;
+        var stoppedEarly = stopSignal.IsCancellationRequested;
+        var subdivisionGroups = chunkArrays.SelectMany(x => x).ToList();
+
+        static IGenerationProgressView SelectView(GenerationProgress progress, Stopwatch stopwatch)
+        {
+            var interactive = AnsiConsole.Profile.Capabilities.Interactive && AnsiConsole.Profile.Width > 0;
+            return interactive && !ConsoleLogger.Silent
+                ? new LiveGridView(progress, stopwatch)
+                : new LineLogView(progress);
+        }
+
+        // Polls for the 's' key on a background task and asks the scheduler to stop dispatching new
+        // work (in-flight work still finishes). Skipped when input is redirected (piped / CI).
+        static async Task ListenForStopKey(CancellationTokenSource stopSignal, CancellationToken untilDone)
+        {
+            if (Console.IsInputRedirected)
+            {
+                return;
+            }
+
+            try
+            {
+                while (!untilDone.IsCancellationRequested && !stopSignal.IsCancellationRequested)
+                {
+                    if (Console.KeyAvailable && Console.ReadKey(intercept: true).Key == ConsoleKey.S)
+                    {
+                        stopSignal.Cancel();
+                        return;
+                    }
+
+                    await Task.Delay(100, untilDone);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // The run finished before any key was pressed.
+            }
+            catch (InvalidOperationException)
+            {
+                // Console input turned out not to be readable; nothing to listen to.
+            }
+        }
+
+        // Phase C — store.
+        if (stoppedEarly)
+        {
+            ConsoleLogger.Warn($"Generation stopped — saving {subdivisionGroups.Sum(s => s.locations.Count):N0} locations from regions completed so far.");
         }
 
         logger.MapGenerated(subdivisionGroups.Sum(s => s.locations.Count), sw.Elapsed);
 
         if (subdivisionGroups.Any())
         {
-            await StoreMap(mapDefinition, subdivisionGroups, definitionPath, includeAdditionalLocationInfo);
+            using (GenPerf.Measure(GenPerf.Phase.StoreProjection))
+            {
+                await StoreMap(mapDefinition, subdivisionGroups, definitionPath, includeAdditionalLocationInfo);
+            }
         }
         else
         {
             ConsoleLogger.Warn("No locations were generated for this map.");
         }
+
+        ShortfallSummary.Render(ShortfallSummary.Select(progress.Outcomes()));
+
+        if (GenPerf.Enabled)
+        {
+            GenPerf.Report(sw.Elapsed);
+        }
+
+        static (IList<Location> locations, int regionGoalCount, int minDistance)[] RunTimed(GenerationWorkItem item)
+        {
+            using var _ = GenerationConcurrency.EnterWorkItem();
+            var stopwatch = GenPerf.Enabled ? Stopwatch.StartNew() : null;
+            var result = item.Run();
+            if (stopwatch is not null)
+            {
+                GenPerf.AddCountryWork(item.CountryCode, stopwatch.Elapsed);
+            }
+
+            return result;
+        }
     }
+
+    private const double MemoryBudgetFraction = 0.6;
+    private const double LiveBytesPerFileByte = 12.0;
+
+    private static long EstimateCostBytes(string[] files)
+    {
+        long onDisk = 0;
+        foreach (var file in files)
+        {
+            try
+            {
+                onDisk += new FileInfo(file).Length;
+            }
+            catch
+            {
+                // Missing/unreadable file contributes 0 to the estimate; the body will surface any real error.
+            }
+        }
+
+        return (long)(onDisk * LiveBytesPerFileByte);
+    }
+
+    private sealed record GenerationWorkItem(
+        string CountryCode,
+        long EstimatedCostBytes,
+        string? SubdivisionCode,
+        Func<(IList<Location> locations, int regionGoalCount, int minDistance)[]> Run);
 
     private static async Task StoreMap(
         MapDefinition mapDefinition,
@@ -116,7 +254,15 @@ public class LocationLakeMapGenerator
                 resolutionHeight = x.Google.ResolutionHeight,
             }
         }).ToArray();
-        Random.Shared.Shuffle(locations);
+        if (GenerationDeterminism.Deterministic)
+        {
+            locations = locations.OrderBy(x => x.Loc.NodeId).ToArray();
+        }
+        else
+        {
+            Random.Shared.Shuffle(locations);
+        }
+
         var locationsById = locations.ToDictionary(x => x.Loc.NodeId.ToString());
         if (Enum.TryParse<GoogleApi.PanoStrategy>(mapDefinition.Output.PanoVerificationStrategy, out var panoStrategy) && panoStrategy != GoogleApi.PanoStrategy.None)
         {

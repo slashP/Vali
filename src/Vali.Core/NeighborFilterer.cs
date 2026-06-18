@@ -1,4 +1,5 @@
-﻿using Vali.Core.Hash;
+﻿using Vali.Core.Expressions;
+using Vali.Core.Hash;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
@@ -16,55 +17,111 @@ public class NeighborFilterer
             ? (_, _) => true
             : LocationLakeFilterer.CompileParentBoolLocationExpression(neighborFilter.Expression);
         var directions = neighborFilter.CheckEachCardinalDirectionSeparately ? Enum.GetValues<CardinalDirection>().Cast<CardinalDirection?>().ToArray() : [null];
-        var enumerable = locations.AsParallel();
+        // Inner PLINQ takes only a fair share of cores: the outer generation pass already runs many
+        // work items concurrently, so a ProcessorCount-wide scan per item would starve the pool.
+        var enumerable = locations.AsParallel().WithDegreeOfParallelism(GenerationConcurrency.InnerDegreeOfParallelism());
         var neighborFilterRadiusSquared = (double)neighborFilter.Radius * neighborFilter.Radius;
+
+        var buckets = neighborLocationBuckets;
+        if (IsPreFilterSafeBound(neighborFilter.Bound) && !string.IsNullOrEmpty(neighborFilter.Expression))
+        {
+            var pExpr = NeighborFilterDecomposer.NeighborOnlyExpression(neighborFilter.Expression);
+            if (pExpr != null)
+            {
+                var p = LocationLakeFilterer.CompileBoolLocationExpression(pExpr);
+                buckets = PreFilterBuckets(neighborLocationBuckets, p);
+            }
+        }
+
+        return Scan(enumerable, buckets, neighborFilter, precision, filterExpression, directions, neighborFilterRadiusSquared);
+    }
+
+    private static bool IsPreFilterSafeBound(string? bound) =>
+        bound is "some" or "gte" or "lte" or "none";
+
+    // Keeps the same geohash keys (no re-hashing); drops locations that fail the neighbor-only
+    // predicate. A dropped neighbor cannot satisfy the full expression for the safe bounds.
+    private static Dictionary<ulong, List<Loc>> PreFilterBuckets(
+        Dictionary<ulong, List<Loc>> buckets,
+        Func<Loc, bool> predicate)
+    {
+        var result = new Dictionary<ulong, List<Loc>>(buckets.Count);
+        foreach (var (key, list) in buckets)
+        {
+            List<Loc>? kept = null;
+            foreach (var loc in list)
+            {
+                if (predicate(loc))
+                {
+                    (kept ??= new List<Loc>()).Add(loc);
+                }
+            }
+
+            if (kept != null)
+            {
+                result[key] = kept;
+            }
+        }
+
+        return result;
+    }
+
+    private static IEnumerable<Loc> Scan(
+        ParallelQuery<Loc> enumerable,
+        Dictionary<ulong, List<Loc>> buckets,
+        NeighborFilter neighborFilter,
+        HashPrecision precision,
+        Func<Loc, Loc, bool> filterExpression,
+        CardinalDirection?[] directions,
+        double neighborFilterRadiusSquared)
+    {
         return neighborFilter switch
         {
             { Bound: "gte", CheckEachCardinalDirectionSeparately: true } => enumerable
-                .Where(l => directions.Any(d => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
+                .Where(l => directions.Any(d => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) >= neighborFilter.Limit)),
             { Limit: 1, Bound: "gte", CheckEachCardinalDirectionSeparately: false } or { Bound: "some" } => enumerable
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l))),
             { Bound: "gte", CheckEachCardinalDirectionSeparately: false } => enumerable
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) >= neighborFilter.Limit),
             { Limit: 0, Bound: "lte", CheckEachCardinalDirectionSeparately: true } or { CheckEachCardinalDirectionSeparately: true, Bound: "none" } => enumerable
-                .Where(l => directions.Any(d => !LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
+                .Where(l => directions.Any(d => !LocationsFromDictionary(buckets, l, precision).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)))),
             { Limit: 0, Bound: "lte", CheckEachCardinalDirectionSeparately: false } or { Bound: "none" } => enumerable
-                .Where(l => !LocationsFromDictionary(neighborLocationBuckets, l, precision).Any(l2 =>
+                .Where(l => !LocationsFromDictionary(buckets, l, precision).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l))),
             { Limit: > 0, Bound: "lte", CheckEachCardinalDirectionSeparately: true } => enumerable
-                .Where(l => directions.Any(d => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
+                .Where(l => directions.Any(d => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) <= neighborFilter.Limit)),
             { Bound: "lte", CheckEachCardinalDirectionSeparately: false } => enumerable
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Count(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) <= neighborFilter.Limit),
             { Bound: "all" } => enumerable
-                .Where(l => LocationsFromDictionary(neighborLocationBuckets, l, precision).Where(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision).Where(l2 =>
                         l.NodeId != l2.NodeId &&
                         Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared))
                     .AllAtLeastOne(l2 => filterExpression(l2, l))),
-            { Bound: "percentage-gte" } => Percentage(enumerable, neighborLocationBuckets, neighborFilter, precision, filterExpression, Bound.GreaterThan),
-            { Bound: "percentage-lte" } => Percentage(enumerable, neighborLocationBuckets, neighborFilter, precision, filterExpression, Bound.LessThan),
+            { Bound: "percentage-gte" } => Percentage(enumerable, buckets, neighborFilter, precision, filterExpression, Bound.GreaterThan),
+            { Bound: "percentage-lte" } => Percentage(enumerable, buckets, neighborFilter, precision, filterExpression, Bound.LessThan),
             _ => throw new InvalidOperationException($"Neighbor filter combination is not valid/implemented. Bound: {neighborFilter.Bound}. Check separately: {neighborFilter.CheckEachCardinalDirectionSeparately}. Limit: {neighborFilter.Limit}")
         };
     }

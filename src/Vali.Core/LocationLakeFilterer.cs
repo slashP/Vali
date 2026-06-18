@@ -80,7 +80,7 @@ public static class LocationLakeFilterer
             locations = NeighborFilterer.FilterByNeighbors(locations, neighborLocationBuckets, neighborFilter, mapDefinition);
         }
 
-        return locations.DistinctBy(l => l.NodeId).ToArray();
+        return GenerationDeterminism.InCanonicalOrder(locations.DistinctBy(l => l.NodeId)).ToArray();
     }
 
     private static readonly ConcurrentDictionary<string, Func<Loc, int>> _cacheInt = new();

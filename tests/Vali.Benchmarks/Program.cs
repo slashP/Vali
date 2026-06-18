@@ -1,10 +1,5 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using System.Diagnostics;
-using System.Globalization;
 using BenchmarkDotNet.Running;
 using Vali.Benchmarks;
-using Vali.Core;
 
 //Console.WriteLine("Hello, World!");
 //var indo = Extensions.ProtoDeserializeFromFile<Location[]>(Path.Combine(@"C:\ProgramData\Vali\ID", "ID+ID-SR.bin"));
@@ -24,4 +19,10 @@ using Vali.Core;
 //    }
 //}
 
-BenchmarkRunner.Run<CalculateDistanceBenchmark>();
+if (args.Length > 0 && args[0] == "quality")
+{
+    QualityReport.Run();
+    return;
+}
+
+BenchmarkSwitcher.FromAssembly(typeof(WithMaxMinDistanceRealDataBenchmark).Assembly).Run(args);

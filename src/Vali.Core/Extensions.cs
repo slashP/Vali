@@ -225,6 +225,12 @@ public static partial class Extensions
         return ProtoBuf.Serializer.Deserialize<T>(file);
     }
 
+    public static T ProtoDeserializeFromFile<T>(string path, ProtoBuf.Meta.TypeModel model)
+    {
+        using var file = File.OpenRead(path);
+        return (T)model.Deserialize(file, null, typeof(T));
+    }
+
     public static async ValueTask ProtoSerializeToFile<T>(string path, T data)
     {
         await using var file = !File.Exists(path) ? File.Create(path) : new FileStream(path, FileMode.Truncate);
