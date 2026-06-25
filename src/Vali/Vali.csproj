@@ -2,13 +2,22 @@
 
   <PropertyGroup>
 	<OutputType>Exe</OutputType>
-	<TargetFramework>net8.0</TargetFramework>
+	<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
 	<ImplicitUsings>enable</ImplicitUsings>
 	<Nullable>enable</Nullable>
 	<PackAsTool>true</PackAsTool>
 	<ToolCommandName>vali</ToolCommandName>
 	<PackageOutputPath>./nupkg</PackageOutputPath>
 	<PackageReadmeFile>readme.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- .NET 10 ships DATAS (memory-adaptive Server GC) on by default, so Server GC
+       scales heaps down under pressure instead of ballooning. Enable it for the
+       net10.0 build only; net8.0 stays on Workstation GC (unchanged behaviour).
+       Escape hatch for net10 users who want Workstation back: DOTNET_gcServer=0. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+	<ServerGarbageCollection>true</ServerGarbageCollection>
+	<ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
@@ -20,7 +29,10 @@
 	  <None Include="Schemas\*.json" Pack="true" PackagePath="schemas" />
 	</ItemGroup>
 
-	<Target Name="GenerateSchemas" BeforeTargets="BeforeBuild">
+	<!-- Multi-targeting runs BeforeBuild once per TFM; schema generation is idempotent,
+	     so restrict it to a single TFM to avoid the (harmless) double run. Full solution
+	     builds and `dotnet pack` build both TFMs, so net8.0 is always present here. -->
+	<Target Name="GenerateSchemas" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net8.0'">
 		<Exec Command="dotnet run --project $(MSBuildThisFileDirectory)..\..\tools\SchemaGenerator\SchemaGenerator.csproj" WorkingDirectory="$(MSBuildProjectDirectory)" />
 	</Target>
 </Project>
