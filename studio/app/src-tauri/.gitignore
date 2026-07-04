@@ -1,0 +1,5 @@
+# Rust / Cargo build artifacts
+/target
+
+# Tauri generated files
+/gen

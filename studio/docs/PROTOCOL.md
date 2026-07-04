@@ -1,0 +1,122 @@
+# Vali Studio — sidecar protocol (NDJSON over stdio)
+
+The Tauri app spawns `Vali.Host` (a .NET console app referencing `Vali.Core`) and speaks
+newline-delimited JSON over stdin/stdout. stdout carries ONLY protocol lines (UTF-8, no BOM,
+one JSON object per line). All human/log noise goes to stderr.
+
+## Envelopes
+
+Request (app → sidecar, one line):
+
+```json
+{"id":"r1","cmd":"validate","params":{...}}
+```
+
+Response (sidecar → app, exactly one per request):
+
+```json
+{"id":"r1","ok":true,"result":{...}}
+{"id":"r1","ok":false,"error":{"message":"...","detail":"..."}}
+```
+
+Event (sidecar → app, unsolicited, tied to the request that started the work):
+
+```json
+{"event":"progress","id":"r1","data":{...}}
+```
+
+`id` is an opaque string chosen by the app, unique per in-flight request.
+
+## Commands
+
+### `ping`
+Params: none.
+Result: `{"version":"0.1.0","dataFolder":"C:\\ProgramData\\Vali"}`
+
+### `validate`
+Params: `{"json":"<definition file content>"}`
+Result:
+```json
+{"valid":false,"errors":["<message>", ...],"effectiveDefinition":{...}|null}
+```
+Runs Vali's real chain: `HumanReadableError` → `TryDeserialize` → `ApplyDefaults` → `Validate`.
+`errors` are the messages Vali's validators print (captured). `effectiveDefinition` is the
+post-`ApplyDefaults` definition (camelCase JSON object) when deserialization succeeded, else null.
+Note: file-existence checks inside validators (geometry/proximity paths) resolve relative to the
+sidecar process CWD; the app should send absolute paths in definitions.
+
+### `expressionCheck`
+Params: `{"expression":"Year gte 2020","context":"location"|"mapCheckr","allowParent":false,"namedExpressions":{"$$x":"..."}?}`
+Result: `{"valid":true}` or
+```json
+{"valid":false,"error":{"message":"...","position":5,"length":3,"detail":"..."}}
+```
+`position`/`length` index into the (expanded) expression string. Named expressions are expanded
+before checking when provided.
+
+### `effectiveDefinition`
+Params: `{"json":"..."}`
+Result: `{"definition":{...}}` — the definition after `ApplyDefaults` (country/keyword expansion,
+`$$` substitution, auto geometry filters), pretty camelCase.
+
+### `countries`
+Params: none.
+Result: `{"countries":[{"code":"NO","name":"Norway","hasSubdivisionData":true}]}`
+
+### `subdivisions`
+Params: `{"countryCode":"NO"}`
+Result: `{"subdivisions":[{"code":"NO-03","name":"Oslo","weight":200}]}`
+
+### `dataStatus`
+Params: none.
+Result:
+```json
+{"dataFolder":"C:\\ProgramData\\Vali",
+ "countries":[{"code":"IE","files":26,"bytes":370000000,"lastWriteUtc":"2026-01-01T00:00:00Z"}]}
+```
+Scans `<dataFolder>\<CC>\*.bin`.
+
+### `generate`
+Params:
+```json
+{"definitionPath":"C:\\maps\\NO.json","previewGoal":3000,"includeAdditionalInfo":false}
+```
+`previewGoal` (optional): run as a preview — `locationCountGoal` is replaced, pano verification is
+skipped, output goes to `<name>-preview-locations.json`, and no distribution `.txt` files are
+written. Only valid for strategies `FixedCountByMaxMinDistance` / `FixedCountByCoverageDensity`;
+other strategies return an error explaining why.
+
+Events during the run:
+- `started`: `{"countries":[{"code":"NO","workItems":11,"goal":10000}],"totalGoal":10000}`
+- `progress` (throttled, ≤4/s): `{"countries":[{"code":"NO","completed":3,"total":11,"status":"Working","produced":2712}],"countriesComplete":0,"countriesTotal":1,"totalLocations":2712,"totalGoal":10000,"elapsedMs":5123}`
+- `regionCompleted`: `{"countryCode":"NO","subdivisionCode":"NO-03","produced":251,"goal":250,"minDistance":800,"sample":[[59.91,10.75],...]}`
+  (`sample` is ≤300 `[lat,lng]` pairs, for live map plotting.)
+- `warning`: `{"message":"..."}` (e.g. pano verification requested but not supported by Studio yet)
+
+Response (also the terminal event of the run):
+```json
+{"locationsWritten":9971,"outputPath":"C:\\maps\\NO-locations.json","stoppedEarly":false,
+ "elapsedMs":81234,
+ "shortfall":{"countries":[{"code":"NO","produced":9971,"goal":10000,"shortfall":29,"pctBelow":0,
+   "subdivisions":[{"code":"NO-34","name":"Innlandet","produced":471,"goal":500,"shortfall":29,"pctBelow":6}]}]}}
+```
+Only one `generate` may run at a time; a second request fails immediately.
+
+### `cancel`
+Params: `{"targetId":"<id of the running generate request>"}`
+Result: `{"cancelled":true}`.
+Semantics match Vali's `s` key: stop admitting new regions, drain in-flight ones, save
+everything completed so far; the `generate` response then arrives with `stoppedEarly:true`.
+
+## Output file format
+
+Identical to Vali's CLI output: a bare JSON array of
+`{lat,lng,heading,zoom?,pitch?,extra?{tags[]},panoId?,countryCode?,subdivisionCode?,locationId?}`
+(GeoGuessr `customCoordinates` shape), written with Vali's own serializer settings.
+
+## Sidecar lifetime
+
+- The app owns the process: spawn on startup, kill on exit.
+- Sidecar exits when stdin closes.
+- Protocol errors (unparseable line) produce `{"id":null,"ok":false,"error":{...}}` on stdout
+  and are otherwise ignored.
