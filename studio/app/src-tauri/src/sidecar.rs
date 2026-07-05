@@ -11,6 +11,33 @@ use tokio::sync::{mpsc, oneshot};
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+/// The sidecar executable's file name. .NET emits a native apphost per platform:
+/// `Vali.Host.exe` on Windows, extensionless `Vali.Host` elsewhere.
+#[cfg(windows)]
+const HOST_BINARY: &str = "Vali.Host.exe";
+#[cfg(not(windows))]
+const HOST_BINARY: &str = "Vali.Host";
+
+/// Whether a bundled file name is the host *executable* (not its .dll / .pdb /
+/// .deps.json siblings). Tauri's externalBin may keep a `-<target-triple>` suffix.
+fn is_host_candidate(name: &str) -> bool {
+    let Some(rest) = name.strip_prefix("Vali.Host") else {
+        return false;
+    };
+    #[cfg(windows)]
+    {
+        // "Vali.Host.exe" or "Vali.Host-<triple>.exe"
+        rest.eq_ignore_ascii_case(".exe")
+            || (rest.starts_with('-') && rest.to_ascii_lowercase().ends_with(".exe"))
+    }
+    #[cfg(not(windows))]
+    {
+        // Extensionless apphost only: "Vali.Host" or "Vali.Host-<triple>".
+        // A dot after the stem means a managed dll / deps.json / pdb — skip it.
+        rest.is_empty() || (rest.starts_with('-') && !rest.contains('.'))
+    }
+}
+
 const DEFAULT_TIMEOUT_MS: u64 = 600_000;
 
 /// Managed state for the single Vali.Host sidecar process.
@@ -27,6 +54,9 @@ struct SidecarInner {
     /// In-flight requests keyed by their app-supplied id.
     pending: HashMap<String, oneshot::Sender<serde_json::Value>>,
     alive: bool,
+    /// Incremented on each spawn; reader/stderr tasks capture their own value so
+    /// a stale task (from a killed/restarted child) can't touch current state.
+    epoch: u64,
 }
 
 fn remove_pending(state: &SidecarState, id: &str) {
@@ -45,11 +75,31 @@ fn resolve_sidecar_path() -> PathBuf {
         }
     }
 
+    // Installed layout: the sidecar is bundled next to the app executable. Check
+    // the exact name first, then scan for any bundled Vali.Host* (Tauri may keep
+    // a target-triple suffix on the externalBin file name).
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let sibling = dir.join(HOST_BINARY);
+            if sibling.exists() {
+                return sibling;
+            }
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name();
+                    if is_host_candidate(&name.to_string_lossy()) && entry.path().is_file() {
+                        return entry.path();
+                    }
+                }
+            }
+        }
+    }
+
     let rel_release = [
-        "..", "..", "sidecar", "Vali.Host", "bin", "Release", "net10.0", "Vali.Host.exe",
+        "..", "..", "sidecar", "Vali.Host", "bin", "Release", "net10.0", HOST_BINARY,
     ];
     let rel_debug = [
-        "..", "..", "sidecar", "Vali.Host", "bin", "Debug", "net10.0", "Vali.Host.exe",
+        "..", "..", "sidecar", "Vali.Host", "bin", "Debug", "net10.0", HOST_BINARY,
     ];
 
     let mut bases: Vec<PathBuf> = vec![PathBuf::from(env!("CARGO_MANIFEST_DIR"))];
@@ -123,6 +173,31 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
 
+    // On Windows the engine's default (C:\ProgramData\Vali) is writable and shared
+    // with the CLI, so we leave it alone. On macOS/Linux the default resolves to a
+    // non-writable location (e.g. /usr/share) which makes the engine fall back to
+    // an interactive stdin prompt — fatal for our stdio protocol. Point it at the
+    // per-user OS data dir instead (the engine appends "Vali"), unless the user has
+    // already chosen a folder via the environment.
+    #[cfg(not(windows))]
+    {
+        let already_set = std::env::var("VALI_DOWNLOAD_FOLDER")
+            .map(|v| !v.trim().is_empty())
+            .unwrap_or(false);
+        if !already_set {
+            match app.path().data_dir().or_else(|_| app.path().app_data_dir()) {
+                Ok(dir) => {
+                    cmd.env("VALI_DOWNLOAD_FOLDER", &dir);
+                }
+                Err(e) => {
+                    // Without a writable dir the engine falls back to a
+                    // non-writable default and blocks on an interactive prompt.
+                    tracing::error!(target: "sidecar", "no writable data dir: {e}");
+                }
+            }
+        }
+    }
+
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("failed to spawn sidecar {exe:?}: {e}"))?;
@@ -133,14 +208,16 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
 
     let (writer_tx, mut writer_rx) = mpsc::unbounded_channel::<String>();
 
-    {
+    let epoch = {
         let state = app.state::<SidecarState>();
         let mut inner = state.inner.lock().map_err(|_| "state poisoned")?;
         inner.child = Some(child);
         inner.writer_tx = Some(writer_tx);
         inner.pending.clear();
         inner.alive = true;
-    }
+        inner.epoch = inner.epoch.wrapping_add(1);
+        inner.epoch
+    };
 
     // Writer task — owns stdin, drains the channel.
     tauri::async_runtime::spawn(async move {
@@ -155,28 +232,67 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
         }
     });
 
-    // Reader task — parses protocol lines, routes events + responses.
+    // Reader task — parses protocol lines, routes events + responses. Read raw
+    // bytes + lossy-decode so a stray non-UTF-8 byte can't be mistaken for the
+    // stream ending (which would falsely mark the engine dead).
     let app_out = app.clone();
     tauri::async_runtime::spawn(async move {
-        let mut lines = BufReader::new(stdout).lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            handle_stdout_line(&app_out, &line);
-        }
-        // stdout closed → the process is gone.
-        if let Some(state) = app_out.try_state::<SidecarState>() {
-            if let Ok(mut inner) = state.inner.lock() {
-                inner.alive = false;
+        let mut reader = BufReader::new(stdout);
+        let mut buf = Vec::new();
+        loop {
+            buf.clear();
+            match reader.read_until(b'\n', &mut buf).await {
+                Ok(0) => break,      // EOF → child gone
+                Err(_) => break,     // genuine IO error → child gone
+                Ok(_) => handle_stdout_line(&app_out, String::from_utf8_lossy(&buf).trim_end()),
             }
         }
-        let _ = app_out.emit("sidecar-exit", ());
+        // stdout closed → this child is gone. Only act if we're still the
+        // current child (a restart bumps the epoch), so a stale reader can't
+        // mark a freshly-spawned engine dead or emit a spurious exit.
+        if let Some(state) = app_out.try_state::<SidecarState>() {
+            let mut orphaned: Vec<oneshot::Sender<serde_json::Value>> = Vec::new();
+            let is_current = match state.inner.lock() {
+                Ok(mut inner) if inner.epoch == epoch => {
+                    inner.alive = false;
+                    orphaned.extend(inner.pending.drain().map(|(_, tx)| tx));
+                    true
+                }
+                _ => false,
+            };
+            if is_current {
+                tracing::warn!(target: "sidecar", "engine stdout closed; process ended");
+                // Fail in-flight requests immediately instead of waiting out
+                // their timeout.
+                for tx in orphaned {
+                    let _ = tx.send(serde_json::json!({
+                        "ok": false,
+                        "error": { "message": "The engine exited unexpectedly" }
+                    }));
+                }
+                let _ = app_out.emit("sidecar-exit", ());
+            }
+        }
     });
 
-    // Stderr task — surfaces log lines to the webview.
+    // Stderr task — surfaces log lines to the webview and the daily log file.
     let app_err = app.clone();
     tauri::async_runtime::spawn(async move {
-        let mut lines = BufReader::new(stderr).lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            let _ = app_err.emit("sidecar-log", line);
+        let mut reader = BufReader::new(stderr);
+        let mut buf = Vec::new();
+        loop {
+            buf.clear();
+            match reader.read_until(b'\n', &mut buf).await {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {
+                    let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                    if line.is_empty() {
+                        continue;
+                    }
+                    tracing::info!(target: "sidecar", "{line}");
+                    let _ = app_err.emit("sidecar-log", line);
+                }
+            }
         }
     });
 
@@ -193,6 +309,9 @@ pub fn kill_sidecar(app: &AppHandle) {
             inner.writer_tx = None;
             inner.pending.clear();
             inner.alive = false;
+            // Bump the epoch so the outgoing child's reader task can't take the
+            // "engine exited" branch and emit a spurious exit during a restart.
+            inner.epoch = inner.epoch.wrapping_add(1);
         }
     }
 }
@@ -209,20 +328,23 @@ pub async fn sidecar_request(
     let envelope = serde_json::json!({ "id": id, "cmd": cmd, "params": params });
     let line = serde_json::to_string(&envelope).map_err(|e| e.to_string())?;
 
-    let writer = {
-        let inner = state.inner.lock().map_err(|_| "state poisoned")?;
+    // Check liveness, clone the writer, and register the pending response under
+    // one lock. If they were separate locks, a child that dies in between could
+    // leave this request registered with no reader left to fail it — hanging for
+    // the full timeout instead of erroring out promptly.
+    let (writer, rx) = {
+        let mut inner = state.inner.lock().map_err(|_| "state poisoned")?;
         if !inner.alive {
             return Err("Sidecar is not running".to_string());
         }
-        inner.writer_tx.clone()
-    };
-    let writer = writer.ok_or("Sidecar stdin is unavailable")?;
-
-    let (tx, rx) = oneshot::channel();
-    {
-        let mut inner = state.inner.lock().map_err(|_| "state poisoned")?;
+        let writer = inner
+            .writer_tx
+            .clone()
+            .ok_or("Sidecar stdin is unavailable")?;
+        let (tx, rx) = oneshot::channel();
         inner.pending.insert(id.clone(), tx);
-    }
+        (writer, rx)
+    };
 
     if writer.send(line).is_err() {
         remove_pending(&state, &id);
@@ -249,13 +371,15 @@ pub async fn sidecar_request(
             .cloned()
             .unwrap_or(serde_json::Value::Null))
     } else {
-        let message = value
-            .get("error")
-            .and_then(|e| e.get("message"))
-            .and_then(|m| m.as_str())
-            .unwrap_or("Unknown sidecar error")
-            .to_string();
-        Err(message)
+        // Return the FULL error object as a JSON string so the frontend can read
+        // its `code`/`data` — {message, detail?, code?, data?}. The frontend
+        // parses this; a non-JSON Err string (from the arms above) is treated as
+        // a bare message.
+        let error = value.get("error").cloned().unwrap_or_else(|| {
+            serde_json::json!({ "message": "Unknown sidecar error" })
+        });
+        Err(serde_json::to_string(&error)
+            .unwrap_or_else(|_| "Unknown sidecar error".to_string()))
     }
 }
 

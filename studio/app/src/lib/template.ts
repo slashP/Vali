@@ -9,6 +9,3 @@ export const STARTER_DEFINITION = `{
   "globalLocationFilter": ""
 }
 `;
-
-/** Preview runs use a fixed, small goal for now. */
-export const PREVIEW_GOAL = 3000;

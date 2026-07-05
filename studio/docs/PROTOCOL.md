@@ -100,13 +100,63 @@ Response (also the terminal event of the run):
  "shortfall":{"countries":[{"code":"NO","produced":9971,"goal":10000,"shortfall":29,"pctBelow":0,
    "subdivisions":[{"code":"NO-34","name":"Innlandet","produced":471,"goal":500,"shortfall":29,"pctBelow":6}]}]}}
 ```
-Only one `generate` may run at a time; a second request fails immediately.
+Only one `generate` may run at a time; a second request fails immediately. A country's data
+files are locked for the duration of a generate or download — starting one while the other
+holds a needed country fails fast with "`<CC>` is busy (...)". `outputPath` is null/omitted
+when zero regions completed (e.g. stopped immediately).
 
 ### `cancel`
-Params: `{"targetId":"<id of the running generate request>"}`
+Params: `{"targetId":"<id of a running generate or download request>"}`
 Result: `{"cancelled":true}`.
-Semantics match Vali's `s` key: stop admitting new regions, drain in-flight ones, save
-everything completed so far; the `generate` response then arrives with `stoppedEarly:true`.
+For generate, semantics match Vali's `s` key: stop admitting new regions, drain in-flight
+ones, save everything completed so far; the `generate` response then arrives with
+`stoppedEarly:true`. For download: the in-flight file finishes, remaining files are skipped,
+metadata is saved for what completed.
+
+### `remoteStatus`
+Params: `{"countryCodes":["NO","IE"]}`
+Result (one entry per requested code; network failures per country, not fatal):
+```json
+{"countries":[{
+  "code":"NO",
+  "local":{"files":0,"bytes":0,"newestUtc":null},
+  "remote":{"files":16,"bytes":123456789,"newestUploadedUtc":"2026-06-01T00:00:00Z"},
+  "filesToDownload":16,"updateFilesToApply":0,"bytesToDownload":123456789,
+  "upToDate":false,"error":null}]}
+```
+Compares Vali's per-country `downloads.json` manifest (created from disk state when absent,
+same as the CLI) against the R2 listings (`list-countries/{cc}`, `list-country-updates/{cc}`).
+
+### `download`
+Params: `{"countryCode":"NO","full":false,"updates":false}`
+Mirrors `vali download` for one country: stale files deleted, missing/outdated data files
+downloaded (BZip2 → `.bin`), incremental update files applied by append, `downloads.json`
+maintained — interoperable with the CLI. Concurrent downloads for different countries are
+allowed; a second download for the same country is rejected.
+
+Events (throttled): `downloadProgress`:
+```json
+{"countryCode":"NO","phase":"data","fileName":"NO+NO-03","filesDone":3,"filesTotal":16,
+ "bytesDone":10485760,"bytesTotal":123456789}
+```
+Response:
+```json
+{"countryCode":"NO","downloadedFiles":16,"deletedFiles":0,"appliedUpdateFiles":2,
+ "bytesDownloaded":123456789,"cancelled":false}
+```
+
+### `valiInfo`
+Params: none.
+Result: `{"studioEngineVersion":"0.1.0","latestValiVersion":"0.7.42","nugetUrl":"https://www.nuget.org/packages/vali"}`
+(`latestValiVersion` is null when nuget.org is unreachable.)
+
+## Error codes
+
+The error envelope may carry a machine-readable `code` and `data`:
+`{"message":"...","detail":"...","code":"missingData","data":{...}}`
+- `missingData` (from `generate`): `data.countries = [{"code":"NO","missingFiles":16}]`
+  — the UI should offer to download and retry (fetch sizes via `remoteStatus`).
+- `folderNotWritable` (from `download`): the data folder can't be written; `data.folder` is the path.
 
 ## Output file format
 

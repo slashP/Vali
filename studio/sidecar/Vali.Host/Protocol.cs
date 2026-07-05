@@ -58,7 +58,8 @@ public sealed class ProtocolWriter(TextWriter stdout)
 
     public void Respond(string? id, object result) => Write(new { id, ok = true, result });
 
-    public void RespondError(string? id, string message, string? detail = null) => Write(new { id, ok = false, error = new { message, detail } });
+    public void RespondError(string? id, string message, string? detail = null, string? code = null, object? data = null) =>
+        Write(new { id, ok = false, error = new { message, detail, code, data } });
 
     public void Emit(string @event, string? id, object data) => Write(new { @event, id, data });
 

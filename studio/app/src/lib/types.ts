@@ -12,6 +12,9 @@ export interface SidecarRequest {
 export interface SidecarError {
   message: string;
   detail?: string;
+  /** Machine-readable code, e.g. "missingData", "folderNotWritable". */
+  code?: string;
+  data?: unknown;
 }
 
 export interface SidecarResponse<T = unknown> {
@@ -176,7 +179,8 @@ export interface Shortfall {
 
 export interface GenerateResult {
   locationsWritten: number;
-  outputPath: string;
+  /** null/omitted when zero regions completed (e.g. stopped immediately). */
+  outputPath: string | null;
   stoppedEarly: boolean;
   elapsedMs: number;
   shortfall: Shortfall;
@@ -184,6 +188,89 @@ export interface GenerateResult {
 
 export interface CancelResult {
   cancelled: boolean;
+}
+
+// ---- missingData error payload (generate) -------------------------------
+
+export interface MissingDataCountry {
+  code: string;
+  missingFiles: number;
+  /** Enriched client-side via remoteStatus; null when the size lookup failed. */
+  estimatedBytes?: number | null;
+}
+
+export interface MissingDataPayload {
+  countries: MissingDataCountry[];
+}
+
+// ---- remoteStatus -------------------------------------------------------
+
+export interface LocalDataInfo {
+  files: number;
+  bytes: number;
+  newestUtc: string | null;
+}
+
+export interface RemoteDataInfo {
+  files: number;
+  bytes: number;
+  newestUploadedUtc: string | null;
+}
+
+// A per-country remoteStatus entry. On a network failure the sidecar returns a
+// bare `{ code, error }` with every other field omitted, so all data fields are
+// optional and must be guarded before dereferencing.
+export interface RemoteStatusCountry {
+  code: string;
+  local?: LocalDataInfo;
+  remote?: RemoteDataInfo;
+  filesToDownload?: number;
+  updateFilesToApply?: number;
+  bytesToDownload?: number;
+  upToDate?: boolean;
+  error: string | null;
+}
+
+export interface RemoteStatusResult {
+  countries: RemoteStatusCountry[];
+}
+
+// ---- download -----------------------------------------------------------
+
+export interface DownloadProgress {
+  countryCode: string;
+  phase: string;
+  fileName: string;
+  filesDone: number;
+  filesTotal: number;
+  bytesDone: number;
+  bytesTotal: number;
+}
+
+export interface DownloadResult {
+  countryCode: string;
+  downloadedFiles: number;
+  deletedFiles: number;
+  appliedUpdateFiles: number;
+  bytesDownloaded: number;
+  cancelled: boolean;
+}
+
+// ---- valiInfo -----------------------------------------------------------
+
+export interface ValiInfo {
+  studioEngineVersion: string;
+  latestValiVersion: string | null;
+  nugetUrl: string;
+}
+
+// ---- filesystem ---------------------------------------------------------
+
+export interface DirEntryInfo {
+  name: string;
+  isDir: boolean;
+  mtimeMs: number;
+  bytes: number;
 }
 
 // ---- location file format ----------------------------------------------

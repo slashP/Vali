@@ -6,12 +6,14 @@ using Vali.Host;
 // redirected to the capture buffer so validators' messages become structured errors instead of
 // corrupting the protocol stream. ValiLogger.Initialize() is deliberately never called (no telemetry).
 var stdout = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
+Console.SetIn(new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)));
 var writer = new ProtocolWriter(stdout);
 var capture = new CaptureTextWriter();
 Console.SetOut(capture);
 
 var handlers = new Handlers(writer, capture);
 var generateRunner = new GenerateRunner(writer, capture);
+var downloadRunner = new DownloadRunner(writer);
 var inFlight = new ConcurrentDictionary<Guid, Task>();
 
 string? line;
@@ -81,9 +83,29 @@ async Task Dispatch(Request request)
         case "generate":
             await generateRunner.Run(request);
             break;
-        case "cancel":
-            generateRunner.Cancel(request);
+        case "download":
+            await downloadRunner.Run(request);
             break;
+        case "remoteStatus":
+            await downloadRunner.RemoteStatus(request);
+            break;
+        case "valiInfo":
+            await downloadRunner.ValiInfo(request);
+            break;
+        case "cancel":
+        {
+            var targetId = request.GetString("targetId");
+            if (generateRunner.TryCancel(targetId) || downloadRunner.TryCancel(targetId))
+            {
+                writer.Respond(request.Id, new { cancelled = true });
+            }
+            else
+            {
+                writer.RespondError(request.Id, "No running operation with that id.");
+            }
+
+            break;
+        }
         default:
             writer.RespondError(request.Id, $"Unknown command '{request.Cmd}'.");
             break;

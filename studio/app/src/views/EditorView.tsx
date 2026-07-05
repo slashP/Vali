@@ -1,16 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import Editor, { type OnMount } from "@monaco-editor/react";
+import Editor, { DiffEditor, type OnMount } from "@monaco-editor/react";
 import { useStore } from "../store";
-import { request, newRequestId } from "../lib/sidecar";
-import {
-  pickOpenFile,
-  pickSaveFile,
-  readTextFile,
-  writeTextFile,
-} from "../lib/commands";
-import type { GenerateResult, ValidateResult } from "../lib/types";
-import { PREVIEW_GOAL } from "../lib/template";
 import { AiPanel } from "./AiPanel";
+import { CheckIcon, SparkIcon } from "../components/Icons";
 
 type EditorInstance = Parameters<OnMount>[0];
 
@@ -22,10 +14,27 @@ const EDITOR_OPTIONS = {
   tabSize: 2,
   automaticLayout: true,
   renderWhitespace: "none",
+  padding: { top: 12 },
 } as const;
 
-function synthErr(message: string): ValidateResult {
-  return { valid: false, errors: [message], effectiveDefinition: null };
+const DIFF_OPTIONS = {
+  readOnly: true,
+  renderSideBySide: false,
+  minimap: { enabled: false },
+  fontSize: 13,
+  fontFamily: "Cascadia Code, Consolas, ui-monospace, monospace",
+  scrollBeyondLastLine: false,
+  automaticLayout: true,
+  padding: { top: 12 },
+} as const;
+
+const LS_AI_HEIGHT = "vali.aiHeight";
+const AI_MIN = 130;
+
+function initialAiHeight(): number {
+  const stored = Number(localStorage.getItem(LS_AI_HEIGHT));
+  if (Number.isFinite(stored) && stored >= AI_MIN) return stored;
+  return 200;
 }
 
 export function EditorView() {
@@ -33,175 +42,255 @@ export function EditorView() {
   const setText = useStore((s) => s.setText);
   const validation = useStore((s) => s.validation);
   const validating = useStore((s) => s.validating);
-  const sidecarAlive = useStore((s) => s.sidecarAlive);
-
-  const [aiOpen, setAiOpen] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
+  const loadError = useStore((s) => s.loadError);
+  const saveError = useStore((s) => s.saveError);
+  const aiOpen = useStore((s) => s.aiOpen);
+  const aiReady = useStore((s) => s.aiProviders.some((p) => p.available));
+  const aiBusy = useStore((s) => s.aiBusy);
+  const aiStartMs = useStore((s) => s.aiStartMs);
+  const aiPhase = useStore((s) => s.aiPhase);
+  const aiStreamText = useStore((s) => s.aiStreamText);
+  const proposal = useStore((s) => s.aiProposal);
+  const proposalValidation = useStore((s) => s.aiProposalValidation);
 
   const editorRef = useRef<EditorInstance | null>(null);
   const debounceRef = useRef<number | undefined>(undefined);
+  const stackRef = useRef<HTMLDivElement | null>(null);
+  const streamRef = useRef<HTMLPreElement | null>(null);
+
+  const [aiHeight, setAiHeight] = useState(initialAiHeight);
+  const [draggingAi, setDraggingAi] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor;
   };
 
-  const doValidate = useCallback(async (json: string) => {
-    const { setValidating, setValidation } = useStore.getState();
-    setValidating(true);
-    try {
-      const result = await request<ValidateResult>("validate", { json });
-      setValidation(result);
-    } catch (e) {
-      setValidation(synthErr(`Sidecar unavailable: ${String(e)}`));
-    } finally {
-      setValidating(false);
-    }
-  }, []);
-
-  // Debounced validation on text changes.
+  // Autosave + validate on change (debounced). Only when the doc is dirty, so
+  // simply loading/switching a map doesn't rewrite the file. Never autosave
+  // over a failed load (dirty stays false in that case).
   useEffect(() => {
+    if (loadError) return;
     window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      void doValidate(text);
-    }, 500);
+      const store = useStore.getState();
+      if (store.dirty) void store.saveCurrent().catch(() => {});
+      void store.validateCurrent();
+    }, 600);
     return () => window.clearTimeout(debounceRef.current);
-  }, [text, doValidate]);
+  }, [text, loadError]);
 
-  const save = useCallback(async (): Promise<string | null> => {
-    const { filePath: current, setFilePath, markSaved } = useStore.getState();
-    let path = current;
-    if (!path) {
-      path = await pickSaveFile("map.json");
-      if (!path) return null;
-      setFilePath(path);
+  // Keep the streamed output pinned to the latest line.
+  useEffect(() => {
+    const el = streamRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [aiStreamText]);
+
+  useEffect(() => {
+    if (!aiBusy || aiStartMs === null) {
+      setElapsed(0);
+      return;
     }
-    await writeTextFile(path, useStore.getState().text);
-    markSaved();
-    return path;
+    const tick = () => setElapsed(Math.floor((Date.now() - aiStartMs) / 1000));
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [aiBusy, aiStartMs]);
+
+  const onAiDrag = useCallback((clientY: number) => {
+    const el = stackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const max = rect.height - 160;
+    setAiHeight(Math.min(Math.max(AI_MIN, rect.bottom - clientY), Math.max(AI_MIN, max)));
   }, []);
 
-  const open = useCallback(async () => {
-    const path = await pickOpenFile("Vali map definition", ["json", "jsonc"]);
-    if (!path) return;
-    const content = await readTextFile(path);
-    useStore.getState().loadFile(path, content);
-    void doValidate(content);
-  }, [doValidate]);
+  useEffect(() => {
+    if (!draggingAi) return;
+    const move = (e: MouseEvent) => onAiDrag(e.clientY);
+    const up = () => setDraggingAi(false);
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+  }, [draggingAi, onAiDrag]);
 
-  const runGenerate = useCallback(
-    async (preview: boolean) => {
-      setBusy(preview ? "Starting preview…" : "Starting generation…");
-      try {
-        const path = await save();
-        if (!path) return;
-        const id = newRequestId();
-        const params: Record<string, unknown> = {
-          definitionPath: path,
-          includeAdditionalInfo: false,
-        };
-        if (preview) params.previewGoal = PREVIEW_GOAL;
-
-        const { beginRun, finishRun, failRun, setView } = useStore.getState();
-        beginRun(id, preview);
-        setView("run");
-        // Fire and forget — RunView shows progress; result completes the run.
-        request<GenerateResult>("generate", params, id)
-          .then(finishRun)
-          .catch((e) => failRun(String(e)));
-      } finally {
-        setBusy(null);
-      }
-    },
-    [save],
-  );
+  useEffect(() => {
+    localStorage.setItem(LS_AI_HEIGHT, String(aiHeight));
+  }, [aiHeight]);
 
   const errors = validation?.errors ?? [];
-  const showErrors = validation !== null;
+  const isValid = validation?.valid === true;
+  const reviewing = proposal !== null;
+
+  const chip = validating ? (
+    <span className="valid-float checking">Checking…</span>
+  ) : validation === null ? null : isValid ? (
+    <span className="valid-float ok">
+      <span className="valid-dot" /> Valid
+    </span>
+  ) : (
+    <span className="valid-float bad">
+      {errors.length} problem{errors.length === 1 ? "" : "s"}
+    </span>
+  );
 
   return (
-    <div className="editor-view">
-      <div className="toolbar">
-        <span className="title">Definition</span>
-        <button onClick={open}>Open</button>
-        <button onClick={() => void save()}>Save</button>
-        <button onClick={() => useStore.getState().newFromTemplate()}>
-          New from template
-        </button>
-        <div className="sep" />
-        <button
-          onClick={() => void doValidate(useStore.getState().text)}
-          disabled={validating || !sidecarAlive}
-        >
-          {validating ? "Validating…" : "Validate now"}
-        </button>
-        <div className="grow" />
-        <button
-          onClick={() => void runGenerate(true)}
-          disabled={!sidecarAlive || busy !== null}
-        >
-          Preview
-        </button>
-        <button
-          className="primary"
-          onClick={() => void runGenerate(false)}
-          disabled={!sidecarAlive || busy !== null}
-        >
-          Generate
-        </button>
-        <div className="sep" />
-        <button
-          onClick={() => setAiOpen((v) => !v)}
-          className={aiOpen ? "primary" : ""}
-        >
-          AI
-        </button>
-      </div>
-
-      <div className="editor-body">
+    <div className="editor-pane">
+      <div className="editor-stack" ref={stackRef}>
         <div className="editor-main">
-          <div className="editor-monaco">
-            <Editor
-              language="json"
-              theme="vs-dark"
-              path="definition.json"
-              value={text}
-              onChange={(v) => setText(v ?? "")}
-              onMount={onMount}
-              options={EDITOR_OPTIONS}
-            />
-          </div>
-
-          {showErrors && (
-            <div className="errors-panel">
-              <div className="errors-header">
-                {validation?.valid
-                  ? "Valid"
-                  : `${errors.length} problem${errors.length === 1 ? "" : "s"}`}
-              </div>
-              {validation?.valid ? (
-                <div className="ok-msg">Definition is valid.</div>
-              ) : (
-                <ul>
-                  {errors.map((msg, i) => (
-                    <li
-                      key={i}
-                      onClick={() => editorRef.current?.focus()}
-                      title="Focus editor"
-                    >
-                      {msg}
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {loadError ? (
+            <div className="load-error">
+              <div className="load-error-title">Couldn&apos;t open this map</div>
+              <div className="hint">{loadError}</div>
+              <button
+                className="primary"
+                onClick={() => void useStore.getState().retryLoad()}
+              >
+                Retry
+              </button>
             </div>
+          ) : (
+            <>
+              {saveError && (
+                <div className="save-error">
+                  <span>{saveError}</span>
+                  <button onClick={() => useStore.getState().dismissSaveError()}>
+                    Dismiss
+                  </button>
+                </div>
+              )}
+              <div className="editor-monaco">
+                {!reviewing && chip}
+
+                {reviewing ? (
+                  <div className="editor-diff-mode">
+                    <div className="ai-review-bar">
+                      <span className="ai-glyph">
+                        <SparkIcon size={13} />
+                      </span>
+                      <span className="ai-review-title">
+                        Vali AI proposed a change
+                      </span>
+                      {proposalValidation && (
+                        <span
+                          className={`valid-chip ${proposalValidation.valid ? "ok" : "bad"}`}
+                        >
+                          {proposalValidation.valid
+                            ? "validates cleanly"
+                            : `${proposalValidation.errors.length} problem${proposalValidation.errors.length === 1 ? "" : "s"}`}
+                        </span>
+                      )}
+                    </div>
+                    <div className="editor-diff">
+                      <DiffEditor
+                        language="json"
+                        theme="vali-dark"
+                        original={text}
+                        modified={proposal ?? ""}
+                        options={DIFF_OPTIONS}
+                      />
+                    </div>
+                    <div className="ai-diff-actions">
+                      <button
+                        onClick={() => useStore.getState().discardAiProposal()}
+                      >
+                        Discard
+                      </button>
+                      <button
+                        className="primary"
+                        onClick={() => useStore.getState().applyAiProposal()}
+                      >
+                        <CheckIcon size={14} /> Apply change
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <Editor
+                    language="json"
+                    theme="vali-dark"
+                    path="definition.json"
+                    value={text}
+                    onChange={(v) => setText(v ?? "")}
+                    onMount={onMount}
+                    options={{ ...EDITOR_OPTIONS, readOnly: aiBusy }}
+                  />
+                )}
+
+                {aiBusy && (
+                  <div className="ai-editor-busy" role="status" aria-live="polite">
+                    <div className="ai-editor-busy-card">
+                      <div className="ai-busy-head">
+                        <span className="spinner" aria-hidden />
+                        <div className="ai-editor-busy-text">
+                          <div className="ai-busy-title">
+                            {aiPhase ?? "Vali AI is editing your definition…"}
+                          </div>
+                          <div className="hint">
+                            Running your local Claude · {elapsed}s
+                          </div>
+                        </div>
+                        <button
+                          className="ai-busy-cancel"
+                          onClick={() => void useStore.getState().cancelAi()}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {aiStreamText ? (
+                        <pre className="ai-stream" ref={streamRef}>
+                          {aiStreamText}
+                        </pre>
+                      ) : (
+                        <div className="ai-indet" aria-hidden>
+                          <span />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!reviewing && validation !== null && !isValid && (
+                <div className="errors-panel">
+                  <div className="errors-header">
+                    {errors.length} problem{errors.length === 1 ? "" : "s"}
+                  </div>
+                  <ul>
+                    {errors.map((msg, i) => (
+                      <li
+                        key={i}
+                        onClick={() => editorRef.current?.focus()}
+                        title="Focus editor"
+                      >
+                        {msg}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        <AiPanel
-          open={aiOpen}
-          onClose={() => setAiOpen(false)}
-          onApply={(newText) => setText(newText)}
-        />
+        {aiOpen && aiReady && (
+          <div
+            className={`hsplit-divider${draggingAi ? " active" : ""}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setDraggingAi(true);
+            }}
+            role="separator"
+            aria-orientation="horizontal"
+            title="Drag to resize Vali AI"
+          >
+            <span className="hsplit-grip" />
+          </div>
+        )}
+        <AiPanel dockHeight={aiOpen && aiReady ? aiHeight : null} />
+        {draggingAi && <div className="drag-shield row" />}
       </div>
     </div>
   );

@@ -15,11 +15,15 @@
         "label": "main",
         "title": "Vali Studio",
         "width": 1400,
-        "height": 900
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.cartocdn.com; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost https://*.cartocdn.com https://api.github.com",
+      "devCsp": null
     }
   },
   "bundle": {

@@ -59,20 +59,18 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
         }
     }
 
-    public void Cancel(Request request)
+    public bool TryCancel(string? targetId)
     {
-        var targetId = request.GetString("targetId");
         lock (_lock)
         {
             if (_current is { } current && current.Id == targetId)
             {
                 current.Cts.Cancel();
-                writer.Respond(request.Id, new { cancelled = true });
-                return;
+                return true;
             }
         }
 
-        writer.RespondError(request.Id, "No running generation with that id.");
+        return false;
     }
 
     private async Task RunCore(string requestId, string definitionPath, int? previewGoal, bool includeAdditionalInfo, CancellationTokenSource cts)
@@ -134,10 +132,26 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
             definition = definition with { Output = definition.Output with { PanoVerificationStrategy = null } };
         }
 
-        var progress = new GenerationProgress();
-        var workItems = new List<WorkItem>();
-        var countrySummaries = new List<object>();
-        var totalGoal = 0;
+        if (!CountryDataLocks.TryAcquire(definition.CountryCodes, "a generation", out var conflict))
+        {
+            writer.RespondError(requestId, $"Can't generate: {conflict}.");
+            return;
+        }
+
+        try
+        {
+            await RunPhases(requestId, definition, definitionPath, previewGoal, includeAdditionalInfo, cts);
+        }
+        finally
+        {
+            CountryDataLocks.Release(definition.CountryCodes);
+        }
+    }
+
+    private async Task RunPhases(string requestId, MapDefinition definition, string definitionPath, int? previewGoal, bool includeAdditionalInfo, CancellationTokenSource cts)
+    {
+        var resolvedCountries = new List<(string Code, string[] Subs, string[] Files, int Goal)>();
+        var missingCountries = new List<(string Code, int MissingFiles)>();
         foreach (var countryCode in definition.CountryCodes)
         {
             var allSubdivisions = SubdivisionWeights.AllSubdivisionFiles(countryCode, RunMode.Default);
@@ -149,14 +163,31 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
                 _ => availableSubdivisions
             };
             var subdivisionFiles = subDivisions.Select(s => allSubdivisions.First(f => f.subdivisionCode == s).file).ToArray();
-            var missing = subdivisionFiles.Where(f => !File.Exists(f)).ToArray();
-            if (missing.Length > 0)
+            var missing = subdivisionFiles.Count(f => !File.Exists(f));
+            if (missing > 0)
             {
-                writer.RespondError(requestId, $"Location data for {countryCode} is missing ({missing.Length} file(s)). Run: vali download --country \"{countryCode}\"");
-                return;
+                missingCountries.Add((countryCode, missing));
+                continue;
             }
 
-            var locationCountGoal = CountryLocationCountGoal(definition, countryCode);
+            resolvedCountries.Add((countryCode, subDivisions, subdivisionFiles, CountryLocationCountGoal(definition, countryCode)));
+        }
+
+        if (missingCountries.Count > 0)
+        {
+            var codes = string.Join(", ", missingCountries.Select(m => m.Code));
+            writer.RespondError(requestId, $"Location data is not downloaded for {codes}.", null,
+                code: "missingData",
+                data: new { countries = missingCountries.Select(m => new { code = m.Code, missingFiles = m.MissingFiles }) });
+            return;
+        }
+
+        var progress = new GenerationProgress();
+        var workItems = new List<WorkItem>();
+        var countrySummaries = new List<object>();
+        var totalGoal = 0;
+        foreach (var (countryCode, subDivisions, subdivisionFiles, locationCountGoal) in resolvedCountries)
+        {
             var cc = countryCode;
             var subs = subDivisions;
             var files = subdivisionFiles;

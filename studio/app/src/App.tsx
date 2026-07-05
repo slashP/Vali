@@ -1,48 +1,102 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useStore } from "./store";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
-import { EditorView } from "./views/EditorView";
-import { RunView } from "./views/RunView";
-import { MapView } from "./views/MapView";
-import { DataView } from "./views/DataView";
+import { TitleBar, ResizeHandles } from "./components/TitleBar";
+import { Modal } from "./components/Modal";
+import { DataSheet } from "./components/DataSheet";
+import { UpdateBanner } from "./components/UpdateBanner";
+import { Workspace } from "./views/Workspace";
+import { SetupView } from "./views/SetupView";
 import {
+  listenAiStream,
   listenSidecarEvents,
   listenSidecarExit,
   listenSidecarLog,
   request,
   sidecarStatus,
 } from "./lib/sidecar";
+import { installKeybindings } from "./lib/keybindings";
+import { IS_MAC } from "./lib/platform";
+import { formatBytes } from "./lib/format";
 import type { PingResult } from "./lib/types";
 
+function MissingDataModal() {
+  const missing = useStore((s) => s.missingData);
+  if (!missing) return null;
+  const knownBytes = missing.filter(
+    (c): c is typeof c & { estimatedBytes: number } =>
+      typeof c.estimatedBytes === "number",
+  );
+  const totalBytes = knownBytes.reduce((a, c) => a + c.estimatedBytes, 0);
+  const sizeKnown = knownBytes.length === missing.length;
+  return (
+    <Modal
+      title="Location data required"
+      width={480}
+      onClose={() => useStore.getState().dismissMissingData()}
+      footer={
+        <>
+          <button onClick={() => useStore.getState().dismissMissingData()}>
+            Cancel
+          </button>
+          <button
+            className="primary"
+            onClick={() => void useStore.getState().downloadMissingAndRetry()}
+          >
+            Download &amp; generate
+          </button>
+        </>
+      }
+    >
+      <p style={{ marginTop: 0 }}>
+        This map needs location data that isn&apos;t downloaded yet:
+      </p>
+      <ul className="missing-list">
+        {missing.map((c) => (
+          <li key={c.code}>
+            <strong>{c.code}</strong> — {c.missingFiles} file
+            {c.missingFiles === 1 ? "" : "s"}
+            {typeof c.estimatedBytes === "number"
+              ? ` (~${formatBytes(c.estimatedBytes)})`
+              : ""}
+          </li>
+        ))}
+      </ul>
+      <div className="hint">
+        {sizeKnown ? `Total download ≈ ${formatBytes(totalBytes)}. ` : ""}
+        Downloads run in the background, then generation retries automatically.
+      </div>
+    </Modal>
+  );
+}
+
 export default function App() {
-  const view = useStore((s) => s.view);
+  const aliveRef = useRef(false);
+  const engineEverAlive = useStore((s) => s.engineEverAlive);
 
   useEffect(() => {
-    const {
-      applyEvent,
-      pushLog,
-      setSidecarAlive,
-      setPing,
-    } = useStore.getState();
+    const { applyEvent, pushLog, setSidecarAlive, setPing } =
+      useStore.getState();
+
+    // Workspace is filesystem-only; bring it up regardless of the sidecar.
+    void useStore.getState().initWorkspace();
 
     const unlisteners: Array<() => void> = [];
     let cancelled = false;
+    const track = (p: Promise<() => void>) =>
+      p.then((fn) => (cancelled ? fn() : unlisteners.push(fn)));
 
-    listenSidecarEvents(applyEvent).then((fn) => {
-      if (cancelled) fn();
-      else unlisteners.push(fn);
-    });
-    listenSidecarLog(pushLog).then((fn) => {
-      if (cancelled) fn();
-      else unlisteners.push(fn);
-    });
-    listenSidecarExit(() => setSidecarAlive(false)).then((fn) => {
-      if (cancelled) fn();
-      else unlisteners.push(fn);
-    });
+    void track(listenSidecarEvents(applyEvent));
+    void track(listenSidecarLog(pushLog));
+    void track(listenSidecarExit(() => setSidecarAlive(false)));
+    void track(
+      listenAiStream((chunk) => useStore.getState().appendAiStream(chunk)),
+    );
 
-    // Poll liveness; ping once when the sidecar first comes up.
+    const removeKeybindings = installKeybindings();
+    unlisteners.push(removeKeybindings);
+
     const poll = async () => {
       try {
         const alive = await sidecarStatus();
@@ -51,8 +105,17 @@ export default function App() {
           const ping = await request<PingResult>("ping", {});
           setPing(ping.version, ping.dataFolder);
         }
+        // On the offline→online transition, (re)initialize the workspace if it
+        // didn't finish earlier, then re-validate and refresh the badge.
+        if (alive && !aliveRef.current) {
+          void useStore.getState().initWorkspace();
+          void useStore.getState().validateCurrent();
+          void useStore.getState().refreshDataSummary();
+        }
+        aliveRef.current = alive;
       } catch {
         setSidecarAlive(false);
+        aliveRef.current = false;
       }
     };
     void poll();
@@ -67,14 +130,30 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar />
-      <main className="main">
-        {view === "editor" && <EditorView />}
-        {view === "run" && <RunView />}
-        {view === "map" && <MapView />}
-        {view === "data" && <DataView />}
-      </main>
+      <TitleBar />
+      <div className="mid">
+        {engineEverAlive ? (
+          <>
+            <UpdateBanner />
+            <div className="body">
+              <Sidebar />
+              <Workspace />
+            </div>
+          </>
+        ) : (
+          <SetupView />
+        )}
+      </div>
       <StatusBar />
+      {engineEverAlive && (
+        <>
+          <DataSheet />
+          <MissingDataModal />
+        </>
+      )}
+      {/* Windows/Linux run borderless (decorations off) and need custom edge
+          grips; macOS uses the native window frame for resizing. */}
+      {!IS_MAC && <ResizeHandles />}
     </div>
   );
 }
