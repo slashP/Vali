@@ -1,0 +1,116 @@
+# Builds Vali Studio installers (.dmg for macOS, .msi/.exe for Windows) and
+# attaches them to a GitHub Release. Trigger by pushing a version tag, e.g.:
+#
+#   git tag v0.1.1 && git push origin v0.1.1
+#
+# The tag should match the version in studio/app/src-tauri/tauri.conf.json — the
+# in-app "update available" banner compares that version against the latest
+# release tag here.
+#
+# The .NET engine (Vali.Host) is published self-contained + single-file per
+# platform and bundled next to the app binary via Tauri's externalBin, so end
+# users install nothing. macOS builds are UNSIGNED for now (see the note at the
+# bottom for turning on signing + notarization later).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            rustTarget: aarch64-apple-darwin
+            dotnetRid: osx-arm64
+            binExt: ""
+          - runner: macos-14
+            rustTarget: x86_64-apple-darwin
+            dotnetRid: osx-x64
+            binExt: ""
+          - runner: windows-latest
+            rustTarget: x86_64-pc-windows-msvc
+            dotnetRid: win-x64
+            binExt: ".exe"
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: studio/app/package-lock.json
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rustTarget }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: studio/app/src-tauri
+
+      - name: Install frontend dependencies
+        working-directory: studio/app
+        run: npm ci
+
+      - name: Publish self-contained engine (Vali.Host)
+        shell: bash
+        run: |
+          dotnet publish studio/sidecar/Vali.Host/Vali.Host.csproj \
+            -c Release \
+            -r ${{ matrix.dotnetRid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o artifacts/host
+
+      - name: Stage engine as Tauri externalBin
+        shell: bash
+        run: |
+          mkdir -p studio/app/src-tauri/binaries
+          cp "artifacts/host/Vali.Host${{ matrix.binExt }}" \
+             "studio/app/src-tauri/binaries/Vali.Host-${{ matrix.rustTarget }}${{ matrix.binExt }}"
+
+      - name: Build & release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: studio/app
+          tagName: ${{ github.ref_name }}
+          releaseName: "Vali Studio ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.rustTarget }} --config src-tauri/tauri.bundle.json
+
+# ---------------------------------------------------------------------------
+# Turning on macOS signing + notarization later (so the .dmg opens with no
+# Gatekeeper warning), add these repo secrets and env vars to the build step:
+#   APPLE_CERTIFICATE            base64 of your Developer ID .p12
+#   APPLE_CERTIFICATE_PASSWORD   the .p12 password
+#   APPLE_SIGNING_IDENTITY       e.g. "Developer ID Application: Name (TEAMID)"
+#   APPLE_ID / APPLE_PASSWORD    Apple ID + app-specific password
+#   APPLE_TEAM_ID                your team id
+# .NET's JIT also needs a hardened-runtime entitlements file
+# (com.apple.security.cs.allow-jit, allow-unsigned-executable-memory,
+# disable-library-validation) referenced from tauri.macos.conf.json.
+# ---------------------------------------------------------------------------
