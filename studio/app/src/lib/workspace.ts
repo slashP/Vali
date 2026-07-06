@@ -163,18 +163,19 @@ export async function createMap(
   root: string,
   name: string,
   content: string = STARTER_DEFINITION,
+  description = "",
 ): Promise<MapEntry> {
   const slug = await uniqueSlug(root, slugify(name));
   const dir = mapDir(root, slug);
   await ensureDir(dir);
   await writeTextFile(definitionPath(root, slug), content);
-  const meta: MapMeta = { name, createdMs: Date.now() };
+  const meta: MapMeta = { name, description, createdMs: Date.now() };
   await writeTextFile(metaPath(root, slug), JSON.stringify(meta, null, 2));
   const summary = parseMapSummary(content);
   return {
     slug,
     name,
-    description: "",
+    description,
     mtimeMs: Date.now(),
     countries: summary.countries,
     goal: summary.goal,

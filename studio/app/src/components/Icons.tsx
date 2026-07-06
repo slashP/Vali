@@ -55,6 +55,16 @@ export function PlusIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** Upward arrow — the Vali AI composer's send action. */
+export function SendIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2}>
+      <line x1="12" y1="19" x2="12" y2="6" />
+      <polyline points="6 12 12 6 18 12" />
+    </svg>
+  );
+}
+
 /** Four-point spark — the Vali AI mark. */
 export function SparkIcon({ size = 16 }: IconProps) {
   return (

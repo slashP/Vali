@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
-import { ConfirmModal, Modal, PromptModal } from "./Modal";
+import { ConfirmModal, Modal } from "./Modal";
 import {
   CollapseIcon,
   ExpandIcon,
@@ -20,7 +20,6 @@ import { readDefinition, type MapEntry } from "../lib/workspace";
 import { mapGradient } from "../lib/gradient";
 import { logError } from "../lib/log";
 
-const MAX_CHIPS = 4;
 const LS_WIDTH = "vali.sidebarWidth";
 const LS_COLLAPSED = "vali.sidebarCollapsed";
 const MIN_W = 200;
@@ -124,23 +123,26 @@ export function Sidebar() {
   const modals = (
     <>
       {prompt?.kind === "new" && (
-        <PromptModal
+        <MapFormModal
           title="New map"
-          label="Name for the new map"
-          defaultValue="New map"
           confirmLabel="Create"
+          initialName="New map"
+          initialDescription=""
           onCancel={() => setPrompt(null)}
-          onSubmit={(name) => {
+          onSubmit={(name, description) => {
             setPrompt(null);
-            void useStore.getState().createNewMap(name);
+            void useStore.getState().createNewMap(name, description);
           }}
         />
       )}
       {details && (
-        <MapDetailsModal
-          entry={details}
+        <MapFormModal
+          title="Map details"
+          confirmLabel="Save"
+          initialName={details.name}
+          initialDescription={details.description ?? ""}
           onCancel={() => setDetails(null)}
-          onSave={(name, description) => {
+          onSubmit={(name, description) => {
             const slug = details.slug;
             setDetails(null);
             void useStore.getState().updateMapDetails(slug, { name, description });
@@ -248,8 +250,6 @@ export function Sidebar() {
       <div className="map-list">
         {maps.map((m) => {
           const active = m.slug === currentSlug;
-          const shown = m.countries.slice(0, MAX_CHIPS);
-          const extra = m.countries.length - shown.length;
           return (
             <div
               key={m.slug}
@@ -283,25 +283,13 @@ export function Sidebar() {
                   <span className="kebab-dots" />
                 </button>
               </div>
-              <div className="map-item-meta">
-                {m.countries.length === 0 ? (
-                  <span className="map-item-empty">no countries yet</span>
-                ) : (
-                  <span className="chips">
-                    {shown.map((c) => (
-                      <span key={c} className="cc-chip">
-                        {c}
-                      </span>
-                    ))}
-                    {extra > 0 && <span className="cc-chip more">+{extra}</span>}
-                  </span>
-                )}
-                {m.goal != null && (
-                  <span className="map-item-goal">{m.goal.toLocaleString()}</span>
-                )}
-              </div>
               {m.description && (
                 <div className="map-item-desc">{m.description}</div>
+              )}
+              {m.goal != null && (
+                <div className="map-item-goal">
+                  {m.goal.toLocaleString()} locations
+                </div>
               )}
 
               {menuSlug === m.slug && (
@@ -370,21 +358,27 @@ export function Sidebar() {
   );
 }
 
-function MapDetailsModal({
-  entry,
+function MapFormModal({
+  title,
+  confirmLabel,
+  initialName,
+  initialDescription,
   onCancel,
-  onSave,
+  onSubmit,
 }: {
-  entry: MapEntry;
+  title: string;
+  confirmLabel: string;
+  initialName: string;
+  initialDescription: string;
   onCancel: () => void;
-  onSave: (name: string, description: string) => void;
+  onSubmit: (name: string, description: string) => void;
 }) {
-  const [name, setName] = useState(entry.name);
-  const [description, setDescription] = useState(entry.description ?? "");
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
   const trimmed = name.trim();
   return (
     <Modal
-      title="Map details"
+      title={title}
       width={460}
       onClose={onCancel}
       footer={
@@ -393,9 +387,9 @@ function MapDetailsModal({
           <button
             className="primary"
             disabled={!trimmed}
-            onClick={() => onSave(trimmed, description.trim())}
+            onClick={() => onSubmit(trimmed, description.trim())}
           >
-            Save
+            {confirmLabel}
           </button>
         </>
       }

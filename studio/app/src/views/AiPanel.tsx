@@ -1,148 +1,240 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
-import { ChevronIcon, SparkIcon } from "../components/Icons";
+import { CheckIcon, ChevronIcon, SendIcon, SparkIcon } from "../components/Icons";
+import type { AiProvider } from "../lib/commands";
 
-export function AiPanel({ dockHeight }: { dockHeight: number | null }) {
+/**
+ * The Vali AI composer — a floating message box docked over the bottom of the
+ * JSON editor. It carries the whole flow so the input is always visible:
+ *   idle       → textarea + model picker + send
+ *   busy       → the question, a fixed-height live stream, and Cancel
+ *   reviewing  → the question, validation status, and Discard / Apply
+ * (Enter applies and Esc discards while reviewing — see keybindings.)
+ */
+export function AiPanel() {
   const open = useStore((s) => s.aiOpen);
   const instruction = useStore((s) => s.aiInstruction);
   const busy = useStore((s) => s.aiBusy);
+  const phase = useStore((s) => s.aiPhase);
+  const startMs = useStore((s) => s.aiStartMs);
   const error = useStore((s) => s.aiError);
-  const reviewing = useStore((s) => s.aiProposal !== null);
+  const proposal = useStore((s) => s.aiProposal);
+  const proposalValidation = useStore((s) => s.aiProposalValidation);
   const providers = useStore((s) => s.aiProviders);
   const provider = useStore((s) => s.aiProvider);
 
-  const [detecting, setDetecting] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const reviewing = proposal !== null;
+
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    void useStore
-      .getState()
-      .detectAiProviders()
-      .finally(() => setChecked(true));
+    void useStore.getState().detectAiProviders();
   }, []);
+
+  // Elapsed seconds while the model works.
+  useEffect(() => {
+    if (!busy || startMs === null) {
+      setElapsed(0);
+      return;
+    }
+    const tick = () => setElapsed(Math.floor((Date.now() - startMs) / 1000));
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [busy, startMs]);
 
   const available = providers.filter((p) => p.available);
   const hasAi = available.length > 0;
 
-  const recheck = async () => {
-    setDetecting(true);
-    try {
-      await useStore.getState().detectAiProviders();
-    } finally {
-      setDetecting(false);
-    }
-  };
+  // Stay mounted through busy/review even if the panel was toggled shut.
+  if (!hasAi || (!open && !busy && !reviewing)) return null;
 
-  // No local AI detected: a disabled, non-expandable bar with a recheck action.
-  if (!hasAi) {
+  const question = instruction.trim();
+
+  // ---- Reviewing: proposal summary + apply / discard ----
+  if (reviewing) {
     return (
-      <section className="ai-dock disabled">
-        <div className="ai-dock-head static">
+      <section className="ai-composer reviewing" aria-label="Vali AI">
+        {question && <div className="ai-composer-q">{question}</div>}
+        <div className="ai-review-line">
           <span className="ai-glyph">
-            <SparkIcon size={15} />
+            <SparkIcon size={14} />
           </span>
-          <span className="ai-name">Vali AI</span>
-          <span className="ai-sub">
-            {checked ? "no local AI found" : "checking for local AI…"}
-          </span>
-          <span className="grow" />
-          {checked && (
-            <button
-              className="ai-recheck"
-              onClick={() => void recheck()}
-              disabled={detecting}
+          <span className="ai-review-title">Proposed a change</span>
+          {proposalValidation && (
+            <span
+              className={`valid-chip ${proposalValidation.valid ? "ok" : "bad"}`}
             >
-              {detecting ? "Checking…" : "Retry"}
-            </button>
+              {proposalValidation.valid
+                ? "validates cleanly"
+                : `${proposalValidation.errors.length} problem${proposalValidation.errors.length === 1 ? "" : "s"}`}
+            </span>
           )}
+        </div>
+        <div className="ai-composer-bar">
+          <span className="grow" />
+          <button onClick={() => useStore.getState().discardAiProposal()}>
+            Discard
+            <span className="btn-kbd">
+              <kbd>Esc</kbd>
+            </span>
+          </button>
+          <button
+            className="primary ai-apply"
+            onClick={() => useStore.getState().applyAiProposal()}
+          >
+            <CheckIcon size={14} /> Apply change
+            <span className="btn-kbd">
+              <kbd>↵</kbd>
+            </span>
+          </button>
         </div>
       </section>
     );
   }
 
-  const canAsk = !busy && !reviewing && instruction.trim().length > 0;
+  // ---- Busy: question + clean working status (no response dump) ----
+  if (busy) {
+    return (
+      <section className="ai-composer busy" aria-label="Vali AI" aria-live="polite">
+        {question && <div className="ai-composer-q">{question}</div>}
+        <div className="ai-composer-bar">
+          <span className="ai-composer-id busy">
+            <span className="spinner sm" aria-hidden />
+            <span className="ai-phase">{phase ?? "Working…"}</span>
+            <span className="ai-elapsed">{elapsed}s</span>
+          </span>
+          <span className="grow" />
+          <button
+            className="ai-cancel"
+            onClick={() => void useStore.getState().cancelAi()}
+          >
+            Cancel
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // ---- Idle: the composer ----
+  const canAsk = question.length > 0;
+  const send = () => {
+    if (canAsk) void useStore.getState().askAi();
+  };
 
   return (
-    <section
-      className={`ai-dock${open ? " open" : " collapsed"}`}
-      style={open && dockHeight != null ? { height: dockHeight } : undefined}
-    >
-      <button
-        className="ai-dock-head"
-        onClick={() => useStore.getState().setAiOpen(!open)}
-        aria-expanded={open}
-        title="Toggle Vali AI"
-      >
-        <span className="ai-glyph">
-          <SparkIcon size={15} />
+    <section className="ai-composer" aria-label="Vali AI">
+      <textarea
+        className="ai-composer-input"
+        placeholder="Ask your local AI to change your map."
+        value={instruction}
+        onChange={(e) => useStore.getState().setAiInstruction(e.target.value)}
+        onKeyDown={(e) => {
+          // Enter sends; Shift+Enter inserts a newline.
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send();
+          }
+        }}
+      />
+
+      <div className="ai-composer-bar">
+        <span className="ai-composer-id">
+          <span className="ai-glyph">
+            <SparkIcon size={14} />
+          </span>
+          <span className="ai-composer-name">Vali AI</span>
         </span>
-        <span className="ai-name">Vali AI</span>
-        <span className="ai-sub">edit the definition in plain language</span>
         <span className="grow" />
-        {busy && <span className="ai-tag working">working…</span>}
-        <span className={`ai-chevron${open ? " up" : ""}`}>
-          <ChevronIcon size={16} />
-        </span>
+        <ModelMenu
+          providers={available}
+          value={provider}
+          onChange={(id) => useStore.getState().setAiProvider(id)}
+        />
+        <button
+          className="ai-send"
+          onClick={send}
+          disabled={!canAsk}
+          title="Send · Enter"
+          aria-label="Send"
+        >
+          <SendIcon size={16} />
+        </button>
+      </div>
+
+      {error && (
+        <details className="ai-error" open>
+          <summary>The request failed</summary>
+          <pre>{error}</pre>
+        </details>
+      )}
+    </section>
+  );
+}
+
+/** Model picker styled as a popover menu that opens upward from the bar. */
+function ModelMenu({
+  providers,
+  value,
+  onChange,
+}: {
+  providers: AiProvider[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const current = providers.find((p) => p.id === value) ?? providers[0];
+
+  return (
+    <div className="ai-model" ref={ref}>
+      <button
+        className="ai-model-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Choose which local AI to use"
+      >
+        <span className="ai-model-label">{current?.label ?? "AI"}</span>
+        <ChevronIcon size={13} />
       </button>
 
       {open && (
-        <div className="ai-dock-body">
-          {reviewing && (
-            <div className="hint">
-              Review the proposed change in the editor above, then apply or
-              discard it.
-            </div>
-          )}
-
-          <textarea
-            className="ai-input"
-            placeholder="e.g. only keep locations from 2020 or later and raise the goal to 10,000"
-            value={instruction}
-            onChange={(e) =>
-              useStore.getState().setAiInstruction(e.target.value)
-            }
-            disabled={busy || reviewing}
-            onKeyDown={(e) => {
-              // Enter sends; Shift+Enter inserts a newline.
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (canAsk) void useStore.getState().askAi();
-              }
-            }}
-          />
-
-          <div className="ai-controls">
-            <select
-              className="ai-provider"
-              value={provider}
-              onChange={(e) => useStore.getState().setAiProvider(e.target.value)}
-              disabled={busy}
-              title="Choose which local AI to use"
-            >
-              {available.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-            <span className="grow" />
+        <div className="ai-model-menu" role="menu">
+          {providers.map((p) => (
             <button
-              className="primary ai-ask"
-              onClick={() => void useStore.getState().askAi()}
-              disabled={!canAsk}
+              key={p.id}
+              className={`ai-model-item${p.id === value ? " sel" : ""}`}
+              role="menuitemradio"
+              aria-checked={p.id === value}
+              onClick={() => {
+                onChange(p.id);
+                setOpen(false);
+              }}
             >
-              {busy ? "Working…" : "Ask Vali AI"}
+              <span className="ai-model-item-label">{p.label}</span>
+              {p.id === value && <CheckIcon size={14} />}
             </button>
-          </div>
-
-          {error && (
-            <details className="ai-error" open>
-              <summary>The request failed</summary>
-              <pre>{error}</pre>
-            </details>
-          )}
+          ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }

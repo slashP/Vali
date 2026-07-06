@@ -1,11 +1,13 @@
 # Builds Vali Studio installers (.dmg for macOS, .msi/.exe for Windows) and
-# attaches them to a GitHub Release. Trigger by pushing a version tag, e.g.:
+# attaches them to a GitHub Release. Trigger by pushing a `studio-v` version tag:
 #
-#   git tag v0.1.1 && git push origin v0.1.1
+#   git tag studio-v0.1.1 && git push origin studio-v0.1.1
 #
-# The tag should match the version in studio/app/src-tauri/tauri.conf.json — the
-# in-app "update available" banner compares that version against the latest
-# release tag here.
+# The `studio-v` prefix is REQUIRED: this repo is shared with the Vali CLI, which
+# publishes bare version tags (e.g. 3.0.1). The in-app "update available" banner
+# only looks at `studio-v*` releases, so a plain `v*`/bare tag would neither
+# trigger this workflow nor be seen as a Studio update. The version after the
+# prefix should match studio/app/src-tauri/tauri.conf.json.
 #
 # The .NET engine (Vali.Host) is published self-contained + single-file per
 # platform and bundled next to the app binary via Tauri's externalBin, so end
@@ -17,7 +19,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "studio-v*"
   workflow_dispatch:
 
 permissions:
@@ -46,6 +48,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # Enforce the studio-v tag scheme (also stops a manual workflow_dispatch
+      # from a branch producing a bogus "Vali Studio main" release) and derive
+      # the clean display version.
+      - name: Resolve Studio version from tag
+        id: ver
+        shell: bash
+        run: |
+          ref="${GITHUB_REF_NAME}"
+          case "$ref" in
+            studio-v*) echo "version=${ref#studio-}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Release must run from a studio-v* tag (got '$ref')."; exit 1 ;;
+          esac
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -97,7 +112,7 @@ jobs:
         with:
           projectPath: studio/app
           tagName: ${{ github.ref_name }}
-          releaseName: "Vali Studio ${{ github.ref_name }}"
+          releaseName: "Vali Studio ${{ steps.ver.outputs.version }}"
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.rustTarget }} --config src-tauri/tauri.bundle.json

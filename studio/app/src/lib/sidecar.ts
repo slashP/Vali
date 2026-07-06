@@ -91,10 +91,3 @@ export function listenSidecarExit(
 ): Promise<UnlistenFn> {
   return listen("sidecar-exit", (e) => handler(e.payload));
 }
-
-/** Streamed AI text deltas as the local model writes its response. */
-export function listenAiStream(
-  handler: (chunk: string) => void,
-): Promise<UnlistenFn> {
-  return listen<{ chunk: string }>("ai-stream", (e) => handler(e.payload.chunk));
-}

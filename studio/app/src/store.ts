@@ -107,7 +107,7 @@ interface StudioState {
   currentSlug: string | null;
   initWorkspace: () => Promise<void>;
   selectMap: (slug: string) => Promise<void>;
-  createNewMap: (name: string) => Promise<void>;
+  createNewMap: (name: string, description?: string) => Promise<void>;
   importMap: (name: string, content: string) => Promise<void>;
   updateMapDetails: (
     slug: string,
@@ -138,9 +138,6 @@ interface StudioState {
   aiStartMs: number | null;
   /** Live phase text shown while the AI works (asking / checking / fixing). */
   aiPhase: string | null;
-  /** Streamed text the local model is producing, shown live in the overlay. */
-  aiStreamText: string;
-  appendAiStream: (chunk: string) => void;
   aiError: string | null;
   aiProposal: string | null;
   aiProposalValidation: ValidateResult | null;
@@ -308,7 +305,19 @@ export const useStore = create<StudioState>((set, get) => ({
     try {
       const text = await readDefinition(root, slug);
       if (seq !== selectSeq) return; // superseded during the read
-      set({ currentSlug: slug, text, dirty: false, validation: null, loadError: null });
+      set({
+        currentSlug: slug,
+        text,
+        dirty: false,
+        validation: null,
+        loadError: null,
+        // Reset the map view on switch; the MapView effect reloads this map's
+        // output if it has one, otherwise it stays a blank slate.
+        mapLocations: [],
+        mapSourcePath: null,
+        mapSourceMtime: null,
+        mapText: null,
+      });
     } catch (e) {
       if (seq !== selectSeq) return;
       // Never overwrite an unreadable definition with starter content — surface
@@ -330,10 +339,10 @@ export const useStore = create<StudioState>((set, get) => ({
     // Restore this map's persisted generation summary (unless a run is live).
     if (!get().runningId) void get().loadLastRun(slug);
   },
-  createNewMap: async (name) => {
+  createNewMap: async (name, description) => {
     const root = get().workspaceRoot;
     if (!root) return;
-    const entry = await createMap(root, name);
+    const entry = await createMap(root, name, undefined, description);
     set({ maps: sortByName([...get().maps, entry]) });
     await get().selectMap(entry.slug);
   },
@@ -417,11 +426,19 @@ export const useStore = create<StudioState>((set, get) => ({
   validating: false,
   validateCurrent: async () => {
     const text = get().text;
+    const root = get().workspaceRoot;
+    const slug = get().currentSlug;
     const seq = ++validateSeq;
     set({ validating: true });
     get().refreshCurrentMapSummary();
     try {
-      const result = await request<ValidateResult>("validate", { json: text });
+      // Pass the definition's path so the engine resolves relative filter file
+      // paths against the map folder (matching CLI/generation behaviour).
+      const params =
+        root && slug
+          ? { json: text, definitionPath: definitionPath(root, slug) }
+          : { json: text };
+      const result = await request<ValidateResult>("validate", params);
       if (seq !== validateSeq) return; // a newer validation superseded us
       set({ validation: result, validating: false });
     } catch (e) {
@@ -441,9 +458,6 @@ export const useStore = create<StudioState>((set, get) => ({
   aiBusy: false,
   aiStartMs: null,
   aiPhase: null,
-  aiStreamText: "",
-  appendAiStream: (chunk) =>
-    set((s) => ({ aiStreamText: (s.aiStreamText + chunk).slice(-12000) })),
   aiError: null,
   aiProposal: null,
   aiProposalValidation: null,
@@ -467,16 +481,19 @@ export const useStore = create<StudioState>((set, get) => ({
       aiBusy: true,
       aiStartMs: Date.now(),
       aiPhase: "Asking your local AI…",
-      aiStreamText: "",
       aiError: null,
       aiProposal: null,
       aiProposalValidation: null,
     });
 
-    // Best-effort validation of a proposal via the engine.
+    // Best-effort validation of a proposal via the engine. Anchor relative
+    // filter paths at the map folder, same as validateCurrent.
+    const root = get().workspaceRoot;
+    const defPath = root && slug ? definitionPath(root, slug) : null;
     const validate = async (json: string): Promise<ValidateResult | null> => {
       try {
-        return await request<ValidateResult>("validate", { json });
+        const params = defPath ? { json, definitionPath: defPath } : { json };
+        return await request<ValidateResult>("validate", params);
       } catch {
         return null;
       }
@@ -502,7 +519,7 @@ export const useStore = create<StudioState>((set, get) => ({
       ) {
         round++;
         const n = validation.errors.length;
-        set({ aiPhase: `Fixing ${n} issue${n === 1 ? "" : "s"}…`, aiStreamText: "" });
+        set({ aiPhase: `Fixing ${n} issue${n === 1 ? "" : "s"}…` });
         proposal = await aiRun(
           provider,
           buildFixPrompt(instruction, proposal, validation.errors),

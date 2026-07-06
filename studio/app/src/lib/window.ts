@@ -30,6 +30,23 @@ export function closeWindow(): Promise<void> {
   return appWindow.close();
 }
 
+/** Destroy the window without firing another close-requested event. */
+export function destroyWindow(): Promise<void> {
+  return appWindow.destroy();
+}
+
+/** Runs `handler` when a window close is requested (button, Cmd+Q, traffic
+ *  light, OS). The default close is prevented so the handler can flush first;
+ *  it is responsible for calling `destroyWindow()` when done. */
+export function onCloseRequested(
+  handler: () => void | Promise<void>,
+): Promise<UnlistenFn> {
+  return appWindow.onCloseRequested((event) => {
+    event.preventDefault();
+    void handler();
+  });
+}
+
 export function isWindowMaximized(): Promise<boolean> {
   return appWindow.isMaximized();
 }

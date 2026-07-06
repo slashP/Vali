@@ -19,7 +19,12 @@ pub struct DirEntryInfo {
 
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| format!("{path}: {e}"))
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{path}: {e}"))?;
+    // Strip a leading UTF-8 BOM so imported/edited definitions match what the
+    // .NET engine sees — File.ReadAllText drops the BOM, but a BOM left in the
+    // string makes the engine's JsonNode.Parse throw, wrongly failing validation
+    // for a file the CLI accepts. (PowerShell 5 / Notepad write a BOM by default.)
+    Ok(text.strip_prefix('\u{feff}').map(str::to_owned).unwrap_or(text))
 }
 
 #[tauri::command]
@@ -135,6 +140,56 @@ pub fn reveal_in_explorer(path: String) -> Result<(), String> {
     {
         let _ = &path;
         Err("Revealing files is not supported on this platform".to_string())
+    }
+}
+
+/// Open a web URL in the user's default browser. Native decorations are off and
+/// no opener/shell plugin is installed, so plain `target="_blank"` anchors do
+/// nothing on macOS and spawn a chrome-less WebView2 popup on Windows — the app
+/// routes external links through here instead.
+#[tauri::command]
+pub fn open_external(url: String) -> Result<(), String> {
+    // Only ever hand the OS a web/mail URL, and reject quotes, so this can't be
+    // coerced into launching an arbitrary command or file from the webview.
+    let is_web = url.starts_with("https://")
+        || url.starts_with("http://")
+        || url.starts_with("mailto:");
+    if !is_web || url.contains('"') {
+        return Err(format!("Refusing to open non-web URL: {url}"));
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // `start "" "<url>"` opens the default browser; the quotes keep `&` in
+        // query strings from being read as a cmd separator.
+        std::process::Command::new("cmd")
+            .raw_arg(format!("/C start \"\" \"{url}\""))
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        let _ = &url;
+        Err("Opening links is not supported on this platform".to_string())
     }
 }
 

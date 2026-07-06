@@ -298,7 +298,7 @@ public sealed class DownloadRunner(ProtocolWriter writer)
             {
                 try
                 {
-                    var path = await DownloadOne(bucket, file, folder);
+                    var path = await DownloadOne(bucket, file, folder, token);
                     long bytesSnapshot;
                     int filesSnapshot;
                     lock (results)
@@ -321,6 +321,11 @@ public sealed class DownloadRunner(ProtocolWriter writer)
                         bytesTotal
                     });
                 }
+                catch (OperationCanceledException)
+                {
+                    // Cancelled mid-transfer — leave this file out of results;
+                    // RunCore reports the download as cancelled.
+                }
                 finally
                 {
                     gate.Release();
@@ -332,7 +337,7 @@ public sealed class DownloadRunner(ProtocolWriter writer)
         return results;
     }
 
-    private static async Task<string> DownloadOne(string bucket, RemoteFile file, string folder)
+    private static async Task<string> DownloadOne(string bucket, RemoteFile file, string folder, CancellationToken token)
     {
         const int maxRetries = 3;
         Directory.CreateDirectory(folder);
@@ -348,11 +353,12 @@ public sealed class DownloadRunner(ProtocolWriter writer)
             {
                 await using (var fileStream = new FileStream(temp, FileMode.CreateNew))
                 {
-                    using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                    using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
                     response.EnsureSuccessStatusCode();
 
                     using var memoryStream = new MemoryStream();
-                    await response.Content.CopyToAsync(memoryStream);
+                    await response.Content.CopyToAsync(memoryStream, token);
+                    token.ThrowIfCancellationRequested();
                     memoryStream.Position = 0;
                     BZip2.Decompress(memoryStream, fileStream, true);
                 }
@@ -360,10 +366,16 @@ public sealed class DownloadRunner(ProtocolWriter writer)
                 File.Move(temp, destination, overwrite: true);
                 return destination;
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                // A genuine cancel — abort immediately, don't retry.
+                TryDelete(temp);
+                throw;
+            }
             catch (Exception ex) when (attempt < maxRetries && ex is HttpRequestException or TaskCanceledException or IOException)
             {
                 TryDelete(temp);
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), token);
             }
             catch
             {

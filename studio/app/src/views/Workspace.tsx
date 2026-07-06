@@ -3,9 +3,7 @@ import { useStore } from "../store";
 import { EditorView } from "./EditorView";
 import { DocsPanel } from "./DocsPanel";
 import { MapView } from "./MapView";
-import { BookIcon } from "../components/Icons";
 import { PaneErrorBoundary } from "../components/PaneErrorBoundary";
-import { MOD } from "../lib/keybindings";
 
 const LS_SPLIT = "vali.splitFrac";
 const LS_DOCS_WIDTH = "vali.docsWidth";
@@ -128,21 +126,6 @@ export function Workspace() {
           <MapView />
         </PaneErrorBoundary>
       </div>
-
-      <button
-        className={`docs-fab${docsOpen ? " active" : ""}`}
-        onClick={() => useStore.getState().setDocsOpen(!docsOpen)}
-        title="Browse the map-definition settings"
-        aria-pressed={docsOpen}
-      >
-        <BookIcon size={15} />
-        <span>Docs</span>
-        <span className="btn-kbd">
-          <kbd>{MOD}</kbd>
-          <kbd>⇧</kbd>
-          <kbd>D</kbd>
-        </span>
-      </button>
 
       {drag && <div className="drag-shield" />}
     </div>

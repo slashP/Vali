@@ -26,6 +26,7 @@ pub fn run() {
             fs_cmds::list_dir,
             fs_cmds::workspace_root,
             fs_cmds::reveal_in_explorer,
+            fs_cmds::open_external,
             fs_cmds::pick_open_file,
             fs_cmds::pick_save_file,
         ])
@@ -43,14 +44,14 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                sidecar::kill_sidecar(window.app_handle());
+                sidecar::shutdown_sidecar(window.app_handle());
             }
         })
         .build(tauri::generate_context!())
         .expect("error while building Vali Studio")
         .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
-                sidecar::kill_sidecar(app_handle);
+                sidecar::shutdown_sidecar(app_handle);
             }
         });
 }

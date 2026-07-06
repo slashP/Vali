@@ -76,6 +76,9 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
     private async Task RunCore(string requestId, string definitionPath, int? previewGoal, bool includeAdditionalInfo, CancellationTokenSource cts)
     {
         var json = await File.ReadAllTextAsync(definitionPath);
+        // Anchor relative filter file paths at the definition's folder so imported
+        // CLI definitions resolve the same way `vali generate` would from there.
+        json = DefinitionPaths.ResolveRelativePaths(json, Path.GetDirectoryName(definitionPath));
         var humanReadableError = GenerateFileValidator.HumanReadableError(json);
         if (humanReadableError is not null)
         {
@@ -127,7 +130,7 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
         {
             writer.Emit("warning", requestId, new
             {
-                message = "Pano verification is not supported in Vali Studio yet — locations are written without Google verification. Use the Vali CLI when you need it."
+                message = "Pano verification isn't supported in Vali Studio yet — locations are written without Google verification and without pinned pano IDs, so each round resolves by coordinate (whatever pano Google returns) rather than a verified pano. Use the Vali CLI when you need verified, pinned panos."
             });
             definition = definition with { Output = definition.Output with { PanoVerificationStrategy = null } };
         }
@@ -460,7 +463,10 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
         var definitionFilename = Path.GetFileNameWithoutExtension(definitionPath);
         var filename = definitionFilename + (isPreview ? "-preview-locations.json" : "-locations.json");
         var locationsPath = Path.Combine(outFolder, filename);
-        await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
+        // Write atomically (temp file + move) so if the app is closed and the
+        // engine is force-killed mid-write, the previous valid output survives
+        // and the map view never loads a half-written, unparseable file.
+        await WriteAllTextAtomic(locationsPath, Serializer.Serialize(geoMapLocations));
 
         if (!isPreview)
         {
@@ -487,6 +493,32 @@ public sealed class GenerateRunner(ProtocolWriter writer, CaptureTextWriter capt
         }
 
         return (new FileInfo(locationsPath).FullName, geoMapLocations.Length);
+    }
+
+    private static async Task WriteAllTextAtomic(string path, string contents)
+    {
+        var temp = path + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temp, contents);
+            File.Move(temp, path, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                if (File.Exists(temp))
+                {
+                    File.Delete(temp);
+                }
+            }
+            catch
+            {
+                // Best-effort cleanup of the temp file.
+            }
+
+            throw;
+        }
     }
 
     private static long EstimateCostBytes(string[] files)

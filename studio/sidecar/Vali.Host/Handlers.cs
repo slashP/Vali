@@ -25,6 +25,13 @@ public sealed class Handlers(ProtocolWriter writer, CaptureTextWriter capture)
             return;
         }
 
+        // When the frontend supplies the definition's path, resolve relative
+        // filter file paths against its folder so validation matches how the CLI
+        // (and generation) would resolve them.
+        var definitionPath = request.GetString("definitionPath");
+        var baseDir = string.IsNullOrWhiteSpace(definitionPath) ? null : Path.GetDirectoryName(definitionPath);
+        json = DefinitionPaths.ResolveRelativePaths(json, baseDir);
+
         await ConsoleGate.Lock.WaitAsync();
         try
         {

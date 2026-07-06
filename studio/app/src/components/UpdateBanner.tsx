@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { checkForUpdate, type UpdateInfo } from "../lib/update";
+import { openExternal } from "../lib/commands";
 
 const LS_DISMISSED = "vali.updateDismissed";
 
@@ -37,8 +38,10 @@ export function UpdateBanner() {
       <a
         className="update-link"
         href={info.url}
-        target="_blank"
-        rel="noreferrer"
+        onClick={(e) => {
+          e.preventDefault();
+          void openExternal(info.url);
+        }}
       >
         Download
       </a>

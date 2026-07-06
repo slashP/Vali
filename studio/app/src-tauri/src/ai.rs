@@ -2,7 +2,7 @@ use std::process::Stdio;
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::State;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::oneshot;
@@ -301,11 +301,10 @@ pub fn ai_cancel(state: State<'_, AiState>) {
     }
 }
 
-/// Run the chosen local AI CLI with `prompt`, streaming its output to the webview
-/// via `ai-stream` events, and return the final JSON document, fences stripped.
+/// Run the chosen local AI CLI with `prompt` and return the final JSON document,
+/// fences stripped. Progress is conveyed by the caller's phase text, not a stream.
 #[tauri::command]
 pub async fn ai_run(
-    app: AppHandle,
     state: State<'_, AiState>,
     provider: String,
     prompt: String,
@@ -352,7 +351,6 @@ pub async fn ai_run(
     });
 
     let stdout = child.stdout.take().ok_or("AI CLI has no stdout")?;
-    let app_stream = app.clone();
     let read = async move {
         let mut reader = BufReader::new(stdout);
         let mut line = Vec::new();
@@ -377,8 +375,6 @@ pub async fn ai_run(
                                     v.pointer("/event/delta/text").and_then(|t| t.as_str())
                                 {
                                     acc.push_str(chunk);
-                                    let _ = app_stream
-                                        .emit("ai-stream", serde_json::json!({ "chunk": chunk }));
                                 }
                             }
                             Some("result") => {
@@ -389,10 +385,8 @@ pub async fn ai_run(
                             _ => {}
                         }
                     } else {
-                        // Other CLIs: stream raw output for live feedback.
-                        let chunk = raw.into_owned();
-                        acc.push_str(&chunk);
-                        let _ = app_stream.emit("ai-stream", serde_json::json!({ "chunk": chunk }));
+                        // Other CLIs: no structured stream; accumulate raw output.
+                        acc.push_str(raw.as_ref());
                     }
                 }
             }

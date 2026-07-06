@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Editor, { DiffEditor, type OnMount } from "@monaco-editor/react";
 import { useStore } from "../store";
 import { AiPanel } from "./AiPanel";
-import { CheckIcon, SparkIcon } from "../components/Icons";
+import { BookIcon, SparkIcon } from "../components/Icons";
+import { MOD } from "../lib/keybindings";
 
 type EditorInstance = Parameters<OnMount>[0];
 
@@ -14,7 +15,9 @@ const EDITOR_OPTIONS = {
   tabSize: 2,
   automaticLayout: true,
   renderWhitespace: "none",
-  padding: { top: 12 },
+  padding: { top: 34 },
+  // Hide the horizontal scrollbar but keep horizontal scrolling (wheel/cursor).
+  scrollbar: { horizontalScrollbarSize: 0 },
 } as const;
 
 const DIFF_OPTIONS = {
@@ -26,16 +29,8 @@ const DIFF_OPTIONS = {
   scrollBeyondLastLine: false,
   automaticLayout: true,
   padding: { top: 12 },
+  scrollbar: { horizontalScrollbarSize: 0 },
 } as const;
-
-const LS_AI_HEIGHT = "vali.aiHeight";
-const AI_MIN = 130;
-
-function initialAiHeight(): number {
-  const stored = Number(localStorage.getItem(LS_AI_HEIGHT));
-  if (Number.isFinite(stored) && stored >= AI_MIN) return stored;
-  return 200;
-}
 
 export function EditorView() {
   const text = useStore((s) => s.text);
@@ -44,23 +39,13 @@ export function EditorView() {
   const validating = useStore((s) => s.validating);
   const loadError = useStore((s) => s.loadError);
   const saveError = useStore((s) => s.saveError);
-  const aiOpen = useStore((s) => s.aiOpen);
-  const aiReady = useStore((s) => s.aiProviders.some((p) => p.available));
+  const docsOpen = useStore((s) => s.docsOpen);
   const aiBusy = useStore((s) => s.aiBusy);
-  const aiStartMs = useStore((s) => s.aiStartMs);
-  const aiPhase = useStore((s) => s.aiPhase);
-  const aiStreamText = useStore((s) => s.aiStreamText);
   const proposal = useStore((s) => s.aiProposal);
   const proposalValidation = useStore((s) => s.aiProposalValidation);
 
   const editorRef = useRef<EditorInstance | null>(null);
   const debounceRef = useRef<number | undefined>(undefined);
-  const stackRef = useRef<HTMLDivElement | null>(null);
-  const streamRef = useRef<HTMLPreElement | null>(null);
-
-  const [aiHeight, setAiHeight] = useState(initialAiHeight);
-  const [draggingAi, setDraggingAi] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor;
@@ -80,47 +65,6 @@ export function EditorView() {
     return () => window.clearTimeout(debounceRef.current);
   }, [text, loadError]);
 
-  // Keep the streamed output pinned to the latest line.
-  useEffect(() => {
-    const el = streamRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [aiStreamText]);
-
-  useEffect(() => {
-    if (!aiBusy || aiStartMs === null) {
-      setElapsed(0);
-      return;
-    }
-    const tick = () => setElapsed(Math.floor((Date.now() - aiStartMs) / 1000));
-    tick();
-    const t = window.setInterval(tick, 1000);
-    return () => window.clearInterval(t);
-  }, [aiBusy, aiStartMs]);
-
-  const onAiDrag = useCallback((clientY: number) => {
-    const el = stackRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const max = rect.height - 160;
-    setAiHeight(Math.min(Math.max(AI_MIN, rect.bottom - clientY), Math.max(AI_MIN, max)));
-  }, []);
-
-  useEffect(() => {
-    if (!draggingAi) return;
-    const move = (e: MouseEvent) => onAiDrag(e.clientY);
-    const up = () => setDraggingAi(false);
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-    return () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-    };
-  }, [draggingAi, onAiDrag]);
-
-  useEffect(() => {
-    localStorage.setItem(LS_AI_HEIGHT, String(aiHeight));
-  }, [aiHeight]);
-
   const errors = validation?.errors ?? [];
   const isValid = validation?.valid === true;
   const reviewing = proposal !== null;
@@ -139,7 +83,7 @@ export function EditorView() {
 
   return (
     <div className="editor-pane">
-      <div className="editor-stack" ref={stackRef}>
+      <div className="editor-stack">
         <div className="editor-main">
           {loadError ? (
             <div className="load-error">
@@ -193,19 +137,6 @@ export function EditorView() {
                         options={DIFF_OPTIONS}
                       />
                     </div>
-                    <div className="ai-diff-actions">
-                      <button
-                        onClick={() => useStore.getState().discardAiProposal()}
-                      >
-                        Discard
-                      </button>
-                      <button
-                        className="primary"
-                        onClick={() => useStore.getState().applyAiProposal()}
-                      >
-                        <CheckIcon size={14} /> Apply change
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   <Editor
@@ -219,38 +150,22 @@ export function EditorView() {
                   />
                 )}
 
-                {aiBusy && (
-                  <div className="ai-editor-busy" role="status" aria-live="polite">
-                    <div className="ai-editor-busy-card">
-                      <div className="ai-busy-head">
-                        <span className="spinner" aria-hidden />
-                        <div className="ai-editor-busy-text">
-                          <div className="ai-busy-title">
-                            {aiPhase ?? "Vali AI is editing your definition…"}
-                          </div>
-                          <div className="hint">
-                            Running your local Claude · {elapsed}s
-                          </div>
-                        </div>
-                        <button
-                          className="ai-busy-cancel"
-                          onClick={() => void useStore.getState().cancelAi()}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                      {aiStreamText ? (
-                        <pre className="ai-stream" ref={streamRef}>
-                          {aiStreamText}
-                        </pre>
-                      ) : (
-                        <div className="ai-indet" aria-hidden>
-                          <span />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <button
+                  className={`docs-fab docs-fab-editor${reviewing ? " lowered" : ""}${docsOpen ? " active" : ""}`}
+                  onClick={() => useStore.getState().setDocsOpen(!docsOpen)}
+                  title="Browse the map-definition settings"
+                  aria-pressed={docsOpen}
+                >
+                  <BookIcon size={15} />
+                  <span>Docs</span>
+                  <span className="btn-kbd">
+                    <kbd>{MOD}</kbd>
+                    <kbd>⇧</kbd>
+                    <kbd>D</kbd>
+                  </span>
+                </button>
+
+                <AiPanel />
               </div>
 
               {!reviewing && validation !== null && !isValid && (
@@ -274,23 +189,6 @@ export function EditorView() {
             </>
           )}
         </div>
-
-        {aiOpen && aiReady && (
-          <div
-            className={`hsplit-divider${draggingAi ? " active" : ""}`}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setDraggingAi(true);
-            }}
-            role="separator"
-            aria-orientation="horizontal"
-            title="Drag to resize Vali AI"
-          >
-            <span className="hsplit-grip" />
-          </div>
-        )}
-        <AiPanel dockHeight={aiOpen && aiReady ? aiHeight : null} />
-        {draggingAi && <div className="drag-shield row" />}
       </div>
     </div>
   );

@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-schema.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-schema.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri"

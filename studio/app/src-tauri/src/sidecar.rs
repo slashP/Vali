@@ -173,28 +173,21 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
 
-    // On Windows the engine's default (C:\ProgramData\Vali) is writable and shared
-    // with the CLI, so we leave it alone. On macOS/Linux the default resolves to a
-    // non-writable location (e.g. /usr/share) which makes the engine fall back to
-    // an interactive stdin prompt — fatal for our stdio protocol. Point it at the
-    // per-user OS data dir instead (the engine appends "Vali"), unless the user has
-    // already chosen a folder via the environment.
-    #[cfg(not(windows))]
-    {
-        let already_set = std::env::var("VALI_DOWNLOAD_FOLDER")
-            .map(|v| !v.trim().is_empty())
-            .unwrap_or(false);
-        if !already_set {
-            match app.path().data_dir().or_else(|_| app.path().app_data_dir()) {
-                Ok(dir) => {
-                    cmd.env("VALI_DOWNLOAD_FOLDER", &dir);
-                }
-                Err(e) => {
-                    // Without a writable dir the engine falls back to a
-                    // non-writable default and blocks on an interactive prompt.
-                    tracing::error!(target: "sidecar", "no writable data dir: {e}");
-                }
-            }
+    // Pass the OS-native per-user data dir as a *hint* only. The engine
+    // (Vali.Host) decides whether to use it: it falls back here solely when the
+    // user hasn't configured a download folder via the CLI *and* the engine's
+    // default (C:\ProgramData\Vali on Windows, /usr/share/Vali on macOS/Linux)
+    // isn't writable. Crucially we must NOT set VALI_DOWNLOAD_FOLDER directly —
+    // that env var takes precedence over the user's `vali set-download-folder`
+    // choice, which would silently split Studio's data folder from the CLI's.
+    // This keeps them sharing one folder while still avoiding the engine's
+    // interactive "pick a folder" prompt on macOS/Linux.
+    match app.path().data_dir().or_else(|_| app.path().app_data_dir()) {
+        Ok(dir) => {
+            cmd.env("VALI_STUDIO_DATA_DIR", &dir);
+        }
+        Err(e) => {
+            tracing::error!(target: "sidecar", "no per-user data dir hint: {e}");
         }
     }
 
@@ -313,6 +306,50 @@ pub fn kill_sidecar(app: &AppHandle) {
             // "engine exited" branch and emit a spurious exit during a restart.
             inner.epoch = inner.epoch.wrapping_add(1);
         }
+    }
+}
+
+/// Grace period for the engine to drain in-flight work and exit on its own
+/// after its stdin is closed, before we force-kill it.
+const SHUTDOWN_GRACE_MS: u64 = 5_000;
+
+/// Shut the sidecar down *gracefully*: drop the stdin writer so the child sees
+/// EOF and runs its drain path (Program.cs awaits outstanding work — a running
+/// generation's final file write included — before exiting), wait a bounded
+/// grace period, and only force-kill if it overruns. Used on app/window close;
+/// `kill_sidecar` stays the immediate path for restart.
+pub fn shutdown_sidecar(app: &AppHandle) {
+    let child = if let Some(state) = app.try_state::<SidecarState>() {
+        match state.inner.lock() {
+            Ok(mut inner) => {
+                // Dropping the sender closes the channel; the writer task then
+                // ends and drops the child's stdin, signalling EOF.
+                inner.writer_tx = None;
+                inner.pending.clear();
+                inner.alive = false;
+                inner.epoch = inner.epoch.wrapping_add(1);
+                inner.child.take()
+            }
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
+    if let Some(mut child) = child {
+        let _ = tauri::async_runtime::block_on(async {
+            let grace = std::time::Duration::from_millis(SHUTDOWN_GRACE_MS);
+            match tokio::time::timeout(grace, child.wait()).await {
+                Ok(res) => res.map(|_| ()),
+                Err(_) => {
+                    // Overran the grace period (e.g. a long compute-bound
+                    // generation) — force it down. The engine writes outputs
+                    // atomically, so a kill here can't leave a truncated file.
+                    let _ = child.start_kill();
+                    child.wait().await.map(|_| ())
+                }
+            }
+        });
     }
 }
 

@@ -11,6 +11,11 @@ var writer = new ProtocolWriter(stdout);
 var capture = new CaptureTextWriter();
 Console.SetOut(capture);
 
+// Resolve the download folder before any command reads it, honoring the user's
+// CLI-configured folder and only falling back when nothing is set and the
+// default isn't writable (see DownloadFolderResolver).
+DownloadFolderResolver.EnsureUsableDownloadFolder();
+
 var handlers = new Handlers(writer, capture);
 var generateRunner = new GenerateRunner(writer, capture);
 var downloadRunner = new DownloadRunner(writer);

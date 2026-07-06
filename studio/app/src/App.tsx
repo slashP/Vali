@@ -9,7 +9,6 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { Workspace } from "./views/Workspace";
 import { SetupView } from "./views/SetupView";
 import {
-  listenAiStream,
   listenSidecarEvents,
   listenSidecarExit,
   listenSidecarLog,
@@ -17,6 +16,8 @@ import {
   sidecarStatus,
 } from "./lib/sidecar";
 import { installKeybindings } from "./lib/keybindings";
+import { destroyWindow, onCloseRequested } from "./lib/window";
+import { logError } from "./lib/log";
 import { IS_MAC } from "./lib/platform";
 import { formatBytes } from "./lib/format";
 import type { PingResult } from "./lib/types";
@@ -90,12 +91,27 @@ export default function App() {
     void track(listenSidecarEvents(applyEvent));
     void track(listenSidecarLog(pushLog));
     void track(listenSidecarExit(() => setSidecarAlive(false)));
-    void track(
-      listenAiStream((chunk) => useStore.getState().appendAiStream(chunk)),
-    );
 
     const removeKeybindings = installKeybindings();
     unlisteners.push(removeKeybindings);
+
+    // Flush the (debounced) autosave before the window is destroyed, so edits
+    // made in the last ~600 ms aren't lost when the user closes the app.
+    let closing = false;
+    void track(
+      onCloseRequested(async () => {
+        if (closing) return;
+        closing = true;
+        try {
+          if (useStore.getState().dirty) await useStore.getState().saveCurrent();
+        } catch (e) {
+          // Couldn't save — surface it but still close rather than trap the user.
+          logError("saveOnClose", e);
+        } finally {
+          void destroyWindow();
+        }
+      }),
+    );
 
     const poll = async () => {
       try {

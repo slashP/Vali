@@ -34,7 +34,7 @@ Params: none.
 Result: `{"version":"0.1.0","dataFolder":"C:\\ProgramData\\Vali"}`
 
 ### `validate`
-Params: `{"json":"<definition file content>"}`
+Params: `{"json":"<definition file content>","definitionPath":"<abs path to definition.json>"?}`
 Result:
 ```json
 {"valid":false,"errors":["<message>", ...],"effectiveDefinition":{...}|null}
@@ -42,8 +42,11 @@ Result:
 Runs Vali's real chain: `HumanReadableError` → `TryDeserialize` → `ApplyDefaults` → `Validate`.
 `errors` are the messages Vali's validators print (captured). `effectiveDefinition` is the
 post-`ApplyDefaults` definition (camelCase JSON object) when deserialization succeeded, else null.
-Note: file-existence checks inside validators (geometry/proximity paths) resolve relative to the
-sidecar process CWD; the app should send absolute paths in definitions.
+Note: file-existence checks inside validators (geometry `filePath` / proximity `locationsPath`)
+resolve relative paths against `definitionPath`'s folder when it is supplied (matching how the CLI
+resolves them from the definition's directory, and how `generate` resolves them). Without
+`definitionPath`, relative paths resolve against the sidecar process CWD, so send it whenever the
+definition lives on disk.
 
 ### `expressionCheck`
 Params: `{"expression":"Year gte 2020","context":"location"|"mapCheckr","allowParent":false,"namedExpressions":{"$$x":"..."}?}`

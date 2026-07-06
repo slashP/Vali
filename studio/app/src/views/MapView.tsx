@@ -4,7 +4,7 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import { ScatterplotLayer } from "@deck.gl/layers";
 import type { Color, Layer, PickingInfo } from "@deck.gl/core";
 import { useStore } from "../store";
-import { pickOpenFile, revealInExplorer } from "../lib/commands";
+import { openExternal, revealInExplorer } from "../lib/commands";
 import { MOD } from "../lib/keybindings";
 import { logError } from "../lib/log";
 import { loadLocationsFile } from "../lib/locations";
@@ -60,7 +60,6 @@ export function MapView() {
 
   const [selected, setSelected] = useState<MapLocation | null>(null);
   const [popupXY, setPopupXY] = useState<ScreenXY | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -100,13 +99,20 @@ export function MapView() {
         if (!alive) return;
         const newest = found[0];
         const st = useStore.getState();
+        if (!newest) {
+          // This map has no output yet (e.g. a new map) — show a blank slate
+          // instead of leaving the previous map's points on screen.
+          if (st.mapLocations.length > 0 || st.mapSourcePath !== null) {
+            st.setMapLocations([], null, null);
+          }
+          return;
+        }
         // Reload when the newest output is a different file OR the same file was
         // rewritten in place — a regeneration always overwrites
         // "definition-locations.json", so its path never changes, only its mtime.
         if (
-          newest &&
-          (newest.path !== st.mapSourcePath ||
-            newest.mtimeMs !== st.mapSourceMtime)
+          newest.path !== st.mapSourcePath ||
+          newest.mtimeMs !== st.mapSourceMtime
         ) {
           loadLocationsFile(newest.path)
             .then((locs) => {
@@ -140,14 +146,20 @@ export function MapView() {
       getPosition: (d) => [d.lng, d.lat] as [number, number],
       getFillColor: SOLID,
       getRadius: 200,
-      radiusMinPixels: 6,
-      radiusMaxPixels: 44,
+      radiusMinPixels: 4,
+      radiusMaxPixels: 9,
       stroked: true,
       lineWidthMinPixels: 1.2,
       getLineColor: [20, 16, 11, 220],
       pickable: true,
       autoHighlight: true,
       highlightColor: [255, 255, 255, 110],
+      onHover: (info: PickingInfo<MapLocation>) => {
+        // maplibre owns the canvas cursor (grab/grabbing); override it to a
+        // pointer while hovering a location so points read as clickable.
+        const canvas = mapRef.current?.getCanvas();
+        if (canvas) canvas.style.cursor = info.object ? "pointer" : "";
+      },
       onClick: (info: PickingInfo<MapLocation>) => {
         if (info.object) {
           setSelected(info.object);
@@ -206,21 +218,6 @@ export function MapView() {
     }
   }, [mapLocations]);
 
-  const loadExternal = async () => {
-    try {
-      const path = await pickOpenFile("Locations", ["json"]);
-      if (!path) return;
-      const locs = await loadLocationsFile(path);
-      // An external file isn't tied to this definition — never mark it stale.
-      useStore.getState().setMapLocations(locs, path, null);
-      setSelected(null);
-      setFileError(null);
-    } catch (e) {
-      logError("loadExternal", e);
-      setFileError("Couldn't read that file — is it a valid locations JSON?");
-    }
-  };
-
   const stale = mapText !== null && mapText !== text;
   const runActive = Boolean(runningId) && runningSlug === currentSlug;
   // A changed definition invalidates the last run's result too — hide the run
@@ -265,9 +262,6 @@ export function MapView() {
       </div>
 
       <div className="map-source">
-        <button className="ghost-sm" onClick={() => void loadExternal()}>
-          Load file…
-        </button>
         {mapSourcePath && (
           <button
             className="linkish"
@@ -282,7 +276,6 @@ export function MapView() {
             {mapLocations.length.toLocaleString()} points
           </span>
         )}
-        {fileError && <span className="map-file-error">{fileError}</span>}
       </div>
 
       {selected && popupXY && !showStale && (
@@ -412,7 +405,13 @@ function LocationPopupBody({
       )}
       {panoUrl && (
         <div style={{ marginTop: 8 }}>
-          <a href={panoUrl} target="_blank" rel="noreferrer">
+          <a
+            href={panoUrl}
+            onClick={(e) => {
+              e.preventDefault();
+              void openExternal(panoUrl);
+            }}
+          >
             Open in Google Maps
           </a>
         </div>

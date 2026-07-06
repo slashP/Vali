@@ -30,7 +30,7 @@ export const SHORTCUTS: Shortcut[] = [
 
 function focusAiInput() {
   window.setTimeout(() => {
-    document.querySelector<HTMLTextAreaElement>(".ai-input")?.focus();
+    document.querySelector<HTMLTextAreaElement>(".ai-composer-input")?.focus();
   }, 0);
 }
 
@@ -53,6 +53,22 @@ function handler(e: KeyboardEvent) {
       store.setDocsOpen(false);
       e.preventDefault();
     }
+    return;
+  }
+
+  // Plain Enter approves the AI proposal under review (Esc discards, above).
+  // Fires from anywhere except a real input field (e.g. the docs search).
+  if (
+    e.key === "Enter" &&
+    !e.shiftKey &&
+    !e.metaKey &&
+    !e.ctrlKey &&
+    store.aiProposal !== null &&
+    !inField
+  ) {
+    store.applyAiProposal();
+    e.preventDefault();
+    e.stopPropagation();
     return;
   }
 

@@ -25,7 +25,7 @@ export function RunOverlay() {
 
   const [now, setNow] = useState(Date.now());
   const [stopping, setStopping] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -81,33 +81,6 @@ export function RunOverlay() {
     </div>
   );
 
-  if (minimized) {
-    return (
-      <div className="run-overlay run-overlay-min">
-        <button
-          className="run-min-head"
-          onClick={() => setMinimized(false)}
-          title="Expand run details"
-        >
-          {runningId && <span className="run-pill-dot" />}
-          <span className="run-overlay-title">
-            {kind}
-            {runningName ? ` · ${runningName}` : ""}
-          </span>
-          <span className={`badge ${status.cls}`}>{status.label}</span>
-          <span className="grow" />
-          <span className="ai-chevron up">
-            <ChevronIcon size={14} />
-          </span>
-        </button>
-        <div className="progress-bar">
-          <div className={barDone ? "done" : ""} style={{ width: `${barPct}%` }} />
-        </div>
-        {metaNumbers}
-      </div>
-    );
-  }
-
   const rows: CountryRow[] = [];
   const byCode = new Map<string, ProgressCountry>();
   for (const c of progress?.countries ?? []) byCode.set(c.code, c);
@@ -149,106 +122,89 @@ export function RunOverlay() {
         </span>
         <span className={`badge ${status.cls}`}>{status.label}</span>
         <span className="grow" />
-        {runningId && (
+        {!minimized && runningId && (
           <button className="danger run-stop" onClick={stop} disabled={stopping}>
             <StopIcon size={13} /> {stopping ? "Stopping…" : "Stop"}
           </button>
         )}
         <button
-          className="icon-btn run-min"
-          title="Minimize"
-          aria-label="Minimize"
-          onClick={() => setMinimized(true)}
+          className={`icon-btn run-min${minimized ? "" : " up"}`}
+          title={minimized ? "Expand run details" : "Minimize"}
+          aria-label={minimized ? "Expand run details" : "Minimize"}
+          onClick={() => setMinimized(!minimized)}
         >
           <ChevronIcon size={16} />
         </button>
       </div>
 
-      {runError && <div className="run-error-line">{runError}</div>}
-
       <div className="progress-bar">
         <div className={barDone ? "done" : ""} style={{ width: `${barPct}%` }} />
       </div>
-      <div className="run-meta">
-        {runningId ? (
-          <>
-            <span>
-              {totalLocations.toLocaleString()} / {totalGoal.toLocaleString()}
-            </span>
-            <span>{formatDuration(elapsedMs)}</span>
-            {progress && (
-              <span>
-                {progress.countriesComplete}/{progress.countriesTotal} regions
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            <span>
-              actual locations {totalLocations.toLocaleString()} / goal{" "}
-              {totalGoal.toLocaleString()}
-            </span>
-            <span>{formatDuration(elapsedMs)}</span>
-          </>
-        )}
-      </div>
 
-      {runningId && rows.length > 0 && (
-        <div className="run-country-list">
-          {rows.map((r) => (
-            <div
-              key={r.code}
-              className={`run-cc ${r.status.toLowerCase()}`}
-              title={`${r.status} · produced ${r.produced.toLocaleString()}`}
-            >
-              <span className="run-cc-code">{r.code}</span>
-              <span className="run-cc-count">
-                {r.total > 0 ? `${r.completed}/${r.total}` : r.status}
-              </span>
+      {metaNumbers}
+
+      <div className={`run-details${minimized ? "" : " open"}`}>
+        <div className="run-details-inner">
+          {runError && <div className="run-error-line">{runError}</div>}
+
+          {runningId && rows.length > 0 && (
+            <div className="run-country-list">
+              {rows.map((r) => (
+                <div
+                  key={r.code}
+                  className={`run-cc ${r.status.toLowerCase()}`}
+                  title={`${r.status} · produced ${r.produced.toLocaleString()}`}
+                >
+                  <span className="run-cc-code">{r.code}</span>
+                  <span className="run-cc-count">
+                    {r.total > 0 ? `${r.completed}/${r.total}` : r.status}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {warnings.length > 0 && (
-        <div className="run-warnings">
-          {warnings.map((w, i) => (
-            <div key={i}>⚠ {w}</div>
-          ))}
-        </div>
-      )}
+          {warnings.length > 0 && (
+            <div className="run-warnings">
+              {warnings.map((w, i) => (
+                <div key={i}>⚠ {w}</div>
+              ))}
+            </div>
+          )}
 
-      {done && (
-        <div className="run-result">
-          {result?.outputPath ? (
-            <>
-              <div className="hint run-result-note">
-                {short
-                  ? "Finished below the goal — the filters left too few qualifying locations in some regions. That's fine; here's where it fell short:"
-                  : "All goals met."}
-              </div>
-              {shortfallCountries.length > 0 && (
-                <div className="sf-list">
-                  {shortfallCountries.map((c) => (
-                    <ShortfallCountry
-                      key={c.code}
-                      country={c}
-                      open={expanded.has(c.code)}
-                      onToggle={() => toggle(c.code)}
-                    />
-                  ))}
+          {done && (
+            <div className="run-result">
+              {result?.outputPath ? (
+                <>
+                  <div className="hint run-result-note">
+                    {short
+                      ? "Finished below the goal — the filters left too few qualifying locations in some regions. That's fine; here's where it fell short:"
+                      : "All goals met."}
+                  </div>
+                  {shortfallCountries.length > 0 && (
+                    <div className="sf-list">
+                      {shortfallCountries.map((c) => (
+                        <ShortfallCountry
+                          key={c.code}
+                          country={c}
+                          open={expanded.has(c.code)}
+                          onToggle={() => toggle(c.code)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="hint">
+                  {result?.stoppedEarly
+                    ? "Stopped before any region completed — nothing was written."
+                    : "The run completed but produced no locations."}
                 </div>
               )}
-            </>
-          ) : (
-            <div className="hint">
-              {result?.stoppedEarly
-                ? "Stopped before any region completed — nothing was written."
-                : "The run completed but produced no locations."}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -276,20 +232,21 @@ function ShortfallCountry({
         </span>
         <span className="sf-pct">{country.pctBelow}%↓</span>
       </button>
-      {open && hasSubs && (
-        <div className="sf-subs">
-          {country.subdivisions.map((s) => (
-            <div key={s.code} className="sf-sub">
-              <span className="sf-sub-name">
-                {s.code} {s.name}
-              </span>
-              <span className="grow" />
-              <span className="sf-num">
-                {s.produced.toLocaleString()} / {s.goal.toLocaleString()}
-              </span>
-              <span className="sf-pct">{s.pctBelow}%↓</span>
-            </div>
-          ))}
+      {hasSubs && (
+        <div className={`sf-subs${open ? " open" : ""}`}>
+          <div className="sf-subs-inner">
+            {country.subdivisions.map((s) => (
+              <div key={s.code} className="sf-sub">
+                <span className="sf-sub-name">
+                  {s.code} {s.name}
+                </span>
+                <span className="sf-num">
+                  {s.produced.toLocaleString()} / {s.goal.toLocaleString()}
+                </span>
+                <span className="sf-pct">{s.pctBelow}%↓</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

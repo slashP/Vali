@@ -3,6 +3,7 @@ import { request } from "../lib/sidecar";
 import { useStore } from "../store";
 import { ConfirmModal } from "../components/Modal";
 import { formatBytes, humanizeDate } from "../lib/format";
+import { openExternal } from "../lib/commands";
 import type {
   CountriesResult,
   DataStatus,
@@ -481,7 +482,13 @@ function EngineCard({
           <span className="k">Latest release</span>
           <span className="v">
             {valiInfo?.latestValiVersion ? (
-              <a href={valiInfo.nugetUrl} target="_blank" rel="noreferrer">
+              <a
+                href={valiInfo.nugetUrl}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void openExternal(valiInfo.nugetUrl);
+                }}
+              >
                 {valiInfo.latestValiVersion}
               </a>
             ) : (

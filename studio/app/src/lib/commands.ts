@@ -34,6 +34,11 @@ export function revealInExplorer(path: string): Promise<void> {
   return invoke<void>("reveal_in_explorer", { path });
 }
 
+/** Open a web URL in the user's default browser. */
+export function openExternal(url: string): Promise<void> {
+  return invoke<void>("open_external", { url });
+}
+
 /** Native open dialog. Returns the chosen path, or null if cancelled. */
 export function pickOpenFile(
   filterName: string,
