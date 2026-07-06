@@ -3,3 +3,6 @@
 
 # Tauri generated files
 /gen
+
+# Self-contained engine (Vali.Host) staged as externalBin at build time
+/binaries
