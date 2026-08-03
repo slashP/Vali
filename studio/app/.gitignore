@@ -1,0 +1,14 @@
+# dependencies
+node_modules
+
+# build output
+dist
+dist-ssr
+
+# vite / ts
+*.local
+.vite
+*.tsbuildinfo
+
+# editor
+.DS_Store
