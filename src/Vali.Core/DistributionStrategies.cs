@@ -309,10 +309,7 @@ public static class DistributionStrategies
         var locations = allAvailableLocations.ToDictionary(x => x.Key, ICollection<Loc> (_) => Array.Empty<Loc>());
         while (triedGoalCounts.Count < 10)
         {
-            var subdivisionGoalCounts = locations.ToDictionary(x => x.Key, x =>
-                hasSubdivisionWeights ?
-                    ((decimal)(subdivisionWeightsForCountry!.GetValueOrDefault(x.Key, 0)) / subdivisionWeightSum * totalGoalCount).RoundToInt() :
-                SubdivisionWeights.GoalForSubdivision(countryCode, x.Key, totalGoalCount, availableSubdivisions));
+            var subdivisionGoalCounts = SubdivisionGoalCounts(totalGoalCount);
             foreach (var (subdivision, _) in locations)
             {
                 var subdivisionGoalCount = subdivisionGoalCounts[subdivision];
@@ -356,16 +353,16 @@ public static class DistributionStrategies
             .Where(x => x.status == Status.Success)
             .Select(x => x.count == 0 ? null : (int?)x.count)
             .FirstOrDefault() ?? triedGoalCounts.MinBy(x => x.count).count;
-        var subdivisionGoalCountsSatisfyingFixedMinDistance = locations.ToDictionary(
-            x => x.Key,
-            x => hasSubdivisionWeights
-                ? ((decimal)(subdivisionWeightsForCountry!.GetValueOrDefault(x.Key, 0)) /
-                    subdivisionWeightSum * totalGoalCount).RoundToInt()
-                : SubdivisionWeights.GoalForSubdivision(countryCode, x.Key, maxLocationCountSatisfyingFixedMinDistance,
-                    availableSubdivisions));
+        var subdivisionGoalCountsSatisfyingFixedMinDistance = SubdivisionGoalCounts(maxLocationCountSatisfyingFixedMinDistance);
         return locations.Select(x =>
             (ByMaxMinDistance(allAvailableLocations[x.Key], subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], neighborLocationsBuckets[x.Key], subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], mapDefinition, countryCode, x.Key).locations,
                 subdivisionGoalCountsSatisfyingFixedMinDistance[x.Key], fixedMinDistance)).ToArray();
+
+        Dictionary<string, int> SubdivisionGoalCounts(int goalCount) =>
+            locations.ToDictionary(x => x.Key, x =>
+                hasSubdivisionWeights ?
+                    ((decimal)(subdivisionWeightsForCountry!.GetValueOrDefault(x.Key, 0)) / subdivisionWeightSum * goalCount).RoundToInt() :
+                SubdivisionWeights.GoalForSubdivision(countryCode, x.Key, goalCount, availableSubdivisions));
 
         int LargestSuccessCount()
         {
