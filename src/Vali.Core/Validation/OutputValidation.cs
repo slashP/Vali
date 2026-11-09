@@ -53,6 +53,12 @@ public static class OutputValidation
                 return null;
             }
 
+            if (countryPanning.Value.Percentage is < 0 or > 100)
+            {
+                ConsoleLogger.Error($"{nameof(countryPanning.Value.Percentage)} must be between 0 and 100. |{countryPanning.Key}: {countryPanning.Value.Percentage}|");
+                return null;
+            }
+
             static void DryRunMapCheckrExpression(string filter, MapDefinition definition)
             {
                 var expression = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(filter, true);
@@ -64,6 +70,12 @@ public static class OutputValidation
                 if (string.IsNullOrEmpty(panningExpression.Expression))
                 {
                     ConsoleLogger.Error($"panningExpression.{nameof(panningExpression.Expression)} cannot be empty.");
+                    return null;
+                }
+
+                if (panningExpression.Percentage is < 0 or > 100)
+                {
+                    ConsoleLogger.Error($"panningExpression.{nameof(panningExpression.Percentage)} must be between 0 and 100. |{countryPanning.Key}: {panningExpression.Percentage}|");
                     return null;
                 }
 

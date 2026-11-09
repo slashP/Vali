@@ -478,6 +478,11 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
     var cpDefaultPanning = countryPanningDef.Properties[nameof(CountryPanning.DefaultPanning).Prop()];
     cpDefaultPanning.Description = "Default panning heading expression for this country";
 
+    var cpPercentage = countryPanningDef.Properties[nameof(CountryPanning.Percentage).Prop()];
+    cpPercentage.Description = "Chance (0-100) that defaultPanning is used; the opposite direction is used otherwise. Defaults to 100.";
+    cpPercentage.Minimum = 0;
+    cpPercentage.Maximum = 100;
+
     var cpPanningExpressions = countryPanningDef.Properties[nameof(CountryPanning.PanningExpressions).Prop()];
     cpPanningExpressions.Description = "Conditional panning expressions. First matching expression is used, then falls back to defaultPanning.";
 
@@ -491,6 +496,11 @@ static void AddMapDefinitionConstraints(JsonSchema schema)
 
     var pePanning = panningExprDef.Properties[nameof(PanningExpression.Panning).Prop()];
     pePanning.Description = "Heading expression to use when this condition matches";
+
+    var pePercentage = panningExprDef.Properties[nameof(PanningExpression.Percentage).Prop()];
+    pePercentage.Description = "Chance (0-100) that panning is used when the expression matches; the opposite direction is used otherwise. Defaults to 100.";
+    pePercentage.Minimum = 0;
+    pePercentage.Maximum = 100;
 }
 
 // --- Live Generate constraints ---

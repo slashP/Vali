@@ -3481,10 +3481,13 @@ public class SubdivisionWeights
 
     public static string? SubdivisionName(string countryCode, string code)
     {
+        // Countries with no coverage at all (TZ, CN, ...) are in neither dictionary. The return is
+        // nullable and callers already treat null as "name unknown", so an unlisted country must
+        // resolve to null — indexing here threw KeyNotFoundException at the caller instead.
         var subdivisions = SubdivisionWeights.CountryToSubdivision.TryGetValue(countryCode, out var value)
             ? value
-            : SubdivisionWeights.NotQuiteThereYetCountryToSubdivision[countryCode];
-        return subdivisions.TryGetValue(code, out var val)
+            : SubdivisionWeights.NotQuiteThereYetCountryToSubdivision.GetValueOrDefault(countryCode);
+        return subdivisions != null && subdivisions.TryGetValue(code, out var val)
             ? val.subdivisionName
             : null;
     }

@@ -773,6 +773,16 @@
           "type": "string",
           "description": "Default panning heading expression for this country"
         },
+        "percentage": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Chance (0-100) that defaultPanning is used; the opposite direction is used otherwise. Defaults to 100.",
+          "format": "int32",
+          "maximum": 100.0,
+          "minimum": 0.0
+        },
         "panningExpressions": {
           "type": "array",
           "description": "Conditional panning expressions. First matching expression is used, then falls back to defaultPanning.",
@@ -797,6 +807,16 @@
         "panning": {
           "type": "string",
           "description": "Heading expression to use when this condition matches"
+        },
+        "percentage": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Chance (0-100) that panning is used when the expression matches; the opposite direction is used otherwise. Defaults to 100.",
+          "format": "int32",
+          "maximum": 100.0,
+          "minimum": 0.0
         }
       }
     },

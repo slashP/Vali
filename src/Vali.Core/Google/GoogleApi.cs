@@ -61,14 +61,22 @@ public class GoogleApi
             bool includeLinked,
             DateOnly? panoVerificationStart,
             DateOnly? panoVerificationEnd,
-            BadCamStrategy badCamStrategy) =>
+            BadCamStrategy badCamStrategy,
+            Func<PanningContext, PanningDecision?>? panningOverride = null) =>
         silent
             ? await locations.RunLimitedNumberAtATime(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy), chunkSize, null)
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy, panningOverride: panningOverride), chunkSize, null)
             : await locations.RunLimitedNumberAtATimeWithProgressBar(
-                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy),
+                x => GetVerifiedLocation(x, rejectLocationsWithoutDescription, knownCountryCode: countryCode, selectionStrategy: selectionStrategy, countryPanning: countryPanning, radius: radius, includeLinked: includeLinked, panoVerificationStart: panoVerificationStart, panoVerificationEnd: panoVerificationEnd, badCamStrategy: badCamStrategy, panningOverride: panningOverride),
                 chunkSize,
                 "Verifying locations by calling Google APIs.");
+
+    public static string SingleImageSearchBody(double lat, double lng, int radius, bool officialOnly)
+    {
+        var imagery = officialOnly ? "[[[2,true,2]]]" : "[[[2,true,2],[3,true,2],[10,true,2]]]";
+        return $@"
+[[""apiv3"",null,null,null,""US"",null,null,null,null,null,[[false]]],[[null,null,{lat.Format()},{lng.Format()}],{radius}],[null,[""en"",""US""],null,null,null,null,null,null,[2],null,{imagery}],[[1,2,3,4,8,6]]]";
+    }
 
     public static async Task<(MapCheckrLocation location, LocationLookupResult result)> GetVerifiedLocation(
         MapCheckrLocation location,
@@ -80,10 +88,11 @@ public class GoogleApi
         DateOnly? panoVerificationStart,
         DateOnly? panoVerificationEnd,
         BadCamStrategy badCamStrategy,
-        int radius = 5)
+        int radius = 5,
+        Func<PanningContext, PanningDecision?>? panningOverride = null,
+        bool officialOnly = false)
     {
-        var body = $@"
-[[""apiv3"",null,null,null,""US"",null,null,null,null,null,[[false]]],[[null,null,{location.lat.Format()},{location.lng.Format()}],{radius}],[null,[""en"",""US""],null,null,null,null,null,null,[2],null,[[[2,true,2],[3,true,2],[10,true,2]]]],[[1,2,3,4,8,6]]]";
+        var body = SingleImageSearchBody(location.lat, location.lng, radius, officialOnly);
         string content;
         try
         {
@@ -193,7 +202,7 @@ public class GoogleApi
             }
 
             var defaultDrivingDirectionAngle = baseInfoArray[1]!.AsArray().Count >= 3 && baseInfoArray[1]![2]?.AsArray().Count > 0 && baseInfoArray[1]![2]![0] != null && baseInfoArray[1]![2]![0]!.GetValueKind() == JsonValueKind.Number ? (ushort)Math.Round(baseInfoArray[1]![2]![0]!.GetValue<decimal>(), 0) : (ushort)1000;
-            var heading = Heading(countryPanning, countryCode, resolutionHeight, year, month, arrows, defaultDrivingDirectionAngle, lat, lng);
+            var heading = Heading(countryPanning, panningOverride, new PanningContext(pano, countryCode, location.subdivisionCode, lat, lng, year, month, resolutionHeight), arrows, defaultDrivingDirectionAngle);
 
             var defaultArrowCount = (ushort)arrows.Length;
             var selected = selectionStrategy switch
@@ -222,7 +231,7 @@ public class GoogleApi
             bool? isGen1 = false;
             if (selected.PanoId != pano)
             {
-                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(selected.PanoId, countryPanning, countryCode);
+                var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(selected.PanoId, countryPanning, countryCode, location.subdivisionCode, panningOverride);
                 pano = selected.PanoId;
                 year = selected.Year;
                 month = selected.Month;
@@ -247,7 +256,7 @@ public class GoogleApi
                 var alternativeImageResults = new List<(string pano, int year, int month, ushort defaultDrivingDirectionAngle, ushort arrowCount, decimal heading, double elevation, bool isScout, bool? isGen1, string? copyright, int resolutionHeight, LocationLookupResult result)>();
                 foreach (var alternativePano in alternativeImages.Where(i => i.PanoId != selected.PanoId))
                 {
-                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId, countryPanning, countryCode);
+                    var (gen1, drivingDirectionAngle, defaultHeading, arrowCount, metersAboveSeaLevel, _, _, _, _, scout, resHeight, detailsCopyright) = await DetailsFromPanoId(alternativePano.PanoId, countryPanning, countryCode, location.subdivisionCode, panningOverride);
                     result = gen1 == true ? LocationLookupResult.Gen1 : CopyrightToLookupResult(detailsCopyright);
                     if (result == LocationLookupResult.Valid)
                     {
@@ -332,7 +341,12 @@ public class GoogleApi
         };
     }
 
-    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, int resolutionHeight, string copyright)> DetailsFromPanoId(string panoId,  Dictionary<string, CountryPanning?>? countryPanning, string? countryCode)
+    public static async Task<(bool? isGen1, ushort drivingDirectionAngle, decimal defaultHeading, int arrowCount, double elevation, int year, int month, double lat, double lng, bool isScout, int resolutionHeight, string copyright)> DetailsFromPanoId(
+        string panoId,
+        Dictionary<string, CountryPanning?>? countryPanning,
+        string? countryCode,
+        string? subdivisionCode = null,
+        Func<PanningContext, PanningDecision?>? panningOverride = null)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -386,7 +400,7 @@ public class GoogleApi
             var isScout = metadataResponse[1]![0]![6]![5]!.AsArray().Count >= 3 &&
                                 metadataResponse[1]![0]![6]![5]![2]!.GetValue<string>() == "scout";
             var copyright = metadataResponse[1]![0]![4]![0]![0]![0]![0]!.GetValue<string>();
-            var heading = Heading(countryPanning, countryCode, resolutionHeight, year, month, arrows, drivingDirectionAngle, lat, lng);
+            var heading = Heading(countryPanning, panningOverride, new PanningContext(panoId, countryCode, subdivisionCode, lat, lng, year, month, resolutionHeight), arrows, drivingDirectionAngle);
             return (isGen1, drivingDirectionAngle, heading, arrows.Length, elevation, year, month, lat, lng, isScout, resolutionHeight, copyright);
         }
         catch (Exception e)
@@ -453,51 +467,15 @@ public class GoogleApi
 
     private static decimal Heading(
         Dictionary<string, CountryPanning?>? countryPannings,
-        string? countryCode,
-        int resolutionHeight,
-        int year,
-        int month,
+        Func<PanningContext, PanningDecision?>? panningOverride,
+        PanningContext context,
         JsonNode?[] arrows,
-        ushort defaultDrivingDirectionAngle,
-        double lat,
-        double lng)
+        ushort defaultDrivingDirectionAngle)
     {
-        string? panning = null;
-        if (countryPannings != null && countryPannings.TryGetValue(countryCode ?? "", out var countryPanning) && countryPanning != null)
-        {
-            foreach (var panningExpression in countryPanning.PanningExpressions)
-            {
-                var panExpression = LocationLakeFilterer.CompileBoolMapCheckrExpression(panningExpression.Expression, false);
-                var panningShouldApply = panExpression(new MapCheckrLocation
-                {
-                    countryCode = countryCode,
-                    resolutionHeight = resolutionHeight,
-                    year = year,
-                    month = month,
-                    lat = lat,
-                    lng = lng
-                });
-                if (panningShouldApply)
-                {
-                    panning = panningExpression.Panning;
-                    break;
-                }
-            }
-
-            panning ??= countryPanning.DefaultPanning;
-        }
-
-        var heading = (arrows, panning?.ToLower()) switch
-        {
-            ({ Length: > 2 }, "indrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.MinBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
-            ({ Length: > 2 }, "awayfromdrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.MaxBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
-            ({ Length: > 1 }, "indrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).MinBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
-            ({ Length: > 1 }, "awayfromdrivingdirection") => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).MaxBy(x => Math.Abs(x - defaultDrivingDirectionAngle)),
-            ({ Length: > 2 }, _) => arrows.Select(e => e![1]![3]!.GetValue<decimal>()).GetPermutations(2).MinBy(x => Math.Abs(x.Max() - x.Min() - 180))!.TakeRandom(1).Single(),
-            ({ Length: > 0 }, _) => arrows[Random.Shared.Next(0, arrows.Length)]![1]![3]!.GetValue<decimal>(),
-            _ => defaultDrivingDirectionAngle
-        };
-        return heading;
+        var rng = PanningResolver.RandomFor(context.PanoId);
+        var panning = PanningResolver.ResolvePanning(countryPannings, panningOverride, context, rng);
+        var arrowHeadings = arrows.Select(e => e![1]![3]!.GetValue<decimal>()).ToArray();
+        return PanningResolver.PickHeading(arrowHeadings, defaultDrivingDirectionAngle, panning, rng);
     }
 
     public static async Task<string?> Shorten(double lat, double lng, string panoId)
@@ -567,10 +545,71 @@ public class GoogleApi
         }
     }
 
+    public static async Task<TilePanoData> GetTilePanos(int x, int y)
+    {
+        var url = $"https://www.google.com/maps/photometa/ac/v1?pb=!1m1!1smaps_sv.tactile!6m3!1i{x}!2i{y}!3i17!8b1";
+        string content;
+        try
+        {
+            var response = await _shortenerClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Tile panos {x},{y}: HTTP {(int)response.StatusCode}");
+                return new TilePanoData(x, y, [], Failed: true);
+            }
+
+            content = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return new TilePanoData(x, y, [], Failed: true);
+        }
+
+        try
+        {
+            var bracket = content.IndexOf('[');
+            if (bracket < 0)
+            {
+                // Not the JSON payload (error/captcha page) — an error, not an empty tile.
+                return new TilePanoData(x, y, [], Failed: true);
+            }
+
+            var node = JsonNode.Parse(content[bracket..]);
+            // Same two shapes as PanoIdsInTile: pano list at node[1][1], or region/empty shapes.
+            // The region/empty shapes are valid observations of a pano-free tile (Failed: false).
+            if (node is not JsonArray root || root.Count < 2 ||
+                root[1] is not JsonArray level1 || level1.Count < 2 ||
+                level1[1] is not JsonArray panos)
+            {
+                return new TilePanoData(x, y, []);
+            }
+
+            var result = panos
+                .Select(p => p?[0]?[0]?[1]?.GetValue<string>() is { } id &&
+                             p?[0]?[2]?[0]?[2]?.GetValue<double>() is { } lat &&
+                             p?[0]?[2]?[0]?[3]?.GetValue<double>() is { } lng
+                    ? new TilePano(id, lat, lng)
+                    : null)
+                .Where(p => p != null)
+                .Select(p => p!)
+                .Where(p => TileCoord(p.Lat, p.Lng, 17) == (x, y))
+                .ToArray();
+            return new TilePanoData(x, y, result);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed parsing tile panos. {content}");
+            Console.WriteLine(e);
+            return new TilePanoData(x, y, [], Failed: true);
+        }
+    }
+
     public static async Task<(MapCheckrLocation location, LocationLookupResult result)> GetLocationFromPanoId(
         string panoId,
         string? knownCountryCode,
-        Dictionary<string, CountryPanning?>? countryPanning)
+        Dictionary<string, CountryPanning?>? countryPanning,
+        Func<PanningContext, PanningDecision?>? panningOverride = null)
     {
         var body = $"""
                     [["apiv3",null,null,null,"US",null,null,null,null,null,[[0]]],["en","US"],[[[2,"{panoId}"]]],[[1,2,3,4,8,6]]]
@@ -581,6 +620,15 @@ public class GoogleApi
             var responseMessage = await _client.PostAsync(
                 "$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetMetadata",
                 new StringContent(body, Encoding.UTF8, "application/json+protobuf"));
+            if (!responseMessage.IsSuccessStatusCode)
+            {
+                // Never parse an error body: JSON-shaped error responses used to null-propagate
+                // into a silent NoImages misclassification (throttling read as "pano gone").
+                Console.WriteLine($"Metadata {panoId}: HTTP {(int)responseMessage.StatusCode}");
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                return (new MapCheckrLocation { panoId = panoId }, LocationLookupResult.UnknownError);
+            }
+
             content = await responseMessage.Content.ReadAsStringAsync();
         }
         catch (Exception e)
@@ -592,7 +640,17 @@ public class GoogleApi
 
         try
         {
-            var b = JsonNode.Parse(content)?[1]?[0];
+            // Element 0 is an RPC status, element 1 the payload (stub example below). A short array
+            // (e.g. [[3]]) is a rejection with no payload — a definite "no answer", not an
+            // observation about the pano, so it must not conclude NoImages.
+            var root = JsonNode.Parse(content) as JsonArray;
+            if (root == null || root.Count < 2)
+            {
+                Console.WriteLine($"Metadata {panoId}: rpc status {root?[0]?.ToJsonString() ?? content}");
+                return (new MapCheckrLocation { panoId = panoId }, LocationLookupResult.UnknownError);
+            }
+
+            var b = root[1]?[0];
             if (b == null)
             {
                 return (new MapCheckrLocation { panoId = panoId }, LocationLookupResult.NoImages);
@@ -646,7 +704,7 @@ public class GoogleApi
                                                baseInfoArray[1]![2]![0]!.GetValueKind() == JsonValueKind.Number
                 ? (ushort)Math.Round(baseInfoArray[1]![2]![0]!.GetValue<decimal>(), 0)
                 : (ushort)1000;
-            var heading = Heading(countryPanning, countryCode, resolutionHeight, year, month, arrows, defaultDrivingDirectionAngle, lat, lng);
+            var heading = Heading(countryPanning, panningOverride, new PanningContext(panoId, countryCode, null, lat, lng, year, month, resolutionHeight), arrows, defaultDrivingDirectionAngle);
 
             var alternativeImages = (baseInfoArray.Count > 8 && baseInfoArray[8]?.AsArray() != null
                     ? baseInfoArray[8]!.AsArray().Select(x =>
@@ -666,6 +724,17 @@ public class GoogleApi
                 .OrderByDescending(x => x.Year)
                 .ThenByDescending(x => x.Month)
                 .ToArray();
+
+            var linked = baseInfoArray.Count >= 4
+                ? (baseInfoArray[3]?.AsArray().FirstOrDefault()?.AsArray() ?? [])
+                    .Select(xx => xx != null && xx[0]?[1] != null && xx[2]?[0]?[2] != null && xx[2]?[0]?[3] != null
+                        ? ((string pano, double lat, double lng)?)(xx[0]![1]!.GetValue<string>(), xx[2]![0]![2]!.GetValue<double>(), xx[2]![0]![3]!.GetValue<double>())
+                        : null)
+                    .Where(l => l != null)
+                    .Select(l => l!.Value)
+                    .Where(l => alternativeImages.All(a => a.PanoId != l.pano))
+                    .ToArray()
+                : [];
 
             if (year < 2005 || defaultDrivingDirectionAngle > 360)
             {
@@ -691,6 +760,7 @@ public class GoogleApi
                 elevation = (int)Math.Round(elevation, 0),
                 descriptionLength = desc?.Length ?? 0,
                 alternativePanos = alternativeImages.Where(a => a.PanoId != panoId).ToArray(),
+                linkedPanos = linked,
                 subdivision = subdivision,
                 isScout = isScout,
                 resolutionHeight = resolutionHeight
@@ -699,7 +769,7 @@ public class GoogleApi
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed handling pano metadata. {content}");
+            Console.WriteLine($"Failed handling pano metadata for {panoId}. {content}");
             Console.WriteLine(e);
             return (new MapCheckrLocation { panoId = panoId }, LocationLookupResult.UnknownError);
         }
@@ -766,6 +836,11 @@ public class GoogleApi
         AllowForAll,
     }
 }
+
+public record TilePano(string PanoId, double Lat, double Lng);
+// Failed distinguishes transport/parse errors from a genuinely pano-free tile: consumers must not
+// treat a failed fetch as observed absence (e.g. by retiring baseline coverage).
+public record TilePanoData(int TileX, int TileY, TilePano[] InBboxPanos, bool Failed = false);
 
     public record MapCheckrLocation : IDistributionLocation<string>
 {

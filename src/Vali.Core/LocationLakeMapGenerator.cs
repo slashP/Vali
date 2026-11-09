@@ -280,7 +280,8 @@ public class LocationLakeMapGenerator
                 includeLinked: false,
                 panoVerificationStart: mapDefinition.Output.PanoVerificationStart,
                 panoVerificationEnd: mapDefinition.Output.PanoVerificationEnd,
-                GoogleApi.BadCamStrategy.DisallowInCountriesWithDecentOtherCoverage);
+                GoogleApi.BadCamStrategy.DisallowInCountriesWithDecentOtherCoverage,
+                panningOverride: mapDefinition.Output.PanningOverride);
             if (!string.IsNullOrEmpty(mapDefinition.Output.PanoVerificationExpression))
             {
                 var userFilter = LocationLakeFilterer.CompileExpression<MapCheckrLocation, bool>(mapDefinition.Output.PanoVerificationExpression, true);
@@ -298,7 +299,7 @@ public class LocationLakeMapGenerator
             }
 
             var unknownErrors = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.UnknownError).Select(x => x.location).ToArray();
-            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest, countryPanning: countryPanning, includeLinked: false, panoVerificationStart: mapDefinition.Output.PanoVerificationStart, mapDefinition.Output.PanoVerificationEnd, GoogleApi.BadCamStrategy.DisallowInCountriesWithDecentOtherCoverage);
+            var retryUnknownErrors = await GoogleApi.GetLocations(unknownErrors, null, chunkSize: 20, radius: 50, rejectLocationsWithoutDescription: false, silent: true, selectionStrategy: GoogleApi.PanoStrategy.Newest, countryPanning: countryPanning, includeLinked: false, panoVerificationStart: mapDefinition.Output.PanoVerificationStart, mapDefinition.Output.PanoVerificationEnd, GoogleApi.BadCamStrategy.DisallowInCountriesWithDecentOtherCoverage, panningOverride: mapDefinition.Output.PanningOverride);
             locations = verifiedLocations.Where(x => x.result is GoogleApi.LocationLookupResult.Valid)
                 .Concat(retryUnknownErrors.Where(x => x.result is GoogleApi.LocationLookupResult.Valid))
                 .Select(x => new
@@ -358,6 +359,9 @@ public class LocationLakeMapGenerator
                 countryCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.CountryCode : null,
                 subdivisionCode = includeAdditionalLocationInfo ? l.Loc.Nominatim.SubdivisionCode : null,
                 locationId = includeAdditionalLocationInfo ? l.Loc.LocationId.ToString() : null,
+                resolutionHeight = includeAdditionalLocationInfo && l.MapCheckrLoc.resolutionHeight > 0 ? l.MapCheckrLoc.resolutionHeight : null,
+                year = includeAdditionalLocationInfo && l.MapCheckrLoc.year > 0 ? l.MapCheckrLoc.year : null,
+                month = includeAdditionalLocationInfo && l.MapCheckrLoc.month > 0 ? l.MapCheckrLoc.month : null,
             }).ToArray();
         await File.WriteAllTextAsync(locationsPath, Serializer.Serialize(geoMapLocations));
         ConsoleLogger.Info($"{locations.Length, 6:N0} locations saved to {new FileInfo(locationsPath).FullName}");
@@ -414,6 +418,9 @@ public class LocationLakeMapGenerator
         [JsonIgnore]
         public double Lng => lng;
         public string? locationId { get; set; }
+        public int? resolutionHeight { get; set; }
+        public int? year { get; set; }
+        public int? month { get; set; }
     }
 
     public record GeoMapLocationExtra

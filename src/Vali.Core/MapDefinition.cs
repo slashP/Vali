@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using NetTopologySuite.Geometries;
+using Vali.Core.Google;
 
 namespace Vali.Core;
 
@@ -138,11 +139,20 @@ public record LocationOutput
     public int PanoVerificationParallelism { get; set; } = 100;
     public DateOnly? PanoVerificationStart { get; set; }
     public DateOnly? PanoVerificationEnd { get; set; }
+
+    /// <summary>
+    /// Code-only panning override, consulted per pano before CountryPanoVerificationPanning.
+    /// Null result = use the rules. Not part of the JSON definition.
+    /// </summary>
+    [JsonIgnore]
+    public Func<PanningContext, PanningDecision?>? PanningOverride { get; set; }
 }
 
 public record CountryPanning
 {
     public string DefaultPanning { get; set; } = "";
+    /// <summary>Chance (0–100) that DefaultPanning is used; the opposite direction otherwise. Null = 100.</summary>
+    public int? Percentage { get; set; }
     public PanningExpression[] PanningExpressions { get; set; } = [];
 }
 
@@ -150,6 +160,8 @@ public record PanningExpression
 {
     public string Expression { get; set; } = "";
     public string Panning { get; set; } = "";
+    /// <summary>Chance (0–100) that Panning is used when Expression matches; the opposite otherwise. Null = 100.</summary>
+    public int? Percentage { get; set; }
 }
 
 public record LocationProbability

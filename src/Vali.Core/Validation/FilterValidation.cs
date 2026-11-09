@@ -221,6 +221,23 @@ public static class FilterValidation
         return definition;
     }
 
+    public static MapDefinition? ValidateExternalDataFiles(this MapDefinition definition)
+    {
+        var externalDataFiles = definition.GlobalExternalDataFiles
+            .Concat(definition.CountryExternalDataFiles.SelectMany(f => f.Value))
+            .Concat(definition.SubdivisionExternalDataFiles.SelectMany(s => s.Value.Values).SelectMany(f => f))
+            .Distinct()
+            .ToArray();
+        var missing = externalDataFiles.Where(f => !File.Exists(f)).ToArray();
+        if (missing.Length > 0)
+        {
+            ConsoleLogger.Error($"{missing.Length} of {externalDataFiles.Length} external data files do not exist, f.ex. {missing.Take(3).Merge(", ")}.");
+            return null;
+        }
+
+        return definition;
+    }
+
     public static MapDefinition? ValidateGeometryFilters(this MapDefinition definition)
     {
         var geometryFilters = definition.GeometryFilters

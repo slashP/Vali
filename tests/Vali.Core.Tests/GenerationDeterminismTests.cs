@@ -1,4 +1,5 @@
 using Shouldly;
+using Vali.Core.Google;
 using Xunit;
 
 namespace Vali.Core.Tests;
@@ -48,5 +49,18 @@ public class GenerationDeterminismTests
         GenerationDeterminism.Randomness = GenerationDeterminism.DistributionRandomness.Random;
         var locs = new[] { Loc(3), Loc(1), Loc(2) };
         GenerationDeterminism.InCanonicalOrder(locs).Select(l => l.NodeId).ShouldBe(new long[] { 3, 1, 2 });
+    }
+
+    [Fact]
+    public void Panning_rolls_are_seeded_per_pano_only_when_deterministic()
+    {
+        try
+        {
+            GenerationDeterminism.Randomness = GenerationDeterminism.DistributionRandomness.None;
+            PanningResolver.RandomFor("abc").Next().ShouldBe(PanningResolver.SeededRandom("abc").Next());
+            GenerationDeterminism.Randomness = GenerationDeterminism.DistributionRandomness.Random;
+            PanningResolver.RandomFor("abc").ShouldBeSameAs(Random.Shared);
+        }
+        finally { GenerationDeterminism.Randomness = GenerationDeterminism.DistributionRandomness.Random; }
     }
 }
