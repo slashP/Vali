@@ -489,7 +489,7 @@ public static class DistributionStrategies
         return locationFilter;
     }
 
-    private static readonly ConcurrentDictionary<string, Lazy<Dictionary<string, Dictionary<string, string>>>> ExternalDataCache = new();
+    internal static readonly FileContentCache<Dictionary<string, Dictionary<string, string>>> ExternalDataCache = new();
 
     private static Loc[] ReadFromFile(string file, MapDefinition mapDefinition, string countryCode)
     {
@@ -524,10 +524,9 @@ public static class DistributionStrategies
         {
             foreach (var externalDataFile in externalFiles)
             {
-                var externalData = ExternalDataCache.GetOrAdd(
+                var externalData = ExternalDataCache.Get(
                     externalDataFile,
-                    static file => new Lazy<Dictionary<string, Dictionary<string, string>>>(
-                        () => Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(file, []))).Value;
+                    static file => Extensions.TryJsonDeserializeFromFile<Dictionary<string, Dictionary<string, string>>>(file, []));
                 foreach (var location in locations)
                 {
                     if (externalData.TryGetValue(location.LocationId.ToString(), out var data))

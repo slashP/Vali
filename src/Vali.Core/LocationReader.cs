@@ -1,12 +1,10 @@
-﻿using System.Collections.Concurrent;
-using static Vali.Core.LocationLakeMapGenerator;
+﻿using static Vali.Core.LocationLakeMapGenerator;
 
 namespace Vali.Core;
 
 public class LocationReader
 {
-    private static readonly ConcurrentDictionary<string, LocationLakeMapGenerator.GeoMapLocation[]> Locations = new();
-    private static readonly object LockObject = new object();
+    internal static readonly FileContentCache<LocationLakeMapGenerator.GeoMapLocation[]> Locations = new();
 
     public static LocationLakeMapGenerator.GeoMapLocation[] DeserializeLocationsFromFile(string path)
     {
@@ -15,31 +13,23 @@ public class LocationReader
             return [];
         }
 
-        if (Locations.TryGetValue(path, out var cachedLocations))
+        var extension = Path.GetExtension(path);
+        if (extension == ".csv")
         {
-            return cachedLocations;
+            var lines = File.ReadAllLines(path);
+            return lines.Where(x => x.Length > 2).Select(x =>
+                    new LocationLakeMapGenerator.GeoMapLocation
+                    {
+                        lat = x.Split(',')[0].ParseAsDouble(),
+                        lng = x.Split(',')[1].ParseAsDouble(),
+                    })
+                .ToArray();
         }
 
-        lock (LockObject)
+        return Locations.Get(path, ReadJson);
+
+        static LocationLakeMapGenerator.GeoMapLocation[] ReadJson(string path)
         {
-            if (Locations.TryGetValue(path, out cachedLocations))
-            {
-                return cachedLocations;
-            }
-
-            var extension = Path.GetExtension(path);
-            if (extension == ".csv")
-            {
-                var lines = File.ReadAllLines(path);
-                return lines.Where(x => x.Length > 2).Select(x =>
-                        new LocationLakeMapGenerator.GeoMapLocation
-                        {
-                            lat = x.Split(',')[0].ParseAsDouble(),
-                            lng = x.Split(',')[1].ParseAsDouble(),
-                        })
-                    .ToArray();
-            }
-
             var firstChar = Extensions.ReadChars(path, 1);
             LocationLakeMapGenerator.GeoMapLocation[] mapLocations;
             if (firstChar[0] == '[')
@@ -75,7 +65,6 @@ public class LocationReader
                 }).ToArray();
             }
 
-            Locations.TryAdd(path, mapLocations);
             return mapLocations;
         }
     }

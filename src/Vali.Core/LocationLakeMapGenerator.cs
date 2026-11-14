@@ -388,6 +388,17 @@ public class LocationLakeMapGenerator
                 }));
     }
 
+    /// <summary>
+    /// Drops the process-lifetime caches of parsed input files and geohash neighbours, for hosts that generate
+    /// repeatedly in one long-lived process. Call it between generations, not during one.
+    /// </summary>
+    public static void ClearCaches()
+    {
+        DistributionStrategies.ExternalDataCache.Clear();
+        LocationReader.Locations.Clear();
+        Hasher.ClearNeighborCache();
+    }
+
     public static int CountryLocationCountGoal(MapDefinition mapDefinition, string countryCode)
     {
         var countryWeights = CountryWeights(mapDefinition);

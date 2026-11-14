@@ -64,6 +64,8 @@ public static class Hasher
         return neighbors;
     }
 
+    internal static void ClearNeighborCache() => NeighborCache.Clear();
+
     public static BoundingBox GetBoundingBox(ulong hash)
     {
         var p = (int)(hash >> 60);
