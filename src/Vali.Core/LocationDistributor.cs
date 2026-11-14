@@ -224,7 +224,7 @@ public static class LocationDistributor
                 IReadOnlyCollection<ILatLng> alreadyInMap;
                 if (placedByHash != null)
                 {
-                    var neighbors = Hasher.Neighbors(group.Key);
+                    var neighbors = Hasher.NeighborsWithin(group.Key, minDistanceBetweenLocations);
                     var neighborLocations = new List<ILatLng>();
                     foreach (var neighborHash in neighbors)
                     {

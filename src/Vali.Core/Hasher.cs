@@ -66,6 +66,65 @@ public static class Hasher
 
     internal static void ClearNeighborCache() => NeighborCache.Clear();
 
+    /// <summary>
+    /// The cells other than <paramref name="hash"/> that can hold a point closer than <paramref name="radiusMeters"/>
+    /// to some point in it. Usually that is <see cref="Neighbors"/>, returned as is. Cells narrower than the radius
+    /// need more: east and west towards the poles, where a cell's width shrinks with the cosine of its latitude,
+    /// and in every direction when the radius exceeds the cell's size.
+    /// </summary>
+    public static ulong[] NeighborsWithin(ulong hash, double radiusMeters)
+    {
+        var p = (int)(hash >> 60);
+        var totalBits = p * 5;
+        var latBits = totalBits / 2;
+        var lngBits = totalBits - latBits;
+        var latRange = 1L << latBits;
+        var lngRange = 1L << lngBits;
+        var cellLat = 180.0 / latRange;
+        var cellLng = 360.0 / lngRange;
+
+        var payload = hash & 0x0FFF_FFFF_FFFF_FFFFUL;
+        Deinterleave(payload >> (60 - totalBits), totalBits, out var latVal, out var lngVal);
+
+        // Degrees of latitude a point within the radius can be away. 111,000 m per degree is slightly short of the
+        // 111,199 that Extensions.PointsAreCloserThan uses, so the reach errs on the wide side.
+        var reachLat = radiusMeters / 111_000.0;
+        var minLat = (long)latVal * cellLat - 90.0;
+        var polewardLat = Math.Min(90.0, Math.Max(Math.Abs(minLat), Math.Abs(minLat + cellLat)) + reachLat);
+        var cosPoleward = Math.Cos(polewardLat * Math.PI / 180.0);
+        var stepsLat = (long)Math.Ceiling(reachLat / cellLat);
+        var stepsLng = cosPoleward > 0 ? (long)Math.Ceiling(reachLat / cosPoleward / cellLng) : lngRange;
+        if (stepsLat <= 1 && stepsLng <= 1)
+        {
+            return Neighbors(hash);
+        }
+
+        // Each longitude once, even where the reach wraps all the way round near a pole.
+        stepsLng = Math.Min(stepsLng, (lngRange - 1) / 2);
+        var cells = new List<ulong>();
+        for (var dLat = -stepsLat; dLat <= stepsLat; dLat++)
+        {
+            var lat = (long)latVal + dLat;
+            if (lat < 0 || lat >= latRange)
+            {
+                continue;
+            }
+
+            for (var dLng = -stepsLng; dLng <= stepsLng; dLng++)
+            {
+                if (dLat == 0 && dLng == 0)
+                {
+                    continue;
+                }
+
+                var lng = (((long)lngVal + dLng) % lngRange + lngRange) % lngRange;
+                cells.Add(((ulong)p << 60) | (Interleave((ulong)lat, (ulong)lng, totalBits) << (60 - totalBits)));
+            }
+        }
+
+        return cells.ToArray();
+    }
+
     public static BoundingBox GetBoundingBox(ulong hash)
     {
         var p = (int)(hash >> 60);

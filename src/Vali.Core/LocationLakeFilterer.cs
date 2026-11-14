@@ -198,7 +198,7 @@ public static class LocationLakeFilterer
         return locations.Where(l =>
         {
             var hash = Hasher.Encode(l.Lat, l.Lng, precision);
-            return LocationLookupService.GetNearbyLocations(proximityLocationBuckets, hash).Any(x => Extensions.PointsAreCloserThan(l.Lat, l.Lng, x.Lat, x.Lng, proximityFilterRadiusSquared));
+            return LocationLookupService.GetNearbyLocations(proximityLocationBuckets, hash, proximityFilter.Radius).Any(x => Extensions.PointsAreCloserThan(l.Lat, l.Lng, x.Lat, x.Lng, proximityFilterRadiusSquared));
         });
     }
 

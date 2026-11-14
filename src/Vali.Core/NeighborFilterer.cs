@@ -78,45 +78,45 @@ public class NeighborFilterer
         return neighborFilter switch
         {
             { Bound: "gte", CheckEachCardinalDirectionSeparately: true } => enumerable
-                .Where(l => directions.Any(d => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
+                .Where(l => directions.Any(d => LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) >= neighborFilter.Limit)),
             { Limit: 1, Bound: "gte", CheckEachCardinalDirectionSeparately: false } or { Bound: "some" } => enumerable
-                .Where(l => LocationsFromDictionary(buckets, l, precision).Any(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l))),
             { Bound: "gte", CheckEachCardinalDirectionSeparately: false } => enumerable
-                .Where(l => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) >= neighborFilter.Limit),
             { Limit: 0, Bound: "lte", CheckEachCardinalDirectionSeparately: true } or { CheckEachCardinalDirectionSeparately: true, Bound: "none" } => enumerable
-                .Where(l => directions.Any(d => !LocationsFromDictionary(buckets, l, precision).Any(l2 =>
+                .Where(l => directions.Any(d => !LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)))),
             { Limit: 0, Bound: "lte", CheckEachCardinalDirectionSeparately: false } or { Bound: "none" } => enumerable
-                .Where(l => !LocationsFromDictionary(buckets, l, precision).Any(l2 =>
+                .Where(l => !LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Any(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l))),
             { Limit: > 0, Bound: "lte", CheckEachCardinalDirectionSeparately: true } => enumerable
-                .Where(l => directions.Any(d => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
+                .Where(l => directions.Any(d => LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     IsInDirection(d, l, l2) &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) <= neighborFilter.Limit)),
             { Bound: "lte", CheckEachCardinalDirectionSeparately: false } => enumerable
-                .Where(l => LocationsFromDictionary(buckets, l, precision).Count(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Count(l2 =>
                     l.NodeId != l2.NodeId &&
                     Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared) &&
                     filterExpression(l2, l)) <= neighborFilter.Limit),
             { Bound: "all" } => enumerable
-                .Where(l => LocationsFromDictionary(buckets, l, precision).Where(l2 =>
+                .Where(l => LocationsFromDictionary(buckets, l, precision, neighborFilter.Radius).Where(l2 =>
                         l.NodeId != l2.NodeId &&
                         Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, neighborFilterRadiusSquared))
                     .AllAtLeastOne(l2 => filterExpression(l2, l))),
@@ -134,7 +134,7 @@ public class NeighborFilterer
             {
                 var allCount = 0;
                 var matchCount = 0;
-                foreach (var l2 in LocationsFromDictionary(neighborLocationBuckets, l, precision))
+                foreach (var l2 in LocationsFromDictionary(neighborLocationBuckets, l, precision, neighborFilter.Radius))
                 {
                     if (l.NodeId != l2.NodeId &&
                         Extensions.PointsAreCloserThan(l.Lat, l.Lng, l2.Lat, l2.Lng, radiusSquared))
@@ -157,8 +157,8 @@ public class NeighborFilterer
             });
     }
 
-    private static IEnumerable<Loc> LocationsFromDictionary(Dictionary<ulong, List<Loc>> neighborLocationBuckets, Loc l, HashPrecision precision) =>
-        LocationLookupService.GetNearbyLocations(neighborLocationBuckets, Hasher.Encode(l.Lat, l.Lng, precision));
+    private static IEnumerable<Loc> LocationsFromDictionary(Dictionary<ulong, List<Loc>> neighborLocationBuckets, Loc l, HashPrecision precision, int radius) =>
+        LocationLookupService.GetNearbyLocations(neighborLocationBuckets, Hasher.Encode(l.Lat, l.Lng, precision), radius);
 
     private static bool IsInDirection(CardinalDirection? direction, Loc x1, Loc x2) =>
         direction switch

@@ -28,7 +28,14 @@ public class LocationLookupService
         return allLocationsDictionary;
     }
 
-    public static IEnumerable<T> GetNearbyLocations<T>(Dictionary<ulong, List<T>> buckets, ulong hash)
+    public static IEnumerable<T> GetNearbyLocations<T>(Dictionary<ulong, List<T>> buckets, ulong hash) =>
+        NearbyLocations(buckets, hash, Hasher.Neighbors(hash));
+
+    /// <summary>Every location in the buckets that can be closer than <paramref name="radiusMeters"/> to a point in the cell <paramref name="hash"/>.</summary>
+    public static IEnumerable<T> GetNearbyLocations<T>(Dictionary<ulong, List<T>> buckets, ulong hash, double radiusMeters) =>
+        NearbyLocations(buckets, hash, Hasher.NeighborsWithin(hash, radiusMeters));
+
+    private static IEnumerable<T> NearbyLocations<T>(Dictionary<ulong, List<T>> buckets, ulong hash, ulong[] neighborHashes)
     {
         if (buckets.TryGetValue(hash, out var center))
         {
@@ -36,7 +43,7 @@ public class LocationLookupService
                 yield return loc;
         }
 
-        foreach (var neighborHash in Hasher.Neighbors(hash))
+        foreach (var neighborHash in neighborHashes)
         {
             if (buckets.TryGetValue(neighborHash, out var neighborList))
             {
