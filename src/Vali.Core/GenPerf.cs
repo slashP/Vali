@@ -23,6 +23,8 @@ public static class GenPerf
     private static readonly ConcurrentDictionary<string, double> _countryWorkSeconds = new();
     private static long _allocatedBaseline;
     private static TimeSpan _cpuBaseline;
+    private static readonly int[] _collectionBaseline = new int[3];
+    private static TimeSpan _pauseBaseline;
 
     public static bool Enabled { get; set; } =
         Environment.GetEnvironmentVariable("VALI_GEN_PERF") == "1";
@@ -32,6 +34,12 @@ public static class GenPerf
         Array.Clear(_ticks, 0, _ticks.Length);
         _countryWorkSeconds.Clear();
         _allocatedBaseline = GC.GetTotalAllocatedBytes(precise: true);
+        for (var generation = 0; generation < _collectionBaseline.Length; generation++)
+        {
+            _collectionBaseline[generation] = GC.CollectionCount(generation);
+        }
+
+        _pauseBaseline = GC.GetTotalPauseDuration();
         using var process = Process.GetCurrentProcess();
         _cpuBaseline = process.TotalProcessorTime;
     }
@@ -69,6 +77,14 @@ public static class GenPerf
             allocated));
         Console.WriteLine(BuildCpuUtilizationLine(cpuSeconds, wall.TotalSeconds, Environment.ProcessorCount));
         Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"GC mode:           {(System.Runtime.GCSettings.IsServerGC ? "Server" : "Workstation")}"));
+        Console.WriteLine(BuildGcLine(
+            GC.GetConfigurationVariables(),
+            GC.CollectionCount(0) - _collectionBaseline[0],
+            GC.CollectionCount(1) - _collectionBaseline[1],
+            GC.CollectionCount(2) - _collectionBaseline[2],
+            (GC.GetTotalPauseDuration() - _pauseBaseline).TotalSeconds,
+            wall.TotalSeconds));
+        Console.WriteLine($"{"Runtime",-18}{System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
     }
 
     public static string BuildReport(
@@ -117,6 +133,19 @@ public static class GenPerf
         var utilization = capacity > 0 ? cpuSeconds / capacity * 100 : 0;
         return string.Create(CultureInfo.InvariantCulture,
             $"{"Actual CPU",-18}{cpuSeconds,8:N2} s  ({utilization:N0}% of {processorCount} cores x wall)");
+    }
+
+    // Collections and pause time over the run, with the GC configuration that produced them: under Workstation GC
+    // one thread collects while every worker waits, which is what made production generation 2-4x slower in 2026-11.
+    public static string BuildGcLine(IReadOnlyDictionary<string, object> configuration, int gen0, int gen1, int gen2, double pauseSeconds, double wallSeconds)
+    {
+        var server = configuration.TryGetValue("ServerGC", out var s) && Convert.ToBoolean(s, CultureInfo.InvariantCulture);
+        var heaps = configuration.TryGetValue("HeapCount", out var h) ? Convert.ToInt64(h, CultureInfo.InvariantCulture) : 1;
+        var datas = configuration.TryGetValue("GCDynamicAdaptationMode", out var d) && Convert.ToInt64(d, CultureInfo.InvariantCulture) == 1;
+        var pauseShare = wallSeconds > 0 ? pauseSeconds / wallSeconds * 100 : 0;
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{"GC",-18}{(server ? "Server" : "Workstation")}, {heaps} heap{(heaps == 1 ? "" : "s")}, DATAS {(datas ? "on" : "off")}; " +
+            $"{gen0} gen0 / {gen1} gen1 / {gen2} gen2; paused {pauseSeconds:N2} s ({pauseShare:N0}% of wall)");
     }
 
     public readonly struct Scope : IDisposable

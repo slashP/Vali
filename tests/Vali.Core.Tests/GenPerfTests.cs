@@ -6,6 +6,37 @@ namespace Vali.Core.Tests;
 public class GenPerfTests
 {
     [Fact]
+    public void BuildGcLine_formats_configuration_collections_and_pause_share()
+    {
+        var configuration = new Dictionary<string, object>
+        {
+            ["ServerGC"] = true,
+            ["HeapCount"] = 32L,
+            ["GCDynamicAdaptationMode"] = 1L,
+        };
+
+        var line = GenPerf.BuildGcLine(configuration, gen0: 412, gen1: 37, gen2: 5, pauseSeconds: 12.3, wallSeconds: 72.0);
+
+        line.ShouldContain("Server, 32 heaps, DATAS on");
+        line.ShouldContain("412 gen0 / 37 gen1 / 5 gen2");
+        line.ShouldContain("paused 12.30 s (17% of wall)");
+    }
+
+    [Fact]
+    public void BuildGcLine_describes_workstation_without_datas()
+    {
+        var configuration = new Dictionary<string, object>
+        {
+            ["ServerGC"] = false,
+            ["HeapCount"] = 1L,
+            ["GCDynamicAdaptationMode"] = 0L,
+        };
+
+        GenPerf.BuildGcLine(configuration, gen0: 0, gen1: 0, gen2: 0, pauseSeconds: 0, wallSeconds: 0)
+            .ShouldContain("Workstation, 1 heap, DATAS off");
+    }
+
+    [Fact]
     public void AddCountryWork_accumulates_per_country()
     {
         GenPerf.Reset();
