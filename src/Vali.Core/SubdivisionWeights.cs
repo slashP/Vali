@@ -2099,11 +2099,7 @@ public class SubdivisionWeights
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> SG = new()
     {
-        { "SG-01", (190, "Central Singapore") },
-        { "SG-02", (112, "North East") },
-        { "SG-03", (159, "North West") },
-        { "SG-04", (159, "South East") },
-        { "SG-05", (280, "South West") },
+        { "SG-1", (1, "Singapore") },
     };
 
     private static readonly Dictionary<string, (int weight, string subdivisionName)> SI = new()
