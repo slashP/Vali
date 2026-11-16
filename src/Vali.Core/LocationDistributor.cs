@@ -16,23 +16,48 @@ public static class LocationDistributor
         LocationProbability locationProbability,
         IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
         bool avoidShuffle = false,
-        int? minMinDistance = null) where T : IDistributionLocation<T2> where T2 : IComparable<T2>
+        int? minMinDistance = null,
+        Func<T, bool>? accept = null) where T : IDistributionLocation<T2> where T2 : IComparable<T2>
+    {
+        var run = WithMaxMinDistanceRun<T, T2>(locations, goalCount, locationProbability, locationsAlreadyInMap, avoidShuffle, minMinDistance, accept);
+        return (run.Locations, run.MinDistance);
+    }
+
+    /// <summary>
+    /// <see cref="WithMaxMinDistance{T,T2}"/>, also reporting the bisection's first probe (<see cref="MaxMinDistanceRun{T}.SeedDistance"/>,
+    /// 0 when nothing was probed), for the distance log.
+    ///
+    /// With <paramref name="accept"/>, a candidate is placed only if it also passes that predicate, asked only for
+    /// candidates that pass spacing and at most once per candidate across every probe. For the same candidate order
+    /// that places the same sequence as filtering first; the first probe still comes from <paramref name="locations"/>'
+    /// bounding box.
+    /// </summary>
+    public static MaxMinDistanceRun<T> WithMaxMinDistanceRun<T, T2>(
+        ICollection<T> locations,
+        int goalCount,
+        LocationProbability locationProbability,
+        IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null,
+        bool avoidShuffle = false,
+        int? minMinDistance = null,
+        Func<T, bool>? accept = null) where T : IDistributionLocation<T2> where T2 : IComparable<T2>
     {
         var distances = Distances.SkipWhile(x => x < minMinDistance).ToArray();
         if (distances.Length == 0 || goalCount <= 0)
         {
-            return (Array.Empty<T>(), 0);
+            return new MaxMinDistanceRun<T>(Array.Empty<T>(), 0, 0);
         }
 
         // --- Fixed candidate order (built once) makes count(d) monotone across probes. ---
         var ordered = BuildOrderedCandidates<T, T2>(locations, locationProbability, avoidShuffle);
+        // One answer per candidate index, shared by every probe including the fallback.
+        var acceptMemo = accept is null ? null : new sbyte[ordered.Length];
 
         var evalCache = new Dictionary<int, (IList<T> result, int count)>();
 
         (IList<T> result, int count) Eval(int idx)
         {
             if (evalCache.TryGetValue(idx, out var cached)) return cached;
-            var placed = PlaceSpaced<T, T2>(ordered, goalCount, distances[idx], locationsAlreadyInMap);
+            var placed = PlaceSpaced<T, T2>(ordered, goalCount, distances[idx], locationsAlreadyInMap, accept, acceptMemo);
             var r = (placed, placed.Count);
             evalCache[idx] = r;
             return r;
@@ -46,6 +71,7 @@ public static class LocationDistributor
         IList<T>? bestResult = null;
         int bestDistance = 0;
         int probe = Math.Clamp(seed, low, high);
+        var seedDistance = distances[probe];
 
         while (low <= high)
         {
@@ -67,12 +93,12 @@ public static class LocationDistributor
 
         if (bestResult != null)
         {
-            return (bestResult, bestDistance);
+            return new MaxMinDistanceRun<T>(bestResult, bestDistance, seedDistance);
         }
 
         // Fallback: smallest distance yields the most locations (monotone).
         var (fallback, _) = Eval(0);
-        return (fallback, fallback.Count == 0 ? 0 : distances[0]);
+        return new MaxMinDistanceRun<T>(fallback, fallback.Count == 0 ? 0 : distances[0], seedDistance);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -384,6 +410,21 @@ public static class LocationDistributor
         int goalCount,
         int minDistanceBetweenLocations,
         IReadOnlyCollection<ILatLng>? locationsAlreadyInMap = null)
+        where T : IDistributionLocation<T2> where T2 : IComparable<T2> =>
+        PlaceSpaced<T, T2>(orderedCandidates, goalCount, minDistanceBetweenLocations, locationsAlreadyInMap, null, null);
+
+    /// <summary>
+    /// <see cref="PlaceSpaced{T,T2}(IReadOnlyList{T},int,int,IReadOnlyCollection{ILatLng})"/> where a candidate is placed only if it
+    /// passes spacing and then <paramref name="accept"/> (when given). <paramref name="acceptMemo"/>[i] caches the answer for
+    /// candidate i across calls: 0 unknown, 1 passes, -1 fails. Without a memo, a local one is used.
+    /// </summary>
+    public static IList<T> PlaceSpaced<T, T2>(
+        IReadOnlyList<T> orderedCandidates,
+        int goalCount,
+        int minDistanceBetweenLocations,
+        IReadOnlyCollection<ILatLng>? locationsAlreadyInMap,
+        Func<T, bool>? accept,
+        sbyte[]? acceptMemo)
         where T : IDistributionLocation<T2> where T2 : IComparable<T2>
     {
         if (goalCount <= 0 || orderedCandidates.Count == 0)
@@ -430,6 +471,18 @@ public static class LocationDistributor
             }
         }
 
+        // accept runs serially for the first unknown candidate, then for growing batches of the next unknown candidates
+        // that pass spacing against what is placed so far, in parallel (the work item's share of cores). Answers are
+        // memoized and the predicate is pure, so the placed sequence is the serial one; a batch only does extra work
+        // for candidates placement would not have asked about (after the goal, or blocked by a later placement).
+        const int maxBatch = 256;
+        var batch = 1;
+        var degreeOfParallelism = accept is null ? 1 : GenerationConcurrency.InnerDegreeOfParallelism();
+        if (accept != null)
+        {
+            acceptMemo ??= new sbyte[orderedCandidates.Count];
+        }
+
         var result = new List<T>(Math.Min(goalCount, orderedCandidates.Count));
         for (var i = 0; i < orderedCandidates.Count; i++)
         {
@@ -441,25 +494,25 @@ public static class LocationDistributor
             var cx = (int)Math.Floor(lng / cellLng);
             var cy = (int)Math.Floor(lat / cellLat);
 
-            var ok = true;
-            for (var dx = -1; dx <= 1 && ok; dx++)
+            var ok = IsFree(lat, lng);
+
+            if (ok && accept != null)
             {
-                for (var dy = -1; dy <= 1; dy++)
+                if (acceptMemo![i] == 0)
                 {
-                    if (grid.TryGetValue(Pack(cx + dx, cy + dy), out var bucket))
+                    if (batch == 1 || degreeOfParallelism == 1)
                     {
-                        var blocked = false;
-                        foreach (var (blat, blng) in bucket)
-                        {
-                            if (Extensions.PointsAreCloserThan(blat, blng, lat, lng, dSquared))
-                            {
-                                blocked = true;
-                                break;
-                            }
-                        }
-                        if (blocked) { ok = false; break; }
+                        acceptMemo[i] = accept(loc) ? (sbyte)1 : (sbyte)-1;
                     }
+                    else
+                    {
+                        EvaluateBatch(i);
+                    }
+
+                    batch = Math.Min(batch * 2, maxBatch);
                 }
+
+                ok = acceptMemo[i] > 0;
             }
 
             if (ok)
@@ -473,7 +526,56 @@ public static class LocationDistributor
 
         return result;
 
+        bool IsFree(double lat, double lng)
+        {
+            var cx = (int)Math.Floor(lng / cellLng);
+            var cy = (int)Math.Floor(lat / cellLat);
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                for (var dy = -1; dy <= 1; dy++)
+                {
+                    if (grid.TryGetValue(Pack(cx + dx, cy + dy), out var bucket))
+                    {
+                        foreach (var (blat, blng) in bucket)
+                        {
+                            if (Extensions.PointsAreCloserThan(blat, blng, lat, lng, dSquared))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        // Candidate `first` and the next unknown ones that are free now, looking at most 8 batches ahead.
+        void EvaluateBatch(int first)
+        {
+            var pending = new List<int>(batch) { first };
+            var scanEnd = Math.Min(orderedCandidates.Count, first + 1 + 8 * batch);
+            for (var j = first + 1; j < scanEnd && pending.Count < batch; j++)
+            {
+                if (acceptMemo![j] == 0 && IsFree(orderedCandidates[j].Lat, orderedCandidates[j].Lng))
+                {
+                    pending.Add(j);
+                }
+            }
+
+            var memo = acceptMemo!;
+            var predicate = accept!;
+            Parallel.For(0, pending.Count, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism }, k =>
+            {
+                var j = pending[k];
+                memo[j] = predicate(orderedCandidates[j]) ? (sbyte)1 : (sbyte)-1;
+            });
+        }
+
         static long Pack(int cx, int cy) => ((long)cx << 32) | (uint)cy;
         static long CellKey(double fx, double fy) => Pack((int)Math.Floor(fx), (int)Math.Floor(fy));
     }
 }
+
+/// <summary>What <see cref="LocationDistributor.WithMaxMinDistanceRun{T,T2}"/> placed, at which distance, and where its bisection started.</summary>
+public sealed record MaxMinDistanceRun<T>(IList<T> Locations, int MinDistance, int SeedDistance);

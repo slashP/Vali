@@ -1,5 +1,6 @@
 using Shouldly;
 using Vali.Core.Hash;
+using Vali.Core.Neighbors;
 using Xunit;
 
 namespace Vali.Core.Tests;
@@ -101,10 +102,8 @@ public class FarNorthLookupTests
         var (lat, lngA, lngB) = PairTwoCellsApart(70.0, HashPrecision.Size_km_1x1, meters: 450);
         Location[] locations = [MakeLocation(1, lat, lngA), MakeLocation(2, lat, lngB)];
         var filter = new NeighborFilter { Bound = "some", Radius = 500 };
-        var mapDefinition = new MapDefinition { NeighborFilters = [filter] };
-        var buckets = LocationLookupService.Bucketize(locations, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
 
-        var kept = NeighborFilterer.FilterByNeighbors(locations, buckets, filter, mapDefinition).Select(l => l.NodeId).OrderBy(id => id);
+        var kept = NeighborFilterer.FilterByNeighbors(locations, new NeighborIndex(locations), filter).Select(l => l.NodeId).OrderBy(id => id);
 
         kept.ShouldBe([1L, 2L]);
     }
@@ -122,7 +121,7 @@ public class FarNorthLookupTests
                 [new LocationLakeMapGenerator.GeoMapLocation { lat = lat, lng = lngB }],
                 proximityFilter.HashPrecisionFromProximityFilter());
 
-            var kept = LocationLakeFilterer.Filter([MakeLocation(1, lat, lngA)], [], proximityBuckets, null, proximityFilter, [], [], new MapDefinition());
+            var kept = LocationLakeFilterer.Filter([MakeLocation(1, lat, lngA)], new(), proximityBuckets, null, proximityFilter, [], [], new MapDefinition());
 
             kept.Select(l => l.NodeId).ShouldBe([1L]);
         }

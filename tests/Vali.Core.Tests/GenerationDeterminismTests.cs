@@ -6,6 +6,7 @@ namespace Vali.Core.Tests;
 
 // Mutates the process-global GenerationDeterminism.Randomness; xUnit serializes tests within
 // one class, and no other test reads this flag, so keep all flag-dependent tests here.
+[Collection("StaticState")]
 public class GenerationDeterminismTests
 {
     private static Location Loc(long id) => new()

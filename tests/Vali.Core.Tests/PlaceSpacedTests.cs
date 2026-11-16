@@ -84,5 +84,136 @@ public class PlaceSpacedTests
         a.Select(x => x.NodeId).ShouldBe(b.Select(x => x.NodeId));
     }
 
+    [Fact]
+    public void Lazy_accept_gives_the_same_sequence_as_filtering_first()
+    {
+        var ordered = UniformGrid(5000, seed: 7);
+        Func<Location, bool> accept = l => l.NodeId % 3 != 0;
+        var filtered = ordered.Where(accept).ToArray();
+        var already = UniformGrid(50, seed: 8).Select(l => (ILatLng)new SimplePoint(l.Lat, l.Lng)).ToArray();
+
+        foreach (var alreadyInMap in new IReadOnlyCollection<ILatLng>?[] { null, already })
+        {
+            var memo = new sbyte[ordered.Length];
+            foreach (var d in new[] { 100, 400, 50, 1000, 400 })
+            {
+                var lazy = LocationDistributor.PlaceSpaced<Location, long>(ordered, 300, d, alreadyInMap, accept, memo);
+                var eager = LocationDistributor.PlaceSpaced<Location, long>(filtered, 300, d, alreadyInMap);
+                lazy.Select(x => x.NodeId).ShouldBe(eager.Select(x => x.NodeId), $"d={d}");
+            }
+        }
+    }
+
+    [Fact]
+    public void Accept_runs_at_most_once_per_candidate_across_probes()
+    {
+        var ordered = UniformGrid(5000, seed: 9);
+        var seen = new System.Collections.Concurrent.ConcurrentDictionary<long, byte>();
+        var calls = 0;
+        var twice = 0;
+        bool Counting(Location l)
+        {
+            if (!seen.TryAdd(l.NodeId, 0)) Interlocked.Increment(ref twice);
+            Interlocked.Increment(ref calls);
+            return l.NodeId % 2 == 0;
+        }
+
+        var (locations, _) = LocationDistributor.WithMaxMinDistance<Location, long>(
+            ordered, 500, locationProbability: new(), avoidShuffle: true, minMinDistance: 25, accept: Counting);
+
+        locations.Count.ShouldBe(500);
+        locations.ShouldAllBe(l => l.NodeId % 2 == 0);
+        twice.ShouldBe(0);
+        calls.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Accept_runs_only_for_candidates_that_pass_spacing()
+    {
+        var ordered = UniformGrid(5000, seed: 10);
+        const int d = 20_000;
+        var r2 = (double)d * d;
+        var already = UniformGrid(20, seed: 12).Select(l => (ILatLng)new SimplePoint(l.Lat, l.Lng)).ToArray();
+        var asked = new System.Collections.Concurrent.ConcurrentBag<Location>();
+        bool Accept(Location l)
+        {
+            asked.Add(l);
+            return l.NodeId % 2 == 0;
+        }
+
+        var result = LocationDistributor.PlaceSpaced<Location, long>(ordered, 10, d, already, Accept, null);
+
+        asked.Count.ShouldBeLessThan(5000);
+        // A point already in the map blocks a candidate before accept is asked about it.
+        asked.ShouldAllBe(l => already.All(p => !Extensions.PointsAreCloserThan(p.Lat, p.Lng, l.Lat, l.Lng, r2)));
+        result.Select(l => l.NodeId).ShouldBe(
+            LocationDistributor.PlaceSpaced<Location, long>(ordered.Where(l => l.NodeId % 2 == 0).ToArray(), 10, d, already).Select(l => l.NodeId));
+    }
+
+    [Fact]
+    public void Expensive_accept_runs_in_parallel_batches()
+    {
+        // Every candidate passes spacing at 25 m on this sparse set and only 1 in 20 is accepted, so placement asks
+        // about hundreds of candidates in a row: those are evaluated several at a time.
+        var ordered = UniformGrid(2000, seed: 13);
+        var running = 0;
+        var maxRunning = 0;
+        bool Slow(Location l)
+        {
+            var now = Interlocked.Increment(ref running);
+            int seen;
+            while ((seen = Volatile.Read(ref maxRunning)) < now && Interlocked.CompareExchange(ref maxRunning, now, seen) != seen)
+            {
+            }
+
+            Thread.Sleep(1);
+            Interlocked.Decrement(ref running);
+            return l.NodeId % 20 == 0;
+        }
+
+        var lazy = LocationDistributor.PlaceSpaced<Location, long>(ordered, 50, 25, null, Slow, null);
+
+        lazy.Select(l => l.NodeId).ShouldBe(LocationDistributor.PlaceSpaced<Location, long>(ordered.Where(l => l.NodeId % 20 == 0).ToArray(), 50, 25).Select(l => l.NodeId));
+        maxRunning.ShouldBeGreaterThan(1);
+    }
+
+    [Theory]
+    [InlineData(25)]
+    [InlineData(500)]
+    [InlineData(3000)]
+    public void Batched_accept_gives_the_same_sequence_as_filtering_first_at_a_low_pass_rate(int d)
+    {
+        var ordered = UniformGrid(8000, seed: 14);
+        Func<Location, bool> accept = l => l.NodeId % 10 == 3;
+        var already = UniformGrid(30, seed: 15).Select(l => (ILatLng)new SimplePoint(l.Lat, l.Lng)).ToArray();
+        var memo = new sbyte[ordered.Length];
+
+        foreach (var goal in new[] { 5, 60, 400 })
+        {
+            LocationDistributor.PlaceSpaced<Location, long>(ordered, goal, d, already, accept, memo).Select(l => l.NodeId)
+                .ShouldBe(LocationDistributor.PlaceSpaced<Location, long>(ordered.Where(accept).ToArray(), goal, d, already).Select(l => l.NodeId), $"goal={goal}");
+        }
+    }
+
+    [Fact]
+    public void WithMaxMinDistance_lazy_equals_eager_when_the_bounding_box_is_the_same()
+    {
+        var locations = UniformGrid(5000, seed: 11);
+        var extremes = new[]
+        {
+            locations.MinBy(l => l.Lat)!.NodeId, locations.MaxBy(l => l.Lat)!.NodeId,
+            locations.MinBy(l => l.Lng)!.NodeId, locations.MaxBy(l => l.Lng)!.NodeId,
+        }.ToHashSet();
+        Func<Location, bool> accept = l => extremes.Contains(l.NodeId) || l.NodeId % 5 >= 2; // rejects 40 %
+
+        foreach (var goal in new[] { 10, 100, 400, 1500 })
+        {
+            var lazy = LocationDistributor.WithMaxMinDistance<Location, long>(locations, goal, new(), avoidShuffle: true, minMinDistance: 25, accept: accept);
+            var eager = LocationDistributor.WithMaxMinDistance<Location, long>(locations.Where(accept).ToArray(), goal, new(), avoidShuffle: true, minMinDistance: 25);
+            lazy.locations.Select(l => l.NodeId).ShouldBe(eager.locations.Select(l => l.NodeId), $"goal={goal}");
+            lazy.minDistance.ShouldBe(eager.minDistance, $"goal={goal}");
+        }
+    }
+
     private sealed record SimplePoint(double Lat, double Lng) : ILatLng;
 }

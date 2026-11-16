@@ -1,5 +1,6 @@
 using Shouldly;
 using Vali.Core.Google;
+using Vali.Core.Neighbors;
 using Xunit;
 
 namespace Vali.Core.Tests;
@@ -55,10 +56,8 @@ public class NeighborFiltererTests
             Bound = "some",
             Radius = 1000,
         };
-        var mapDefinition = new MapDefinition { NeighborFilters = [filter] };
-        var buckets = LocationLookupService.Bucketize(locations, mapDefinition.HashPrecisionFromNeighborFiltersRadius());
 
-        return NeighborFilterer.FilterByNeighbors(locations, buckets, filter, mapDefinition)
+        return NeighborFilterer.FilterByNeighbors(locations, new NeighborIndex(locations), filter)
             .Select(l => l.NodeId)
             .OrderBy(id => id)
             .ToArray();

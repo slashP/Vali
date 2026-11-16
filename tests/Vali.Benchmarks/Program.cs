@@ -19,6 +19,18 @@ using Vali.Benchmarks;
 //    }
 //}
 
+if (args.Length > 0 && args[0] == "neighbor-harness")
+{
+    Environment.ExitCode = NeighborHarness.Run(args);
+    return;
+}
+
+if (args.Length > 0 && args[0] == "neighbor-memory")
+{
+    Environment.ExitCode = NeighborMemory.Run(args);
+    return;
+}
+
 if (args.Length > 0 && args[0] == "quality")
 {
     QualityReport.Run();

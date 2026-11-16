@@ -17,6 +17,8 @@ public class LocationLakeMapGenerator
             GenPerf.Reset();
         }
 
+        DistanceLog.Reset();
+
         var logger = ValiLogger.Factory.CreateLogger<LocationLakeMapGenerator>();
         var progress = new GenerationProgress();
 
@@ -177,6 +179,8 @@ public class LocationLakeMapGenerator
         {
             GenPerf.Report(sw.Elapsed);
         }
+
+        DistanceLog.WriteIfEnabled();
 
         static (IList<Location> locations, int regionGoalCount, int minDistance)[] RunTimed(GenerationWorkItem item)
         {

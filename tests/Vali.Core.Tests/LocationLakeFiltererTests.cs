@@ -23,7 +23,7 @@ public class LocationLakeFiltererTests
     public void Should_compile_expressions(string expression)
     {
         var locations = LocationArray();
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new()));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new()));
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public class LocationLakeFiltererTests
     public void Should_compile_additional_expressions(string expression)
     {
         var locations = LocationArray();
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new()));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new()));
     }
 
     [Theory]
@@ -111,7 +111,7 @@ public class LocationLakeFiltererTests
     public void Should_filter_locations_correctly(string expression, int expectedCount)
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new());
         result.Length.ShouldBe(expectedCount);
     }
 
@@ -160,8 +160,8 @@ public class LocationLakeFiltererTests
 
         var orExpression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$rural or $$urban");
         var andExpression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$rural and $$urban");
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], orExpression, new(), [], [], mapDefinition));
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], andExpression, new(), [], [], mapDefinition));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, new(), [], orExpression, new(), [], [], mapDefinition));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, new(), [], andExpression, new(), [], [], mapDefinition));
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class LocationLakeFiltererTests
         };
 
         var expression = ExpressionDefaults.Expand(mapDefinition.NamedExpressions, "$$recent and $$urban");
-        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], mapDefinition);
+        var result = LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], mapDefinition);
         result.Length.ShouldBe(1);
     }
 
@@ -242,7 +242,7 @@ public class LocationLakeFiltererTests
         {
             NeighborFilters = neighborFilters
         };
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], "", new(), [], neighborFilters, mapDefinition));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, new(), [], "", new(), [], neighborFilters, mapDefinition));
     }
 
     [Theory]
@@ -288,7 +288,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArray();
         locations.First().ExternalData["HasPoles"] = "Yes";
-        LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new()).Length.ShouldBe(1);
+        LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new()).Length.ShouldBe(1);
     }
 
     [Fact]
@@ -296,7 +296,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["RoadQuality"] = "Good";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:RoadQuality neq 'Bad'", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:RoadQuality neq 'Bad'", new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 
@@ -305,7 +305,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["Coverage"] = "Full";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Coverage eq 'Partial'", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:Coverage eq 'Partial'", new(), [], [], new());
         result.Length.ShouldBe(0);
     }
 
@@ -314,7 +314,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["HasPoles"] = "Yes";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "Year eq 2023 and external:HasPoles eq 'Yes'", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "Year eq 2023 and external:HasPoles eq 'Yes'", new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 
@@ -322,7 +322,7 @@ public class LocationLakeFiltererTests
     public void Should_exclude_location_with_missing_external_key()
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:HasPoles eq 'Yes'", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:HasPoles eq 'Yes'", new(), [], [], new());
         result.Length.ShouldBe(0);
     }
 
@@ -330,7 +330,7 @@ public class LocationLakeFiltererTests
     public void Should_filter_with_empty_expression()
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], "", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "", new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 
@@ -338,7 +338,7 @@ public class LocationLakeFiltererTests
     public void Should_filter_with_null_expression()
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], null, new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], null, new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 
@@ -351,12 +351,12 @@ public class LocationLakeFiltererTests
             CreateLocation("NO", "NO-03", year: 2019, arrowCount: 1, buildings100: 0),
             CreateLocation("NO", "NO-03", year: 2023, arrowCount: 3, buildings100: 5),
         };
-        LocationLakeFilterer.Filter(locations, [], [], "Year eq 2023", new(), [], [], new()).Length.ShouldBe(2);
-        LocationLakeFilterer.Filter(locations, [], [], "ArrowCount gte 2", new(), [], [], new()).Length.ShouldBe(2);
-        LocationLakeFilterer.Filter(locations, [], [], "Year eq 2023 and ArrowCount gte 2", new(), [], [], new()).Length.ShouldBe(2);
-        LocationLakeFilterer.Filter(locations, [], [], "Buildings100 gt 3", new(), [], [], new()).Length.ShouldBe(2);
-        LocationLakeFilterer.Filter(locations, [], [], "Year eq 2019 and Buildings100 eq 0", new(), [], [], new()).Length.ShouldBe(1);
-        LocationLakeFilterer.Filter(locations, [], [], "ArrowCount eq 4", new(), [], [], new()).Length.ShouldBe(0);
+        LocationLakeFilterer.Filter(locations, new(), [], "Year eq 2023", new(), [], [], new()).Length.ShouldBe(2);
+        LocationLakeFilterer.Filter(locations, new(), [], "ArrowCount gte 2", new(), [], [], new()).Length.ShouldBe(2);
+        LocationLakeFilterer.Filter(locations, new(), [], "Year eq 2023 and ArrowCount gte 2", new(), [], [], new()).Length.ShouldBe(2);
+        LocationLakeFilterer.Filter(locations, new(), [], "Buildings100 gt 3", new(), [], [], new()).Length.ShouldBe(2);
+        LocationLakeFilterer.Filter(locations, new(), [], "Year eq 2019 and Buildings100 eq 0", new(), [], [], new()).Length.ShouldBe(1);
+        LocationLakeFilterer.Filter(locations, new(), [], "ArrowCount eq 4", new(), [], [], new()).Length.ShouldBe(0);
     }
 
     [Fact]
@@ -454,7 +454,7 @@ public class LocationLakeFiltererTests
     public void Should_filter_with_division_operator(string expression, int expectedCount)
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new());
         result.Length.ShouldBe(expectedCount);
     }
 
@@ -494,7 +494,7 @@ public class LocationLakeFiltererTests
     public void Should_filter_with_null_comparison(string expression, int expectedCount)
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new());
         result.Length.ShouldBe(expectedCount);
     }
 
@@ -505,7 +505,7 @@ public class LocationLakeFiltererTests
     public void Should_compile_expressions_with_special_chars_in_strings(string expression)
     {
         var locations = LocationArray();
-        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new()));
+        Should.NotThrow(() => LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new()));
     }
 
     [Fact]
@@ -513,7 +513,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().Nominatim.County = "O'Brien";
-        var result = LocationLakeFilterer.Filter(locations, [], [], @"County eq 'O\'Brien'", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], @"County eq 'O\'Brien'", new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 
@@ -576,7 +576,7 @@ public class LocationLakeFiltererTests
     public void Should_filter_with_negative_numbers(string expression, int expectedCount)
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], expression, new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], expression, new(), [], [], new());
         result.Length.ShouldBe(expectedCount);
     }
 
@@ -585,7 +585,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["Population"] = "6000";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 5000", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:Population gt 5000", new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 
@@ -594,7 +594,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["Population"] = "3000";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 5000", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:Population gt 5000", new(), [], [], new());
         result.Length.ShouldBe(0);
     }
 
@@ -602,7 +602,7 @@ public class LocationLakeFiltererTests
     public void Should_exclude_when_numeric_external_key_missing()
     {
         var locations = LocationArrayWithData();
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 5000", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:Population gt 5000", new(), [], [], new());
         result.Length.ShouldBe(0);
     }
 
@@ -611,7 +611,7 @@ public class LocationLakeFiltererTests
     {
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["Population"] = "not-a-number";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:Population gt 0", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:Population gt 0", new(), [], [], new());
         result.Length.ShouldBe(0);
     }
 
@@ -621,7 +621,7 @@ public class LocationLakeFiltererTests
         var locations = LocationArrayWithData();
         locations.Single().ExternalData["PlaceNameSign"] = "Yes";
         locations.Single().ExternalData["Population"] = "20000";
-        var result = LocationLakeFilterer.Filter(locations, [], [], "external:PlaceNameSign eq 'Yes' and external:Population gt 5000", new(), [], [], new());
+        var result = LocationLakeFilterer.Filter(locations, new(), [], "external:PlaceNameSign eq 'Yes' and external:Population gt 5000", new(), [], [], new());
         result.Length.ShouldBe(1);
     }
 

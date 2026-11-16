@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Vali.Core;
@@ -15,11 +16,27 @@ public static class GenPerf
         Filter = 3,
         Distribute = 4,
         StoreProjection = 5,
+        // Nested: time spent inside Filter (B3) or Distribute (lazy neighbor filters), so left out of the CPU sum.
+        NeighborGrid = 6,
+        NeighborEval = 7,
     }
 
-    private const int PhaseCount = 6;
+    private const int PhaseCount = 8;
+    private const int TopLevelPhaseCount = 6;
 
     private static readonly long[] _ticks = new long[PhaseCount];
+
+    // One (candidate, filter) neighbor evaluation per call from every generation thread: striped per processor and
+    // padded to a cache line each, so 32 threads do not contend on one counter.
+    [StructLayout(LayoutKind.Explicit, Size = 64)]
+    private struct NeighborStripe
+    {
+        [FieldOffset(0)] public long Evaluations;
+        [FieldOffset(8)] public long Visits;
+        [FieldOffset(16)] public long Ticks;
+    }
+
+    private static readonly NeighborStripe[] _neighborStripes = new NeighborStripe[Math.Max(Environment.ProcessorCount, 1)];
     private static readonly ConcurrentDictionary<string, double> _countryWorkSeconds = new();
     private static long _allocatedBaseline;
     private static TimeSpan _cpuBaseline;
@@ -32,6 +49,7 @@ public static class GenPerf
     public static void Reset()
     {
         Array.Clear(_ticks, 0, _ticks.Length);
+        Array.Clear(_neighborStripes);
         _countryWorkSeconds.Clear();
         _allocatedBaseline = GC.GetTotalAllocatedBytes(precise: true);
         for (var generation = 0; generation < _collectionBaseline.Length; generation++)
@@ -49,8 +67,47 @@ public static class GenPerf
     public static void AddCountryWork(string countryCode, TimeSpan elapsed) =>
         _countryWorkSeconds.AddOrUpdate(countryCode, elapsed.TotalSeconds, (_, v) => v + elapsed.TotalSeconds);
 
+    /// <summary>
+    /// One neighbor-filter evaluation of one candidate: <paramref name="visits"/> within-radius neighbors looked at,
+    /// <paramref name="elapsedTicks"/> added to <see cref="Phase.NeighborEval"/>. Callers skip the call (and the
+    /// timestamps) when <see cref="Enabled"/> is false.
+    /// </summary>
+    public static void AddNeighborEvaluation(int visits, long elapsedTicks)
+    {
+        ref var stripe = ref _neighborStripes[Thread.GetCurrentProcessorId() % _neighborStripes.Length];
+        Interlocked.Increment(ref stripe.Evaluations);
+        Interlocked.Add(ref stripe.Visits, visits);
+        Interlocked.Add(ref stripe.Ticks, elapsedTicks);
+    }
+
+    public static (long evaluations, long visits) NeighborWork()
+    {
+        long evaluations = 0, visits = 0;
+        for (var i = 0; i < _neighborStripes.Length; i++)
+        {
+            evaluations += Interlocked.Read(ref _neighborStripes[i].Evaluations);
+            visits += Interlocked.Read(ref _neighborStripes[i].Visits);
+        }
+
+        return (evaluations, visits);
+    }
+
     public static double PhaseSeconds(Phase phase) =>
-        _ticks[(int)phase] / (double)Stopwatch.Frequency;
+        PhaseTicks(phase) / (double)Stopwatch.Frequency;
+
+    private static long PhaseTicks(Phase phase)
+    {
+        var ticks = Interlocked.Read(ref _ticks[(int)phase]);
+        if (phase == Phase.NeighborEval)
+        {
+            for (var i = 0; i < _neighborStripes.Length; i++)
+            {
+                ticks += Interlocked.Read(ref _neighborStripes[i].Ticks);
+            }
+        }
+
+        return ticks;
+    }
 
     public static IReadOnlyList<(string cc, double seconds)> CountryWork() =>
         _countryWorkSeconds.Select(kvp => (kvp.Key, kvp.Value)).ToArray();
@@ -60,7 +117,7 @@ public static class GenPerf
         var phaseSeconds = new double[PhaseCount];
         for (var i = 0; i < PhaseCount; i++)
         {
-            phaseSeconds[i] = _ticks[i] / (double)Stopwatch.Frequency;
+            phaseSeconds[i] = PhaseSeconds((Phase)i);
         }
 
         using var process = Process.GetCurrentProcess();
@@ -97,9 +154,9 @@ public static class GenPerf
     {
         var labels = new[]
         {
-            "deserialize", "external merge", "bucketize", "filter", "distribute", "store/projection"
+            "deserialize", "external merge", "bucketize", "filter", "distribute", "store/projection", "neighbor grid", "neighbor eval"
         };
-        var cpuSummed = phaseSeconds.Sum();
+        var cpuSummed = phaseSeconds.Take(TopLevelPhaseCount).Sum();
         var inv = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
         sb.AppendLine("-- Map generation timing (skipVerification) --");
@@ -107,7 +164,8 @@ public static class GenPerf
         for (var i = 0; i < phaseSeconds.Length; i++)
         {
             var share = cpuSummed > 0 ? phaseSeconds[i] / cpuSummed * 100 : 0;
-            sb.AppendLine(string.Create(inv, $"{labels[i],-18}{phaseSeconds[i],8:N2} s{share,6:N0}%"));
+            var nested = i >= TopLevelPhaseCount ? "  (inside filter/distribute)" : "";
+            sb.AppendLine(string.Create(inv, $"{labels[i],-18}{phaseSeconds[i],8:N2} s{share,6:N0}%{nested}"));
         }
 
         sb.AppendLine(string.Create(inv, $"{"CPU summed",-18}{cpuSummed,8:N2} s"));
@@ -120,6 +178,8 @@ public static class GenPerf
         sb.AppendLine($"Per-country work:  {perCountry}");
         sb.AppendLine(string.Create(inv, $"Peak working set:  {peakWorkingSetBytes / (1024.0 * 1024 * 1024):N2} GB"));
         sb.AppendLine(string.Create(inv, $"Allocated (run):   {allocatedBytes / (1024.0 * 1024 * 1024):N2} GB"));
+        var (evaluations, visits) = NeighborWork();
+        sb.AppendLine(string.Create(inv, $"Neighbor work:     {evaluations:N0} evaluations, {visits:N0} neighbor visits"));
         return sb.ToString();
     }
 

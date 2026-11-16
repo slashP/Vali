@@ -4,6 +4,7 @@ using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Prepared;
 using Vali.Core.Expressions;
 using Vali.Core.Google;
+using Vali.Core.Neighbors;
 using Loc = Vali.Core.Location;
 
 namespace Vali.Core;
@@ -23,7 +24,7 @@ public static class LocationLakeFilterer
 
     public static Loc[] Filter(
         IReadOnlyCollection<Loc> locationsFromFile,
-        Dictionary<ulong, List<Loc>> neighborLocationBuckets,
+        NeighborIndex neighborIndex,
         Dictionary<ulong, List<ILatLng>> proximityLocationBuckets,
         string? locationFilterExpression,
         ProximityFilter proximityFilter,
@@ -75,9 +76,11 @@ public static class LocationLakeFilterer
             locations = FilterByGeometries(locations, geometryFilters);
         }
 
-        foreach (var neighborFilter in neighborFilters)
+        if (NeighborCheck.For(neighborFilters, neighborIndex) is { } neighborCheck)
         {
-            locations = NeighborFilterer.FilterByNeighbors(locations, neighborLocationBuckets, neighborFilter, mapDefinition);
+            // Every neighbor filter in one pass per candidate. Inner PLINQ takes only a fair share of cores: the
+            // outer generation pass already runs many work items concurrently.
+            locations = locations.AsParallel().WithDegreeOfParallelism(GenerationConcurrency.InnerDegreeOfParallelism()).Where(neighborCheck.Passes);
         }
 
         return GenerationDeterminism.InCanonicalOrder(locations.DistinctBy(l => l.NodeId)).ToArray();

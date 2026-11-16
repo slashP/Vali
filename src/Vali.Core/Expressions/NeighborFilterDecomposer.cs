@@ -11,11 +11,19 @@ namespace Vali.Core.Expressions;
 /// </summary>
 public static class NeighborFilterDecomposer
 {
-    public static string? NeighborOnlyExpression(string? expression)
+    public static string? NeighborOnlyExpression(string? expression) => Decompose(expression).NeighborOnly;
+
+    /// <summary>
+    /// The neighbor-only part (as <see cref="NeighborOnlyExpression"/>) and whether it is the whole expression, i.e.
+    /// no top-level operand references <c>current:</c>. Then a neighbor that passes the neighbor-only part passes
+    /// the full expression too.
+    /// </summary>
+    public static NeighborExpressionParts Decompose(string? expression)
     {
+        var none = new NeighborExpressionParts(null, false);
         if (string.IsNullOrWhiteSpace(expression) || expression == "*")
         {
-            return null;
+            return none;
         }
 
         try
@@ -28,7 +36,7 @@ public static class NeighborFilterDecomposer
             var neighborOnly = operands.Where(node => !ContainsParent(node)).ToList();
             if (neighborOnly.Count == 0)
             {
-                return null;
+                return none;
             }
 
             var sb = new StringBuilder();
@@ -43,12 +51,12 @@ public static class NeighborFilterDecomposer
                 sb.Append(expression.Substring(span.Start, span.Length));
             }
 
-            return sb.ToString();
+            return new NeighborExpressionParts(sb.ToString(), neighborOnly.Count == operands.Count);
         }
         catch
         {
             // Decomposition must never affect correctness; on any surprise, signal "no pre-filter".
-            return null;
+            return none;
         }
     }
 
@@ -81,3 +89,7 @@ public static class NeighborFilterDecomposer
         _ => false
     };
 }
+
+/// <param name="NeighborOnly">The conjunction of the top-level operands that reference only the neighbor, or null.</param>
+/// <param name="NeighborOnlyIsWhole">True when those operands are all of them.</param>
+public sealed record NeighborExpressionParts(string? NeighborOnly, bool NeighborOnlyIsWhole);

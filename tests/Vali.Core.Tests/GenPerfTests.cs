@@ -3,6 +3,7 @@ using Xunit;
 
 namespace Vali.Core.Tests;
 
+[Collection("StaticState")]
 public class GenPerfTests
 {
     [Fact]
@@ -138,5 +139,46 @@ public class GenPerfTests
             GenPerf.Enabled = false;
             GenPerf.Reset();
         }
+    }
+    [Fact]
+    public void Report_prints_neighbor_work_line()
+    {
+        GenPerf.Reset();
+        GenPerf.Enabled = true;
+        try
+        {
+            Parallel.For(0, 4, new ParallelOptions { MaxDegreeOfParallelism = 4 }, _ =>
+            {
+                for (var i = 0; i < 1000; i++)
+                {
+                    GenPerf.AddNeighborEvaluation(5, 10);
+                }
+            });
+
+            GenPerf.NeighborWork().ShouldBe((4000L, 20000L));
+            var report = GenPerf.BuildReport(new double[8], [], wallSeconds: 1, processorCount: 32, peakWorkingSetBytes: 0, allocatedBytes: 0);
+            report.ShouldContain("Neighbor work:");
+            report.ShouldContain("4,000 evaluations");
+            report.ShouldContain("20,000 neighbor visits");
+        }
+        finally
+        {
+            GenPerf.Enabled = false;
+            GenPerf.Reset();
+        }
+    }
+
+    [Fact]
+    public void Neighbor_phases_are_labelled_as_nested_and_left_out_of_the_cpu_sum()
+    {
+        // deserialize..store/projection = 10 s; neighbor grid 1 s and neighbor eval 3 s run inside filter/distribute.
+        var phaseSeconds = new[] { 4.0, 0.0, 0.0, 3.0, 3.0, 0.0, 1.0, 3.0 };
+
+        var report = GenPerf.BuildReport(phaseSeconds, [], wallSeconds: 1, processorCount: 32, peakWorkingSetBytes: 0, allocatedBytes: 0);
+
+        report.ShouldContain("neighbor grid");
+        report.ShouldContain("neighbor eval");
+        report.ShouldContain("(inside filter/distribute)");
+        report.ShouldContain("10.00 s");
     }
 }

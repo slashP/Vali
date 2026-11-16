@@ -58,4 +58,26 @@ public class LocationDistributorTests
         if (locs.Count > 1)
             MinPairwiseMetres(locs).ShouldBeGreaterThanOrEqualTo(dist - 0.001);
     }
+    [Fact]
+    public void WithMaxMinDistanceRun_reports_the_seed_distance_and_matches_WithMaxMinDistance()
+    {
+        var locations = Synthetic(5_000);
+
+        var run = LocationDistributor.WithMaxMinDistanceRun<Location, long>(
+            locations, 200, locationProbability: new(), [], avoidShuffle: true, minMinDistance: 100);
+        var (locs, dist) = LocationDistributor.WithMaxMinDistance<Location, long>(
+            locations, 200, locationProbability: new(), [], avoidShuffle: true, minMinDistance: 100);
+
+        run.Locations.Select(l => l.NodeId).ShouldBe(locs.Select(l => l.NodeId));
+        run.MinDistance.ShouldBe(dist);
+        LocationDistributor.Distances.ShouldContain(run.SeedDistance);
+        run.SeedDistance.ShouldBeGreaterThanOrEqualTo(100);
+    }
+
+    [Fact]
+    public void WithMaxMinDistanceRun_seed_distance_is_zero_on_the_early_return()
+    {
+        LocationDistributor.WithMaxMinDistanceRun<Location, long>(Synthetic(10), 0, locationProbability: new())
+            .SeedDistance.ShouldBe(0);
+    }
 }
