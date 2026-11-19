@@ -3,6 +3,7 @@
 public static class ApplicationSettingsService
 {
     public const string DownloadFolderEnvironmentVariableName = "VALI_DOWNLOAD_FOLDER";
+    public const string SettingsPathEnvironmentVariable = "VALI_SETTINGS";
 
     public static void SetDownloadFolder(string directory)
     {
@@ -63,6 +64,12 @@ public static class ApplicationSettingsService
 
     private static string ApplicationSettingsPath()
     {
+        var fromEnvironment = Environment.GetEnvironmentVariable(SettingsPathEnvironmentVariable);
+        if (!string.IsNullOrEmpty(fromEnvironment))
+        {
+            return fromEnvironment;
+        }
+
         const string valiFolderName = "Vali";
         var applicationCommonDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), valiFolderName);
         const string applicationSettingsFilename = "application-settings.json";
