@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241d15"/>
+      <stop offset="1" stop-color="#120e09"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e7c46a"/>
+      <stop offset="1" stop-color="#d0a63e"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="72" y="72" width="880" height="880" rx="196" fill="url(#tile)" stroke="#3a3124" stroke-width="8"/>
+
+  <circle cx="512" cy="512" r="332" fill="none" stroke="#dab24e" stroke-width="14" opacity="0.4"/>
+
+  <!-- 4-point compass star -->
+  <path d="M512 168 L566 458 L856 512 L566 566 L512 856 L458 566 L168 512 L458 458 Z"
+        fill="url(#gold)"/>
+  <path d="M512 168 L566 458 L512 512 L458 458 Z" fill="#f0d488"/>
+
+  <circle cx="512" cy="512" r="52" fill="#1a140d"/>
+  <circle cx="512" cy="512" r="22" fill="#e7c46a"/>
+</svg>
