@@ -20,7 +20,7 @@ public static class TagsGenerator
             "Month" => [mapCheckrLocation.month.ToString()],
             "YearMonth" => [YearMonth(mapCheckrLocation.year, mapCheckrLocation.month)],
             "Elevation" => [mapCheckrLocation.elevation?.ToString() ?? ""],
-            _ when e.StartsWith("Elevation") => [mapCheckrLocation.elevation != null ? Range("Elevation", mapCheckrLocation.elevation.Value, e.Replace("Elevation", ""), "m") ?? "" : ""],
+            _ when e.StartsWith("Elevation") => [mapCheckrLocation.elevation != null ? Range("Elevation", mapCheckrLocation.elevation.Value, e.Replace("Elevation", "").TrimStart('-'), "m") ?? "" : ""],
             "ArrowCount" => [$"ArrowCount-{mapCheckrLocation.arrowCount}"],
             _ when e.StartsWith(nameof(Location.Google.DrivingDirectionAngle)) => IntTag(mapCheckrLocation, nameof(l.Google.DrivingDirectionAngle), x => x.drivingDirectionAngle, e),
             _ when e.StartsWith(nameof(Location.Google.Heading)) => IntTag(mapCheckrLocation, nameof(l.Google.Heading), x => (int)x.heading, e),
